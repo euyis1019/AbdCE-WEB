@@ -1,5 +1,5 @@
 <template>
     <div>
-        申请记录审核情况
+        申请的综测表单
     </div>
 </template>
