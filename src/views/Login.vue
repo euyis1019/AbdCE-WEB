@@ -64,6 +64,7 @@ import {useStore } from 'vuex' // 引入全局store
 const store = useStore()
 const handleLogin = ()=>{
     localStorage.setItem("token","ForTest")
+    router.push("/Report")
 };
 
 // 表单绑定的响应式对象
@@ -105,6 +106,7 @@ const submitForm = ()=>{
               //store.commit("changeUserInfo",res.data.data)// 将用户信息保存到vuex中
               //store.commit("changeGetterRouter",false)
               router.push("/Report")//路由跳转
+              console.log(1)
               // localStorage.setItem("token", "lam");//色湖之token
             }else{
               ElMessage.error('用户名和密码不匹配')
