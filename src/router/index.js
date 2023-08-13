@@ -1,9 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import mainbox from '../views/MainBox.vue'
-import admin from '../views/admin.vue'
-import apply from '../views/apply.vue'
-import record from '../views/record.vue'
 import RoutesConfig from './config.js'
 import store from "../store/index"
 
@@ -18,21 +15,6 @@ const routes = [
     name: "mainbox",
     component: mainbox
   },
-  {
-    path: "/admin",
-    name: "admin",
-    component: admin
-  },
-  {
-    path: "/apply",
-    name: "apply",
-    component: apply
-  },
-  {
-    path: "/record",
-    name: "record",
-    component: record
-  }
 ]
 
 const router = createRouter({

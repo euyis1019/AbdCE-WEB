@@ -5,6 +5,7 @@
     <div>
         <button @click="handleClick1">提交申请</button>
     </div>
+    <RouterView></RouterView>
 </template>
 
 
@@ -12,10 +13,10 @@
 export default {
     methods: {
         handleClick() {
-            this.$router.push('/record')
+            this.$router.push('/Record')
         },
         handleClick1() {
-            this.$router.push('/apply')
+            this.$router.push('/Report')
         },
     }
 }

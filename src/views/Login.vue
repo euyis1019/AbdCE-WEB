@@ -1,12 +1,5 @@
 <template>
     <div>
-      <!-- 配置粒子展示 -->
-        <Particles
-            id="tsparticles"
-            :particlesInit="particlesInit"
-            :options="options"
-        />
-  
         <!-- 登录表单验证 -->
         <div class="formContainer">
             <h3>华南师范大学阿伯丁数据科学与人工智能学院综测填报系统网站</h3>
