@@ -43,8 +43,6 @@
             <!-- 翻页 -->
             <div class="demo-pagination-block">
                 <el-pagination
-                v-model:current-page="currentPage4"
-                v-model:page-size="pageSize4"
                 :page-sizes="[100, 200, 300, 400]"
                 :small="small"
                 :disabled="disabled"
