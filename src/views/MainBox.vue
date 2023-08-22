@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-//Student MainBox
-<template>
-    <div> 
-        <div>ApplicationRecord</div>
-        <div>ReportForm</div>
-
-        <RouterView></RouterView>
-    </div>
-</template>
-=======
 <template>
     <div>
         <button @click="handleClick">申请记录</button>
@@ -32,4 +21,3 @@ export default {
     }
 }
 </script>
->>>>>>> 72880bef85b562ecd0cba657eadb97c22e6dc6aa

@@ -1,20 +1,5 @@
 <template>
     <div>
-<<<<<<< HEAD
-        login
-        
-        <button @click="handleLogin">login</button>
-    </div>
-</template>
-
-<script setup>
-
-const handleLogin = ()=>{
-    localStorage.setItem("token","ForTest")
-}
-
-</script>
-=======
         <!-- 登录表单验证 -->
         <div class="formContainer">
             <h3>华南师范大学阿伯丁数据科学与人工智能学院综测填报系统网站</h3>
@@ -130,4 +115,3 @@ const submitForm = ()=>{
 }
 </script>
 
->>>>>>> 72880bef85b562ecd0cba657eadb97c22e6dc6aa
