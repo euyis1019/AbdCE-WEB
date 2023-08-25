@@ -1,23 +1,20 @@
 <template>
     <div>
-        <button @click="handleClick">申请记录</button>
+        <el-button type="info" @click="handleClick">申请记录</el-button>
     </div>
     <div>
-        <button @click="handleClick1">提交申请</button>
+        <el-button type="info" @click="handleClick1" round>提交申请</el-button>
     </div>
     <RouterView></RouterView>
 </template>
 
 
-<script>
-export default {
-    methods: {
-        handleClick() {
-            this.$router.push('/Record')
-        },
-        handleClick1() {
-            this.$router.push('/Report')
-        },
-    }
-}
+
+<script setup>
+const handleClick = () => {
+    router.push("/Record")
+};
+const handleClick1 = () => {
+    router.push("/Record")
+};
 </script>
