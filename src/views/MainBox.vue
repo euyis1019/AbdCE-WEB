@@ -9,12 +9,15 @@
 </template>
 
 
-
-<script setup>
-const handleClick = () => {
-    router.push("/Record")
-};
-const handleClick1 = () => {
-    router.push("/Record")
-};
+<script>
+export default {
+    methods: {
+        handleClick() {
+            this.$router.push('/Record')
+        },
+        handleClick1() {
+            this.$router.push('/Report')
+        },
+    }
+}
 </script>
