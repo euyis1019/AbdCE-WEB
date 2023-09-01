@@ -36,7 +36,7 @@
       justify-content: center;
       align-items: center;
       padding: 70px; /* 增加内边距 */
-      background-color: rgba(244, 0, 0, 0.8); /* 添加半透明的白色背景 */
+      background-color: rgba(255, 188, 188, 0.8); /* 添加半透明的白色背景 */
       box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2); /* 添加轻微的阴影 */
       border-radius: 10px; /* 添加圆角 */
       font-size: 1.1em; /* 增加字体大小 */

@@ -18,6 +18,12 @@
                 </el-icon><!-- 使用编辑图标 -->
                 <span slot="title">提交申请</span>
             </el-menu-item>
+            <el-menu-item index="3" @click="logout">
+                <el-icon>
+                    <close />
+                </el-icon> 
+                <span slot="title">退出</span>
+            </el-menu-item>
         </el-menu>
       </el-aside>
 
@@ -64,6 +70,10 @@ export default {
         },
         toggleNav() {
             this.isCollapsed = !this.isCollapsed;
+        },
+        logout(){
+            localStorage.clear();
+            this.$router.push('login')
         }
     }
 }
