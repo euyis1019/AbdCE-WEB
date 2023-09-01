@@ -9,6 +9,7 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.1.0",
     "@vueup/vue-quill": "^1.0.0-alpha.40",
+    "axios": "^1.5.0",
     "core-js": "^3.8.3",
     "element-plus": "^2.3.9",
     "nprogress": "^0.2.0",
