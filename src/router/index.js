@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import Login from '../views/Login.vue'
+import Login from '../LoginRegister/Login.vue'
 import mainbox from '../views/MainBox.vue'
 import Register from '../views/Register.vue'
 import RoutesConfig from './config.js'
