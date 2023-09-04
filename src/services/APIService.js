@@ -1,31 +1,25 @@
 import http from "../http-common";
 class APIService {
-    renewToken(data){
-        return http.post('RenewToken',data);
-    }
-    verifyToken(id){
-        return http.get(`/VerifyToken?id=${id}`);
-    }
     ipReport(data){
         return http.post("/IPReport",data);
     }
     login(id, pass) {
-        return http.get(`/login?ID=${id}&pass=${pass}`);
+        return http.post(`/login?ID=${id}&pass=${pass}`);
     }
     register(data){
         return http.post("/register", data);
     }
     getScore(id){
-        return http.get(`/selfCEScore?ID=${id}`)
+        return http.get(`/selfCE/score?ID=${id}`)
     }
     createReport(data){
-        return http.post("/NewReport", data);
+        return http.post("/report/new", data);
     }
     modifyReport(data){
-        return http.post("/ModifyReport", data);
+        return http.post("/report/modify", data);
     }
     queryHistory(id){
-        return http.get(`/selfCEHistory?ID=${id}`);
+        return http.get(`/selfCE/history?ID=${id}`);
     }
 }
 export default new APIService();
