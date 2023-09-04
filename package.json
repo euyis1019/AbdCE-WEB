@@ -7,14 +7,19 @@
     "build": "vue-cli-service build"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.1.0",
     "@vueup/vue-quill": "^1.0.0-alpha.40",
+    "axios": "^1.5.0",
     "core-js": "^3.8.3",
+    "crypto-js": "^4.1.1",
     "element-plus": "^2.3.9",
+    "js-cookie": "^3.0.5",
+    "nprogress": "^0.2.0",
     "particles.vue3": "^2.12.0",
     "tsparticles": "^2.12.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
-    "vuex": "^4.0.0"
+    "vuex": "^4.0.2"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~5.0.0",

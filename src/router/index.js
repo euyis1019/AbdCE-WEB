@@ -1,8 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import Login from '../views/Login.vue'
+import Login from '../LoginRegister/Login.vue'
 import mainbox from '../views/MainBox.vue'
 import RoutesConfig from './config.js'
 import store from "../store/index"
+import NProgress from 'nprogress';
+import 'nprogress/nprogress.css';
 
 const routes = [{
     path: "/login",
@@ -22,6 +24,7 @@ const router = createRouter({
 })
 //路由拦截
 router.beforeEach((to, from, next) => {
+    NProgress.start();
     if (to.name === 'login') { next() } else {   //是否授权
 
         if (!localStorage.getItem("token")) { next({ path: "/login" }) } else {    //后期拓展很多页面的话用config.js配置循环路由
@@ -32,6 +35,9 @@ router.beforeEach((to, from, next) => {
         }
     }
 })
+router.afterEach(() => {
+    NProgress.done();
+});
 
 const ConfigRouter = () => {
     RoutesConfig.forEach(item => {
