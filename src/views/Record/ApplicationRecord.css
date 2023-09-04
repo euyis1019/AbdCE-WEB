@@ -1,0 +1,35 @@
+.scnu_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.top_bar {
+    height: 90px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.username {
+    color: #002D54;
+    font-weight: bolder;
+}
+
+h1 {
+    margin: 10px 0
+}
+
+.scnu_nav {
+    width: 100%;
+    height: fit-content;
+}
+
+.scnu_content {
+    width: 70%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 100px;
+}
