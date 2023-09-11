@@ -39,7 +39,7 @@ import CryptoJS from 'crypto-js';
 
 const store = useStore();
 const handleLogin = () => {
-  localStorage.setItem("token", "ForTest");
+  localStorage.setItem("token", "751e532e-035b-4138-8ed9-a1ab38e54701");
   router.push("/Report");
 };
 
@@ -70,7 +70,7 @@ const loginRules = reactive({
     },
   ],
 });
-const url='http://14.155.175.41:1443/login';
+const url='http://192.168.123.171:6443/login';
 // 引入路由
 const router = useRouter();
 //提交表单函数

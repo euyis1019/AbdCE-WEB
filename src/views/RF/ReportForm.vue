@@ -56,9 +56,11 @@
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
-          <el-button type="danger" @click="removeRow(1, scope.$index)">删除</el-button>
+          <Button-Component></Button-Component>
+          <el-button type="danger" @click="removeRow(1, scope.$index)">删除文件</el-button>
         </template>
       </el-table-column>
+      
     </el-table>
     
 
@@ -177,6 +179,7 @@
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
+          <UploadButton>上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(4, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -217,6 +220,7 @@
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
+          <el-upload>上传文件</el-upload>
           <el-button type="danger" @click="removeRow(5, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -249,7 +253,8 @@ import Editor from '@/components/Editor.vue'
 import axios from 'axios';
 import { reactive } from 'vue'
 import { ref, computed } from 'vue';
-
+import ButtonComponent from './ButtonComponent.vue';
+import UploadButton from './UploadButton.vue';
 //info用于储存学生基本信息
 const info = reactive({
   name: "",

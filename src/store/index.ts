@@ -8,18 +8,18 @@ export default createStore({
   getters: {
   },
   mutations: {   
-    changeGetterRouter(state,value){
+    changeGetterRouter(state:any,value:any){
       state.isGetterRouter = value 
     },
-    changeUserInfo(state, value) {
+    changeUserInfo(state:any,value:any) {
       // 保存旧的用户信息的情况下添加新的用户信息
-      state.userInfo = {
-        ...state.userInfo,
+      state.userinfo = {
+        ...state.userinfo,
         ...value
       }
     },
-    clearUserInfo(state, value) {// 清除用户数据
-      state.userInfo = {}
+    clearUserInfo(state:any,value:any) {// 清除用户数据
+      state.userinfo = {}
     }
   },
   actions: {
