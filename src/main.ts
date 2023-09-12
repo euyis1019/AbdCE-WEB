@@ -14,7 +14,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 //按照VUE3的方式去注册！
 //本地能运行再commit
+const baseURL ="http://10.252.128.12:6443";
 app
+.provide('baseURL',baseURL)
 .use(ElementPlus)
 .use(store)
 .use(router)

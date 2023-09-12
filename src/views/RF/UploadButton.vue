@@ -3,12 +3,13 @@
       ref="upload"
       class="upload-demo"
       :action='computedActionUrl'
-
+      :on-preview="handlePreview"
       :limit="1"
       name = "file"
       :on-exceed="handleExceed"
       :auto-upload="false"
       :before-upload="beforeFileUpload"
+      :on-success="handleUploadSuccess"
     >
       <template #trigger>
         <el-button type="primary">select file</el-button>
@@ -25,19 +26,19 @@
   </template>
   
   <script setup lang="ts">
-  import { ref ,computed} from 'vue'
+  import { ref ,computed,inject} from 'vue'
   import { genFileId } from 'element-plus'
   import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
- 
+
 
   const upload = ref<UploadInstance>()
 
   const additionalData = {
   t: localStorage.getItem('token'),
   ID:20223800000,
-  // ... 其他你想发送的参数
 }
-const actionUrl = 'http://10.252.128.12:6443/report/upload'
+const baseURL = inject('baseURL');
+const actionUrl = baseURL + '/report/upload';
 const actionUrlRef = ref(actionUrl)
 const computedActionUrl = computed(() => actionUrlRef.value)
 const beforeFileUpload = (file: UploadRawFile) => {
@@ -60,5 +61,29 @@ const headers = {
   const submitUpload = () => {
     upload.value!.submit()
   }
+  const uploadedFileUrls = ref<Record<string, string>>({});  // 注意我将变量名改为了 uploadedFileUrls
+
+const handleUploadSuccess = (response: any, file: any, fileList: any) => {
+  // 处理服务器的响应
+  if (response.url==undefined) {
+    alert("未上传成功，请联系管理员");
+    console.log(99)
+    return;
+  }
+  else{
+    const fileUrl = baseURL + (response.url.startsWith('./') ? response.url.slice(1) : response.url);  // 这里我将变量名改为了 fileUrl，以避免与外部的 ref 对象命名冲突
+  console.log(response.url)
+  console.log("Uploaded File URL:", fileUrl);
+  uploadedFileUrls.value[file.uid] = fileUrl;
+  }  // 使用外部的 ref 对象
+}
+
+const handlePreview = (file: any) => {
+  const url = uploadedFileUrls.value[file.uid];  // 使用外部的 ref 对象
+  if (url) {
+    window.open(url, '_blank');
+  }
+}
+
   </script>
   
