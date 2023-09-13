@@ -21,84 +21,73 @@
     
      <div class="app">
     <!-- 表格1 - 思品 -->
-    <div class="table-title">思品</div>
     <el-button @click="addRow1">添加行</el-button>
     <el-table :data="tableData1" style="width: 100%">
-      <el-table-column label="大分类" prop="category1">
+      <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category1" />
+          <el-input v-model="scope.row.Lclass" />
         </template>
       </el-table-column>
-      <el-table-column label="中分类" prop="category2">
+      <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category2" />
+          <el-input v-model="scope.row.Mlcass" />
         </template>
       </el-table-column>
-      <el-table-column label="小分类" prop="category3">
+      <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category3" />
+          <el-input v-model="scope.row.Sclass" />
         </template>
       </el-table-column>
-      <el-table-column label="得分" prop="score">
+      <el-table-column label="材料页码" prop="Page">
         <template #default="scope">
-          <el-input-number v-model="scope.row.score" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="扣分" prop="deduction">
+      <el-table-column label="得分" prop="Point">
         <template #default="scope">
-          <el-input-number v-model="scope.row.deduction" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="pageNumber">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.pageNumber" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
-          <Button-Component></Button-Component>
-          <el-button type="danger" @click="removeRow(1, scope.$index)">删除文件</el-button>
+          <UploadButton>上传文件</UploadButton>
+          <el-button type="danger" @click="removeRow(1, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
-      
     </el-table>
     
 
     <div class="table-title">学业</div>
     <el-button @click="addRow2">添加行</el-button>
     <el-table :data="tableData2" style="width: 100%">
-      <el-table-column label="大分类" prop="category1">
+      <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category1" />
+          <el-input v-model="scope.row.Lclass" />
         </template>
       </el-table-column>
-      <el-table-column label="中分类" prop="category2">
+      <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category2" />
+          <el-input v-model="scope.row.Mlcass" />
         </template>
       </el-table-column>
-      <el-table-column label="小分类" prop="category3">
+      <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category3" />
+          <el-input v-model="scope.row.Sclass" />
         </template>
       </el-table-column>
-      <el-table-column label="得分" prop="score">
+      <el-table-column label="材料页码" prop="Page">
         <template #default="scope">
-          <el-input-number v-model="scope.row.score" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="扣分" prop="deduction">
+      <el-table-column label="得分" prop="Point">
         <template #default="scope">
-          <el-input-number v-model="scope.row.deduction" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="pageNumber">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.pageNumber" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
+          <UploadButton>上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(2, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -107,38 +96,34 @@
     <div class="table-title">体育</div>
     <el-button @click="addRow3">添加行</el-button>
     <el-table :data="tableData3" style="width: 100%">
-      <el-table-column label="大分类" prop="category1">
+      <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category1" />
+          <el-input v-model="scope.row.Lclass" />
         </template>
       </el-table-column>
-      <el-table-column label="中分类" prop="category2">
+      <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category2" />
+          <el-input v-model="scope.row.Mlcass" />
         </template>
       </el-table-column>
-      <el-table-column label="小分类" prop="category3">
+      <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category3" />
+          <el-input v-model="scope.row.Sclass" />
         </template>
       </el-table-column>
-      <el-table-column label="得分" prop="score">
+      <el-table-column label="材料页码" prop="Page">
         <template #default="scope">
-          <el-input-number v-model="scope.row.score" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="扣分" prop="deduction">
+      <el-table-column label="得分" prop="Point">
         <template #default="scope">
-          <el-input-number v-model="scope.row.deduction" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="pageNumber">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.pageNumber" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
+          <UploadButton>上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(3, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -147,34 +132,29 @@
     <div class="table-title">美育</div>
     <el-button @click="addRow4">添加行</el-button>
     <el-table :data="tableData4" style="width: 100%">
-      <el-table-column label="大分类" prop="category1">
+      <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category1" />
+          <el-input v-model="scope.row.Lclass" />
         </template>
       </el-table-column>
-      <el-table-column label="中分类" prop="category2">
+      <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category2" />
+          <el-input v-model="scope.row.Mlcass" />
         </template>
       </el-table-column>
-      <el-table-column label="小分类" prop="category3">
+      <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category3" />
+          <el-input v-model="scope.row.Sclass" />
         </template>
       </el-table-column>
-      <el-table-column label="得分" prop="score">
+      <el-table-column label="材料页码" prop="Page">
         <template #default="scope">
-          <el-input-number v-model="scope.row.score" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="扣分" prop="deduction">
+      <el-table-column label="得分" prop="Point">
         <template #default="scope">
-          <el-input-number v-model="scope.row.deduction" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="pageNumber">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.pageNumber" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
       <el-table-column label="操作">
@@ -188,39 +168,34 @@
     <div class="table-title">劳动</div>
     <el-button @click="addRow5">添加行</el-button>
     <el-table :data="tableData5" style="width: 100%">
-      <el-table-column label="大分类" prop="category1">
+      <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category1" />
+          <el-input v-model="scope.row.Lclass" />
         </template>
       </el-table-column>
-      <el-table-column label="中分类" prop="category2">
+      <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category2" />
+          <el-input v-model="scope.row.Mlcass" />
         </template>
       </el-table-column>
-      <el-table-column label="小分类" prop="category3">
+      <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.category3" />
+          <el-input v-model="scope.row.Sclass" />
         </template>
       </el-table-column>
-      <el-table-column label="得分" prop="score">
+      <el-table-column label="材料页码" prop="Page">
         <template #default="scope">
-          <el-input-number v-model="scope.row.score" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="扣分" prop="deduction">
+      <el-table-column label="得分" prop="Point">
         <template #default="scope">
-          <el-input-number v-model="scope.row.deduction" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="pageNumber">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.pageNumber" :min="0" :step="1" />
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
-          <el-upload>上传文件</el-upload>
+          <UploadButton>上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(5, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -231,16 +206,11 @@
       <el-table :data="totalData" style="width: 100%">
         <el-table-column label="项目" prop="title" width="100"></el-table-column>
         <el-table-column label="总得分" prop="totalScore" width="100"></el-table-column>
-        <el-table-column label="总扣分" prop="totalDeduction" width="100"></el-table-column>
-        <el-table-column label="合计" prop="total" width="100"></el-table-column> 
       </el-table>
     </div>
   </div>
 
-    <div>
-      <!-- 富文本框 -->
-        <Editor :value="richForm.msg" @updateValue="getMsg" />
-    </div>
+  
     <el-form-item>
       <!--提交按钮-->
       <el-button type="primary" @click="submitForm()">提交</el-button>
@@ -249,12 +219,11 @@
 </template>
 
 <script setup>
-import Editor from '@/components/Editor.vue'
 import axios from 'axios';
 import { reactive } from 'vue'
 import { ref, computed } from 'vue';
-import ButtonComponent from './ButtonComponent.vue';
 import UploadButton from './UploadButton.vue';
+
 //info用于储存学生基本信息
 const info = reactive({
   name: "",
@@ -262,32 +231,34 @@ const info = reactive({
   studentId: ""
 });
 
-//富文本框的值
-const richForm = reactive({
-  test_msg: '默认值'
-})
 
-const getMsg = (val) => {
-  richForm.msg = val
-}
+const StatusNum = 0.1
 
 const submitForm = () => {
+  MoralityTable.value = extractColumnsData(tableData1.value);
+  AcademicTable.value = extractColumnsData(tableData2.value);
+  PhysicalTable.value = extractColumnsData(tableData3.value);
+  ArtTable.value = extractColumnsData(tableData4.value);
+  LaborTable.value = extractColumnsData(tableData5.value);
   const url = 'http://14.155.175.41:1443/NewReport';
-  const data = {
-      ID: info.studentId,
-      morality: totalSumData.moralitySum,
-      academic: totalSumData.academicSum,
-      physical: totalSumData.physicalSum,
-      art: totalSumData.artSum,
-      labor: totalSumData.laborSum
+  const data = {    
+    userID: info.studentId,
+    uuid:"",
+    morality:MoralityTable,
+    academic:AcademicTable,
+    physical:PhysicalTable,
+    art:ArtTable,
+    labor:LaborTable,  
+
   };
-  axios.post(url, data)
-      .then(response => {
-          console.log('Success:', response.data);
-      })
-      .catch(error => {
-          console.error('Error:', error);
-      });
+  console.log(data)
+  // axios.post(url, data)
+  //     .then(response => {
+  //         console.log('Success:', response.data);
+  //     })
+  //     .catch(error => {
+  //         console.error('Error:', error);
+  //     });
 }
 // const sendGetRequest = () => {
 //     const url = 'http://14.155.175.41:1443/login';
@@ -337,14 +308,21 @@ const tableData5 = ref([
 
 // 计算总得分和总扣分
 const getTotalScore = (data) => {
-  return data.reduce((total, row) => total + row.score, 0);
+  return data.reduce((total, row) => total + row.Point, 0);
 };
 
-const getTotalDeduction = (data) => {
-  return data.reduce((total, row) => total + row.deduction, 0);
-};
+// const getTotalDeduction = (data) => {
+//   return data.reduce((total, row) => total + row.deduction, 0);
+// };
 
 //合计数据，用于传参
+const MoralityTable =ref({});
+const AcademicTable = ref({});
+const PhysicalTable = ref({});
+const ArtTable = ref({});
+const LaborTable = ref({});
+
+
 const totalSumData = reactive({
   moralitySum: 0,
   academicSum: 0,
@@ -355,74 +333,77 @@ const totalSumData = reactive({
 
 //合计数据表格的data
 const totalData = computed(() => {
-  const moralitySum = getTotalScore(tableData1.value) - getTotalDeduction(tableData1.value);
-  const academicSum = getTotalScore(tableData2.value) - getTotalDeduction(tableData2.value);
-  const physicalSum = getTotalScore(tableData3.value) - getTotalDeduction(tableData3.value);
-  const artSum = getTotalScore(tableData4.value) - getTotalDeduction(tableData4.value);
-  const laborSum = getTotalScore(tableData5.value) - getTotalDeduction(tableData5.value);
-  
-  totalSumData.moralitySum = moralitySum;
-  totalSumData.academicSum = academicSum;
-  totalSumData.physicalSum = physicalSum;
-  totalSumData.artSum = artSum;
-  totalSumData.laborSum = laborSum;
   return [
-  { title: '思品', totalScore: getTotalScore(tableData1.value), totalDeduction: getTotalDeduction(tableData1.value), total: moralitySum},
-  { title: '学业', totalScore: getTotalScore(tableData2.value), totalDeduction: getTotalDeduction(tableData2.value), total: academicSum},
-  { title: '体育', totalScore: getTotalScore(tableData3.value), totalDeduction: getTotalDeduction(tableData3.value), total: physicalSum},
-  { title: '美育', totalScore: getTotalScore(tableData4.value), totalDeduction: getTotalDeduction(tableData4.value), total: artSum},
-  { title: '劳动', totalScore: getTotalScore(tableData5.value), totalDeduction: getTotalDeduction(tableData5.value), total: laborSum},
+  { title: '思品', totalScore: getTotalScore(tableData1.value)},
+  { title: '学业', totalScore: getTotalScore(tableData2.value)},
+  { title: '体育', totalScore: getTotalScore(tableData3.value)},
+  { title: '美育', totalScore: getTotalScore(tableData4.value)},
+  { title: '劳动', totalScore: getTotalScore(tableData5.value)},
 ]});
+
+
+const extractColumnsData = (data) => {
+  const columnData = {};
+  for (const column of Object.keys(data[0])) {
+    columnData[column] = data.map(item => item[column]);
+  }
+  return columnData
+};
 
 // 添加行
 const addRow1 = () => {
   tableData1.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+    status:StatusNum,
   });
 };
 const addRow2 = () => {
   tableData2.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+    status:StatusNum,
   });
 };
 const addRow3 = () => {
   tableData3.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+    status:StatusNum,
   });
 };
 const addRow4 = () => {
   tableData4.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+    status:StatusNum,
   });
 };
 const addRow5 = () => {
   tableData5.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+    status:StatusNum,
   });
 };
 
@@ -446,7 +427,6 @@ const removeRow = (tableIndex, rowIndex) => {
       break;
   }
 };
-
 
 </script>
 

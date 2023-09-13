@@ -12,10 +12,10 @@
       :on-success="handleUploadSuccess"
     >
       <template #trigger>
-        <el-button type="primary">select file</el-button>
+        <el-button type="primary">选择文件</el-button>
       </template>
       <el-button class="ml-3" type="success" @click="submitUpload">
-        upload to server
+        提交文件
       </el-button>
       <template #tip>
         <div class="el-upload__tip text-red">
