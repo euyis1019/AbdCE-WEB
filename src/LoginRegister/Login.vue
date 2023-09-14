@@ -29,7 +29,7 @@
 
 
 <script setup>
-import { reactive, ref } from "vue";
+import { inject, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 //import axios from 'axios'// 引入axios
 import { ElMessage } from "element-plus"; //消息提醒框
@@ -70,7 +70,7 @@ const loginRules = reactive({
     },
   ],
 });
-const url='http://192.168.123.171:6443/login';
+const url=inject('baseURL')+"/login";
 // 引入路由
 const router = useRouter();
 //提交表单函数
@@ -101,16 +101,16 @@ const submitForm = () => {
     };
     if (valid) {
         console.log("成功获取到表单内容:", { params: params });
-        axios.get(url, { params: params }).then((res) => {
+        axios.post(url, null,{ params: params }).then((res) => {
             console.log("Thisis",res.data);
             // 登录校验
             if (res.data.msg === "登录成功") {
-              localStorage.setItem("token", res.data.Token);
-                //console.log('返回的用户数据',res.data.data);
+              localStorage.setItem("token", res.data.data.Token);
                 //store.commit("changeUserInfo",res.data.data)// 将用户信息保存到vuex中
                 //store.commit("changeGetterRouter",false)
+                localStorage.setItem("Permission",res.data.data.Permission)
                 router.push("/Report"); //路由跳转
-                console.log(res.data.Token)
+                console.log()
             } else {
               console.log(res.data.msg);
               ElMessage.error("用户名和密码不匹配");
