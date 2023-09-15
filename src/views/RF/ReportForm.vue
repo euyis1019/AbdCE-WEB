@@ -21,6 +21,7 @@
     
      <div class="app">
     <!-- 表格1 - 思品 -->
+    <div class="table-title">思品</div>
     <el-button @click="addRow1">添加行</el-button>
     <el-table :data="tableData1" style="width: 100%">
       <el-table-column label="大分类" prop="Lclass">
@@ -221,7 +222,7 @@
 <script setup>
 import axios from 'axios';
 import { reactive } from 'vue'
-import { ref, computed } from 'vue';
+import { ref, computed,inject } from 'vue';
 import UploadButton from './UploadButton.vue';
 
 //info用于储存学生基本信息
@@ -233,6 +234,7 @@ const info = reactive({
 
 
 const StatusNum = 0.1
+// const baseURL = inject('baseURL');
 
 const submitForm = () => {
   MoralityTable.value = extractColumnsData(tableData1.value);
@@ -240,7 +242,7 @@ const submitForm = () => {
   PhysicalTable.value = extractColumnsData(tableData3.value);
   ArtTable.value = extractColumnsData(tableData4.value);
   LaborTable.value = extractColumnsData(tableData5.value);
-  const url = 'http://14.155.175.41:1443/NewReport';
+  const url = "http://10.252.128.12:6443"+'/report/new'+'?t=744c6cb6-2159-413f-bc62-230c28a86e49&ID=20223800000';
   const data = {    
     userID: info.studentId,
     uuid:"",
@@ -252,13 +254,15 @@ const submitForm = () => {
 
   };
   console.log(data)
-  // axios.post(url, data)
-  //     .then(response => {
-  //         console.log('Success:', response.data);
-  //     })
-  //     .catch(error => {
-  //         console.error('Error:', error);
-  //     });
+  axios.post(url, data)
+      .then(response => {
+          console.log('Success:', response.data);
+          alert('提交成功');
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          alert('提交失败，请联系管理员')
+      });
 }
 // const sendGetRequest = () => {
 //     const url = 'http://14.155.175.41:1443/login';
@@ -359,7 +363,6 @@ const addRow1 = () => {
     Page: 0,
     Point: 0,
     FileDst: 0,
-    status:StatusNum,
   });
 };
 const addRow2 = () => {
@@ -370,7 +373,6 @@ const addRow2 = () => {
     Page: 0,
     Point: 0,
     FileDst: 0,
-    status:StatusNum,
   });
 };
 const addRow3 = () => {
@@ -381,7 +383,6 @@ const addRow3 = () => {
     Page: 0,
     Point: 0,
     FileDst: 0,
-    status:StatusNum,
   });
 };
 const addRow4 = () => {
@@ -392,7 +393,6 @@ const addRow4 = () => {
     Page: 0,
     Point: 0,
     FileDst: 0,
-    status:StatusNum,
   });
 };
 const addRow5 = () => {
@@ -403,7 +403,6 @@ const addRow5 = () => {
     Page: 0,
     Point: 0,
     FileDst: 0,
-    status:StatusNum,
   });
 };
 
