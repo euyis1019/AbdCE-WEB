@@ -237,20 +237,20 @@ const StatusNum = 0.1
 // const baseURL = inject('baseURL');
 
 const submitForm = () => {
-  MoralityTable.value = extractColumnsData(tableData1.value);
-  AcademicTable.value = extractColumnsData(tableData2.value);
-  PhysicalTable.value = extractColumnsData(tableData3.value);
-  ArtTable.value = extractColumnsData(tableData4.value);
-  LaborTable.value = extractColumnsData(tableData5.value);
-  const url = "http://10.252.128.12:6443"+'/report/new'+'?t=744c6cb6-2159-413f-bc62-230c28a86e49&ID=20223800000';
+  // MoralityTable.value = extractColumnsData(tableData1.value);
+  // AcademicTable.value = extractColumnsData(tableData2.value);
+  // PhysicalTable.value = extractColumnsData(tableData3.value);
+  // ArtTable.value = extractColumnsData(tableData4.value);
+  // LaborTable.value = extractColumnsData(tableData5.value);
+  const url = "http://10.252.128.12:6443"+'/report/new'+'?t=495b0360-b47a-41b9-9f7f-3c693c143b57&ID=20223800000&uuid="a5d1b629-21ff-4b32-b0ba-902798459e99"';
   const data = {    
     userID: info.studentId,
     uuid:"",
-    morality:MoralityTable,
-    academic:AcademicTable,
-    physical:PhysicalTable,
-    art:ArtTable,
-    labor:LaborTable,  
+    morality:tableData1,
+    academic:tableData2,
+    physical:tableData3,
+    art:tableData4,
+    labor:tableData5,  
 
   };
   console.log(data)
