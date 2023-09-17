@@ -26,10 +26,12 @@
   </template>
   
   <script setup lang="ts">
-  import { ref ,computed,inject} from 'vue'
+  import { ref ,computed,inject, defineProps, defineEmits} from 'vue'
   import { genFileId } from 'element-plus'
   import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
 
+  const { fileUrl } = defineProps(['fileUrl']);
+  const emit = defineEmits();
 
   const upload = ref<UploadInstance>()
 
@@ -42,6 +44,7 @@ const actionUrl = baseURL + '/report/upload';
 const actionUrlRef = ref(actionUrl)
 const computedActionUrl = computed(() => actionUrlRef.value)
 const beforeFileUpload = (file: UploadRawFile) => {
+  console.log(additionalData.t)
   // 添加查询参数
   actionUrlRef.value = `${actionUrl}?t=${additionalData.t}&ID=${additionalData.ID}`
   return true
@@ -49,7 +52,6 @@ const beforeFileUpload = (file: UploadRawFile) => {
 const headers = {
   "Content-type": "multipart/form-data"
 }
-
   
   const handleExceed: UploadProps['onExceed'] = (files) => {
     upload.value!.clearFiles()
@@ -60,6 +62,7 @@ const headers = {
   
   const submitUpload = () => {
     upload.value!.submit()
+
   }
   const uploadedFileUrls = ref<Record<string, string>>({});  // 注意我将变量名改为了 uploadedFileUrls
 
@@ -72,12 +75,14 @@ const handleUploadSuccess = (response: any, file: any, fileList: any) => {
   }
   else{
     const fileUrl = baseURL + (response.url.startsWith('./') ? response.url.slice(1) : response.url);  // 这里我将变量名改为了 fileUrl，以避免与外部的 ref 对象命名冲突
-  console.log(response.url)
-  console.log("Uploaded File URL:", fileUrl);
-  uploadedFileUrls.value[file.uid] = fileUrl;
-  }  // 使用外部的 ref 对象
+    const fileUrl2 =  (response.url.startsWith('./') ? response.url.slice(1) : response.url)
+    console.log(response.url)
+    console.log("Uploaded File URL:", fileUrl);
+    uploadedFileUrls.value[file.uid] = fileUrl;
+    emit('file-uploaded', fileUrl2); // 发出自定义事件
+  
+  }  
 }
-
 const handlePreview = (file: any) => {
   const url = uploadedFileUrls.value[file.uid];  // 使用外部的 ref 对象
   if (url) {

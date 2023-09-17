@@ -49,9 +49,10 @@
           <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" prop="FileDst">
         <template #default="scope">
-          <UploadButton>上传文件</UploadButton>
+          <UploadButton 
+        @file-uploaded="fileUrl => handleFileUploaded(1, scope.$index, fileUrl)">上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(1, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -86,9 +87,10 @@
           <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" prop="FileDst">
         <template #default="scope">
-          <UploadButton>上传文件</UploadButton>
+          <UploadButton 
+        @file-uploaded="fileUrl => handleFileUploaded(2, scope.$index, fileUrl)">上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(2, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -122,9 +124,10 @@
           <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" prop="FileDst">
         <template #default="scope">
-          <UploadButton>上传文件</UploadButton>
+          <UploadButton 
+        @file-uploaded="fileUrl => handleFileUploaded(3, scope.$index, fileUrl)">上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(3, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -158,9 +161,10 @@
           <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" prop='FileDst'>
         <template #default="scope">
-          <UploadButton>上传文件</UploadButton>
+          <UploadButton 
+        @file-uploaded="fileUrl => handleFileUploaded(4,scope.$index, fileUrl)">上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(4, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -194,9 +198,10 @@
           <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      <el-table-column label="操作" prop="FileDst">
         <template #default="scope">
-          <UploadButton>上传文件</UploadButton>
+          <UploadButton 
+        @file-uploaded="fileUrl => handleFileUploaded(5,scope.$index, fileUrl)">上传文件</UploadButton>
           <el-button type="danger" @click="removeRow(5, scope.$index)">删除</el-button>
         </template>
       </el-table-column>
@@ -242,7 +247,8 @@ const submitForm = () => {
   // PhysicalTable.value = extractColumnsData(tableData3.value);
   // ArtTable.value = extractColumnsData(tableData4.value);
   // LaborTable.value = extractColumnsData(tableData5.value);
-  const url = "http://10.252.128.12:6443"+'/report/new'+'?t=495b0360-b47a-41b9-9f7f-3c693c143b57&ID=20223800000&uuid="a5d1b629-21ff-4b32-b0ba-902798459e99"';
+  const atoken = localStorage.getItem("token")
+  const url = "http://10.252.128.12:6443"+'/report/new'+'?t='+atoken+'&ID=20223804039';
   const data = {    
     userID: info.studentId,
     uuid:"",
@@ -362,7 +368,7 @@ const addRow1 = () => {
     Sclass: '',
     Page: 0,
     Point: 0,
-    FileDst: 0,
+    FileDst: '',
   });
 };
 const addRow2 = () => {
@@ -372,7 +378,7 @@ const addRow2 = () => {
     Sclass: '',
     Page: 0,
     Point: 0,
-    FileDst: 0,
+    FileDst: '',
   });
 };
 const addRow3 = () => {
@@ -382,7 +388,7 @@ const addRow3 = () => {
     Sclass: '',
     Page: 0,
     Point: 0,
-    FileDst: 0,
+    FileDst: '',
   });
 };
 const addRow4 = () => {
@@ -392,7 +398,7 @@ const addRow4 = () => {
     Sclass: '',
     Page: 0,
     Point: 0,
-    FileDst: 0,
+    FileDst: '',
   });
 };
 const addRow5 = () => {
@@ -402,7 +408,7 @@ const addRow5 = () => {
     Sclass: '',
     Page: 0,
     Point: 0,
-    FileDst: 0,
+    FileDst: '',
   });
 };
 
@@ -423,6 +429,28 @@ const removeRow = (tableIndex, rowIndex) => {
       break;
     case 5:
       tableData5.value.splice(rowIndex, 1);
+      break;
+  }
+};
+const handleFileUploaded = (tableIndex,rowIndex, fileUrl) => {
+  switch (tableIndex) {
+    case 1:
+      tableData1.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 2:
+      tableData2.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 3:
+      tableData3.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 4:
+      tableData4.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 5:
+      tableData5.value[rowIndex].FileDst = fileUrl;
+      break;
+    default:
+      // 处理未知的表格索引
       break;
   }
 };

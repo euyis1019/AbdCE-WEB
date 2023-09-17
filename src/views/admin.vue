@@ -1,54 +1,224 @@
 <template>
     <!-- 表格1 - 思品 -->
     <div class="table-title">思品</div>
+    <el-button @click="addRow1">添加行</el-button>
     <el-table :data="moralityData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass"> </el-table-column>
-      <el-table-column label="中分类" prop="Mclass"></el-table-column>
-      <el-table-column label="小分类" prop="Sclass"></el-table-column>
-      <el-table-column label="材料页码" prop="Page"></el-table-column>
-      <el-table-column label="得分" prop="Point"></el-table-column>
-      <el-table-column label="操作"></el-table-column>
+      <el-table-column label="大分类" prop="Lclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Lclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="中分类" prop="Mclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Mlcass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="小分类" prop="Sclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Sclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="材料页码" prop="Page">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="得分" prop="Point">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" prop="FileDst">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            tag="a"
+            href='baseURL+scope.row.FileDst'
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            can can need
+          </el-button>
+          <el-button type="danger" @click="removeRow(1, scope.$index)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     
 
     <div class="table-title">学业</div>
+    <el-button @click="addRow2">添加行</el-button>
     <el-table :data="academicData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass"> </el-table-column>
-      <el-table-column label="中分类" prop="Mclass"></el-table-column>
-      <el-table-column label="小分类" prop="Sclass"></el-table-column>
-      <el-table-column label="材料页码" prop="Page"></el-table-column>
-      <el-table-column label="得分" prop="Point"></el-table-column>
-      <el-table-column label="操作"></el-table-column>
+      <el-table-column label="大分类" prop="Lclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Lclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="中分类" prop="Mclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Mlcass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="小分类" prop="Sclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Sclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="材料页码" prop="Page">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="得分" prop="Point">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" prop="FileDst">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            tag="a"
+            href="https://github.com/element-plus/element-plus"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            can can need
+          </el-button>
+          <el-button type="danger" @click="removeRow(2, scope.$index)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="table-title">体育</div>
+    <el-button @click="addRow3">添加行</el-button>
     <el-table :data="physicalData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass"> </el-table-column>
-      <el-table-column label="中分类" prop="Mclass"></el-table-column>
-      <el-table-column label="小分类" prop="Sclass"></el-table-column>
-      <el-table-column label="材料页码" prop="Page"></el-table-column>
-      <el-table-column label="得分" prop="Point"></el-table-column>
-      <el-table-column label="操作"></el-table-column>
+      <el-table-column label="大分类" prop="Lclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Lclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="中分类" prop="Mclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Mlcass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="小分类" prop="Sclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Sclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="材料页码" prop="Page">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="得分" prop="Point">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" prop="FileDst">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            tag="a"
+            href="https://github.com/element-plus/element-plus"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            can can need
+          </el-button>
+          <el-button type="danger" @click="removeRow(3, scope.$index)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="table-title">美育</div>
+    <el-button @click="addRow4">添加行</el-button>
     <el-table :data="artData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass"> </el-table-column>
-      <el-table-column label="中分类" prop="Mclass"></el-table-column>
-      <el-table-column label="小分类" prop="Sclass"></el-table-column>
-      <el-table-column label="材料页码" prop="Page"></el-table-column>
-      <el-table-column label="得分" prop="Point"></el-table-column>
-      <el-table-column label="操作"></el-table-column>
+      <el-table-column label="大分类" prop="Lclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Lclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="中分类" prop="Mclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Mlcass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="小分类" prop="Sclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Sclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="材料页码" prop="Page">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="得分" prop="Point">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" prop="FileDst">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            tag="a"
+            href="https://github.com/element-plus/element-plus"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            can can need
+          </el-button>
+          <el-button type="danger" @click="removeRow(4, scope.$index)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="table-title">劳动</div>
+    <el-button @click="addRow5">添加行</el-button>
     <el-table :data="laborData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass"> </el-table-column>
-      <el-table-column label="中分类" prop="Mclass"></el-table-column>
-      <el-table-column label="小分类" prop="Sclass"></el-table-column>
-      <el-table-column label="材料页码" prop="Page"></el-table-column>
-      <el-table-column label="得分" prop="Point"></el-table-column>
-      <el-table-column label="操作"></el-table-column>
+      <el-table-column label="大分类" prop="Lclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Lclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="中分类" prop="Mclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Mlcass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="小分类" prop="Sclass">
+        <template #default="scope">
+          <el-input v-model="scope.row.Sclass" />
+        </template>
+      </el-table-column>
+      <el-table-column label="材料页码" prop="Page">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="得分" prop="Point">
+        <template #default="scope">
+          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" prop="FileDst">
+        <template #default="scope">
+          <el-button
+            type="primary"
+            tag="a"
+            :href='baseURL+scope.row.FileDst'
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            can can need
+          </el-button>
+          <el-button type="danger" @click="removeRow(5, scope.$index)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <button @click="fetchTableData">加载表格数据</button>
@@ -56,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted,inject } from 'vue';
 import axios from 'axios'; 
 
 const moralityData = ref(null);
@@ -64,12 +234,14 @@ const academicData = ref(null);
 const physicalData = ref(null);
 const artData = ref(null);
 const laborData = ref(null);
-const uuid = '246e99b3-6802-40e3-b4b1-df9a068d4b82'
+const uuid = '2f646b62-7930-480f-a8b3-2f8a88104ae1'
+const baseURL = inject('baseURL');
 
 
 // 从后端获取表格数据
 const fetchTableData = () => {
-  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t=495b0360-b47a-41b9-9f7f-3c693c143b57&ID=20223800000&uuid='+uuid) 
+  const atoken = localStorage.getItem("token")
+  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID=20223804039&uuid='+uuid) 
     .then(response => {
       const data = response.data;
       console.log(data);
@@ -86,12 +258,12 @@ const fetchTableData = () => {
     //   physicalData.value = physicalJson;
     //   artData.value = artJson;
     //   laborData.value = laborJson;
-      moralityData.value = Array.isArray(data.morality) ? data.morality : [];
-      academicData.value = Array.isArray(data.academic) ? data.academic : [];
-      physicalData.value = Array.isArray(data.physical) ? data.physical : [];
-      artData.value = Array.isArray(data.art) ? data.art : [];
-      laborData.value = Array.isArray(data.labor.value) ? data.labor : [];
-      console.log('data.labor='+data.labor.value)
+      moralityData.value = Array.isArray(data.morality._value) ? data.morality._value : [];
+      academicData.value = Array.isArray(data.academic._value) ? data.academic._value : [];
+      physicalData.value = Array.isArray(data.physical._value) ? data.physical._value : [];
+      artData.value = Array.isArray(data.art._value) ? data.art._value : [];
+      laborData.value = Array.isArray(data.labor._value) ? data.labor._value : [];
+      console.log('data.labor='+data.labor._value)
       console.log(laborData)
 
     })
@@ -99,7 +271,77 @@ const fetchTableData = () => {
       console.error('获取数据失败', error);
     });
 };
-
+// 删除行
+const removeRow = (tableIndex, rowIndex) => {
+  switch (tableIndex) {
+    case 1:
+      moralityData.value.splice(rowIndex, 1);
+      break;
+    case 2:
+      academicData.value.splice(rowIndex, 1);
+      break;
+    case 3:
+      physicalData.value.splice(rowIndex, 1);
+      break;
+    case 4:
+      artData.value.splice(rowIndex, 1);
+      break;
+    case 5:
+      laborData.value.splice(rowIndex, 1);
+      break;
+  }
+};
+// 添加行
+const addRow1 = () => {
+  moralityData.value.push({
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+  });
+};
+const addRow2 = () => {
+  academicData.value.push({
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+  });
+};
+const addRow3 = () => {
+  physicalData.value.push({
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+  });
+};
+const addRow4 = () => {
+  artData.value.push({
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+  });
+};
+const addRow5 = () => {
+  laborData.value.push({
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: 0,
+  });
+};
 
 
 // onMounted(() => {
