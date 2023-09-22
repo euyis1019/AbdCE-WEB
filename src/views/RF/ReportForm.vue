@@ -238,15 +238,10 @@ const info = reactive({
 });
 
 
-const StatusNum = 0.1
+
 // const baseURL = inject('baseURL');
 
 const submitForm = () => {
-  // MoralityTable.value = extractColumnsData(tableData1.value);
-  // AcademicTable.value = extractColumnsData(tableData2.value);
-  // PhysicalTable.value = extractColumnsData(tableData3.value);
-  // ArtTable.value = extractColumnsData(tableData4.value);
-  // LaborTable.value = extractColumnsData(tableData5.value);
   const atoken = localStorage.getItem("token")
   const url = "http://10.252.128.12:6443"+'/report/new'+'?t='+atoken+'&ID=20223804039';
   const data = {    
@@ -325,12 +320,6 @@ const getTotalScore = (data) => {
 //   return data.reduce((total, row) => total + row.deduction, 0);
 // };
 
-//合计数据，用于传参
-const MoralityTable =ref({});
-const AcademicTable = ref({});
-const PhysicalTable = ref({});
-const ArtTable = ref({});
-const LaborTable = ref({});
 
 
 const totalSumData = reactive({

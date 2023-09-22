@@ -33,7 +33,7 @@
           <el-button
             type="primary"
             tag="a"
-            href='baseURL+scope.row.FileDst'
+            :href='baseURL+scope.row.FileDst'
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -234,14 +234,14 @@ const academicData = ref(null);
 const physicalData = ref(null);
 const artData = ref(null);
 const laborData = ref(null);
-const uuid = '2f646b62-7930-480f-a8b3-2f8a88104ae1'
+const targetID = '274b129e-9ad2-4894-8025-dba3d49465dc'
 const baseURL = inject('baseURL');
 
 
 // 从后端获取表格数据
 const fetchTableData = () => {
   const atoken = localStorage.getItem("token")
-  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID=20223804039&uuid='+uuid) 
+  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID=20223804039&targetID='+targetID) 
     .then(response => {
       const data = response.data;
       console.log(data);
@@ -344,10 +344,10 @@ const addRow5 = () => {
 };
 
 
-// onMounted(() => {
-//   // 在组件挂载后获取后端数据
-//   fetchTableData();
-// });
+onMounted(() => {
+  // 在组件挂载后获取后端数据
+  fetchTableData();
+});
 </script>
 
 <style lang="scss" scoped>

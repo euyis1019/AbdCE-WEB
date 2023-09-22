@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="image-section" >
-      <img src="../assets/校园全景照.jpg" alt="展示图片1" class="background-image">
+      <img src="../assets/院楼.jpg" alt="展示图片1" class="background-image">
     </div>
     <div class="login-section">
       <h3>华南师范大学阿伯丁数据科学与人工智能学院综测填报系统密码修改</h3>
@@ -10,8 +10,11 @@
           <el-form-item label="用户名" prop="username">
             <el-input v-model="loginForm.username" autocomplete="off" />
           </el-form-item>
-          <el-form-item label="请修改密码" prop="password">
+          <el-form-item label="请输入原密码" prop="password">
             <el-input v-model="loginForm.password" type="password" autocomplete="off" />
+          </el-form-item>
+          <el-form-item label="请输入新密码" prop="reset">
+            <el-input v-model="loginForm.reset" type="password" autocomplete="off"> </el-input>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="submitForm()">确认修改</el-button>
@@ -42,6 +45,7 @@ const store = useStore();
 const loginForm = reactive({
   username: "",
   password: "",
+  reset: "",
 });
 const loginFormRef = ref(); //表单的引用对象
 
@@ -60,7 +64,15 @@ const loginRules = reactive({
     // 密码
     {
       required: true,
-      message: "请输入密码",
+      message: "请输入原密码",
+      trigger: "blur",
+    },
+  ],
+  reset: [
+    // 密码
+    {
+      required: true,
+      message: "请输入新密码",
       trigger: "blur",
     },
   ],
@@ -78,6 +90,7 @@ const submitForm = () => {
     const usernameValid = loginForm.username.length === 11;
     const passwordPattern = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{7,}$/;
     const passwordValid = passwordPattern.test(loginForm.password);
+    const resetValid = passwordPattern.test(loginForm.reset);
 
     if (!usernameValid) {
         ElMessage.error("用户名应该是11位");
@@ -88,11 +101,18 @@ const submitForm = () => {
         ElMessage.error("密码应该大于6位，并且同时包含数字、小写字母和大写字母");
         return;
     }
+
+    if (!resetValid) {
+        ElMessage.error("密码应该大于6位，并且同时包含数字、小写字母和大写字母");
+        return;
+    }
     const hashedPassword = CryptoJS.SHA1(loginForm.password).toString();
+    const hashedreset = CryptoJS.SHA1(loginForm.reset).toString();
 
     const params = {
     ID: loginForm.username,
-    pass: hashedPassword
+    pass: hashedPassword,
+    re : hashedreset
     };
     if (valid) {
         console.log("成功获取到表单内容:", { params: params });
