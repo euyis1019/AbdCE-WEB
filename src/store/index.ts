@@ -12,7 +12,7 @@ export default createStore({
       state.isGetterRouter = value 
     },
     changeUserInfo(state:any,value:any) {
-      // 保存旧的用户信息的情况下添加新的用户信息
+      //没啥必要了 保存旧的用户信息的情况下添加新的用户信息
       state.userinfo = {
         ...state.userinfo,
         ...value
