@@ -264,10 +264,10 @@
 </template>
 
 <script setup>
-import Editor from '@/components/Editor.vue'
 import axios from 'axios';
 import { reactive } from 'vue'
-import { ref, computed } from 'vue';
+import { ref, computed, inject } from 'vue';
+import UploadButton from './UploadButton.vue';
 
 //info用于储存学生基本信息
 const info = reactive({
@@ -276,14 +276,9 @@ const info = reactive({
   studentId: ""
 });
 
-//富文本框的值
-const richForm = reactive({
-  test_msg: '默认值'
-})
 
-const getMsg = (val) => {
-  richForm.msg = val
-}
+
+// const baseURL = inject('baseURL');
 
 const submitForm = () => {
   const url = 'http://14.155.175.41:1443/NewReport';
@@ -295,6 +290,7 @@ const submitForm = () => {
     art: totalSumData.artSum,
     labor: totalSumData.laborSum
   };
+  console.log(data)
   axios.post(url, data)
     .then(response => {
       console.log('Success:', response.data);
@@ -351,14 +347,15 @@ const tableData5 = ref([
 
 // 计算总得分和总扣分
 const getTotalScore = (data) => {
-  return data.reduce((total, row) => total + row.score, 0);
+  return data.reduce((total, row) => total + row.Point, 0);
 };
 
-const getTotalDeduction = (data) => {
-  return data.reduce((total, row) => total + row.deduction, 0);
-};
+// const getTotalDeduction = (data) => {
+//   return data.reduce((total, row) => total + row.deduction, 0);
+// };
 
-//合计数据，用于传参
+
+
 const totalSumData = reactive({
   moralitySum: 0,
   academicSum: 0,
@@ -389,55 +386,64 @@ const totalData = computed(() => {
   ]
 });
 
+
+const extractColumnsData = (data) => {
+  const columnData = {};
+  for (const column of Object.keys(data[0])) {
+    columnData[column] = data.map(item => item[column]);
+  }
+  return columnData
+};
+
 // 添加行
 const addRow1 = () => {
   tableData1.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: '',
   });
 };
 const addRow2 = () => {
   tableData2.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: '',
   });
 };
 const addRow3 = () => {
   tableData3.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: '',
   });
 };
 const addRow4 = () => {
   tableData4.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: '',
   });
 };
 const addRow5 = () => {
   tableData5.value.push({
-    category1: '',
-    category2: '',
-    category3: '',
-    score: 0,
-    deduction: 0,
-    pageNumber: 0,
+    Lclass: '',
+    Mclass: '',
+    Sclass: '',
+    Page: 0,
+    Point: 0,
+    FileDst: '',
   });
 };
 
@@ -461,7 +467,28 @@ const removeRow = (tableIndex, rowIndex) => {
       break;
   }
 };
-
+const handleFileUploaded = (tableIndex, rowIndex, fileUrl) => {
+  switch (tableIndex) {
+    case 1:
+      tableData1.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 2:
+      tableData2.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 3:
+      tableData3.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 4:
+      tableData4.value[rowIndex].FileDst = fileUrl;
+      break;
+    case 5:
+      tableData5.value[rowIndex].FileDst = fileUrl;
+      break;
+    default:
+      // 处理未知的表格索引
+      break;
+  }
+};
 
 </script>
 

@@ -9,7 +9,7 @@
                 <el-icon>
                     <message-box />
                 </el-icon> <!-- 使用文档图标 -->
-                <span slot="title">申请记录</span>
+                <span slot="title">代办项目</span>
             </el-menu-item>
             <el-menu-item index="2" @click="handleClick1">
                  
@@ -18,7 +18,15 @@
                 </el-icon><!-- 使用编辑图标 -->
                 <span slot="title">提交申请</span>
             </el-menu-item>
-            <el-menu-item index="3" @click="logout">
+
+            <el-menu-item v-if="showAuditButton" index="3" @click="Audit">
+                <el-icon>
+                    <Files />
+                </el-icon> 
+                <span slot="title">审核</span>
+            </el-menu-item>
+            
+            <el-menu-item index="4" @click="logout">
                 <el-icon>
                     <close />
                 </el-icon> 
@@ -55,27 +63,40 @@
 </template>
 
 <script>
+//import { Files } from '@element-plus/icons-vue/dist/types';
+//这有啥用？
 export default {
     data() {
         return {
-            isCollapsed: false
+            isCollapsed: false,
+            showAuditButton:false
+        };
+    },
+    mounted(){
+        let permission = localStorage.getItem("Permission");
+        if (permission && Number(permission) > 1) {
+            this.showAuditButton = true; // 如果权限大于1，则显示审核按钮
         }
     },
     methods: {
         handleClick() {
-            this.$router.push('/Record')
+            this.$router.push('/Record');
         },
         handleClick1() {
-            this.$router.push('/Report')
+            this.$router.push('/Report');
         },
         toggleNav() {
             this.isCollapsed = !this.isCollapsed;
         },
-        logout(){
+        Audit(){
+            this.$router.push('/admin');
+        },
+        logout() {
             localStorage.clear();
-            this.$router.push('login')
+            this.$router.push('login');
         }
-    }
+    },
+    //components: { Files }
 }
 </script>
 
