@@ -221,8 +221,8 @@
       </el-table-column>
     </el-table>
       <el-row class="mb-4">
-      <el-button type="primary" @click="YesButton">Primary</el-button>
-      <el-button type="warning" @click="NoButton">Warning</el-button>
+      <el-button type="primary" @click="YesButton">同意</el-button>
+      <el-button type="warning" @click="NoButton">不同意</el-button>
     </el-row>
 
     <button @click="fetchTableData">加载表格数据</button>
@@ -377,6 +377,7 @@ const SubmitMethod = ()=>{
 onMounted(() => {
   // 在组件挂载后获取后端数据
   fetchTableData();
+  // console.log(baseURL)
 });
 </script>
 
