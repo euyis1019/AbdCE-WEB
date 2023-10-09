@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Login from '../LoginRegister/Login.vue'
 import mainbox from '../views/MainBox.vue'
-import Register from '../views/Register.vue'
+import Register from '../LoginRegister/Register.vue'
 import RoutesConfig from './config.ts'
 import store from "../store/index"
 import NProgress from './nprogress.js';

@@ -135,6 +135,7 @@ const submitForm = () => {
           //store.commit("changeUserInfo",res.data.data)// 将用户信息保存到vuex中
           //store.commit("changeGetterRouter",false)
           localStorage.setItem("Permission", res.data.data.Permission)
+          localStorage.setItem("ID",params.ID)
           router.push("/Report"); //路由跳转
           console.log()
         } else {

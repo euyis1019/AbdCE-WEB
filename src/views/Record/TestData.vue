@@ -31,10 +31,12 @@
       </tbody>
     </table>
     <div class="pagination">
+
       <span>当前页码：{{ page }} / {{ pageCount }}</span>
       <button v-for="n in pageCount" :key="n" :class="{active: page === n}" @click="page = n">{{ n }}</button>
       <input type="number" v-model="jumpPage" min="1" :max="pageCount" />
       <button @click="page = jumpPage">跳转</button>
+    
     </div>
   </div>
 </template>
@@ -50,9 +52,9 @@
     },
     mounted() {
       // 获取本地存储的token
-      const token = "b032864c-5da9-4c21-b4f1-e2ac0fbe9c44";
+      const token = localStorage.getItem("token");
       // 获取本地存储的学号
-      const id = "20223804039"
+      const id = localStorage.getItem("ID")
       // 请求后端接口
       axios
         .get("http://10.252.128.12:6443/admin/getTDList", {
@@ -64,6 +66,7 @@
         .then((res) => {
           // 将数据存储到data中
           this.data = res.data;
+          console.log(this.data)
         })
         .catch((err) => {
           // 处理错误

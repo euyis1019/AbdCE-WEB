@@ -25,13 +25,21 @@
                 </el-icon> 
                 <span slot="title">审核</span>
             </el-menu-item>
-            
-            <el-menu-item index="4" @click="logout">
+
+            <el-menu-item index="4" @click="state">
+                <el-icon>
+                    
+                </el-icon> 
+                <span slot="title">个人状态</span>
+            </el-menu-item>
+
+            <el-menu-item index="5" @click="logout">
                 <el-icon>
                     <close />
                 </el-icon> 
                 <span slot="title">退出</span>
             </el-menu-item>
+
         </el-menu>
       </el-aside>
 
@@ -90,6 +98,9 @@ export default {
         },
         Audit(){
             this.$router.push('/admin');
+        },
+        state(){
+            this.$router.push('/state');
         },
         logout() {
             localStorage.clear();
