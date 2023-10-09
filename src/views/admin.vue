@@ -78,7 +78,7 @@
           <el-button
             type="primary"
             tag="a"
-            href="https://github.com/element-plus/element-plus"
+            :href='baseURL+scope.row.FileDst'
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -122,7 +122,7 @@
           <el-button
             type="primary"
             tag="a"
-            href="https://github.com/element-plus/element-plus"
+            :href='baseURL+scope.row.FileDst'
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -166,7 +166,7 @@
           <el-button
             type="primary"
             tag="a"
-            href="https://github.com/element-plus/element-plus"
+            :href='baseURL+scope.row.FileDst'
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -220,6 +220,10 @@
         </template>
       </el-table-column>
     </el-table>
+      <el-row class="mb-4">
+      <el-button type="primary" @click="YesButton">Primary</el-button>
+      <el-button type="warning" @click="NoButton">Warning</el-button>
+    </el-row>
 
     <button @click="fetchTableData">加载表格数据</button>
     
@@ -343,6 +347,32 @@ const addRow5 = () => {
   });
 };
 
+let stash = 0
+
+const YesButton = ()=>{
+  stash = 3
+  SubmitMethod()
+}
+
+const NoButton = () =>{
+  stash = 5
+  SubmitMethod()
+}
+
+const SubmitMethod = ()=>{
+  url = baseURL + '/';
+  data = {
+
+  };
+  console.log(data)
+  axios.post(url, data)
+    .then(response => {
+      console.log('Success:', response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+}
 
 onMounted(() => {
   // 在组件挂载后获取后端数据

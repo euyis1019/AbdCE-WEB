@@ -1,12 +1,8 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Login from '../LoginRegister/Login.vue'
 import mainbox from '../views/MainBox.vue'
-<<<<<<< HEAD:src/router/index.js
 import Register from '../views/Register.vue'
-import RoutesConfig from './config.js'
-=======
 import RoutesConfig from './config.ts'
->>>>>>> caa2dfb07506629822059f9b0291cbcb534c06e7:src/router/index.ts
 import store from "../store/index"
 import NProgress from './nprogress.js';
 import 'nprogress/nprogress.css';

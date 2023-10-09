@@ -251,10 +251,7 @@
       <EditPen />
     </el-icon><el-text class="mx-1" size="large" tag="b">额外补充</el-text></el-divider>
   <el-card shadow="never">
-    <div>
-      <!-- 富文本框 -->
-      <Editor :value="richForm.msg" @updateValue="getMsg" />
-    </div>
+    
   </el-card>
 
   <el-form-item>
@@ -350,9 +347,9 @@ const getTotalScore = (data) => {
   return data.reduce((total, row) => total + row.Point, 0);
 };
 
-// const getTotalDeduction = (data) => {
-//   return data.reduce((total, row) => total + row.deduction, 0);
-// };
+const getTotalDeduction = (data) => {
+  return data.reduce((total, row) => total + row.deduction, 0);
+};
 
 
 
