@@ -57,7 +57,7 @@
       const id = localStorage.getItem("ID")
       // 请求后端接口
       axios
-        .get("http://10.252.128.12:6443/admin/getTDList", {
+        .get("http://10.252.128.12:6443/report/getTDList", {
           params: {
             ID: id,
             t: token,

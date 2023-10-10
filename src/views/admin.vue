@@ -222,7 +222,7 @@
     </el-table>
       <el-row class="mb-4">
       <el-button type="primary" @click="YesButton">同意</el-button>
-      <el-button type="warning" @click="NoButton">不同意</el-button>
+      <!-- <el-button type="warning" @click="NoButton">不同意</el-button> -->
     </el-row>
 
     <button @click="fetchTableData">加载表格数据</button>
@@ -240,12 +240,19 @@ const artData = ref(null);
 const laborData = ref(null);
 const targetID = '274b129e-9ad2-4894-8025-dba3d49465dc'
 const baseURL = inject('baseURL');
-
+//获取本地储存的token
+const atoken = localStorage.getItem("token");
+// 获取本地存储的学号
+const id = localStorage.getItem("ID");
+//扒拉下来的stepID
+const stepID = 0;
+//扒拉下来的uuid
+const TID = 0;
 
 // 从后端获取表格数据
 const fetchTableData = () => {
-  const atoken = localStorage.getItem("token")
-  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID=20223804039&targetID='+targetID) 
+  
+  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID='+id+'&targetID='+targetID) 
     .then(response => {
       const data = response.data;
       console.log(data);
@@ -273,6 +280,25 @@ const fetchTableData = () => {
     })
     .catch(error => {
       console.error('获取数据失败', error);
+    });
+};
+//把数据post回去
+const SubmitMethod = ()=>{
+  url = baseURL + '/report/audit'+'?t='+atoken+'&ID='+id+'&stepID='+stepID+'&targetID='+TID ;
+  data = {
+    morality:moralityData,
+    academic:academicData,
+    physical:physicalData,
+    art:artData,
+    labor:laborData,  
+  };
+  console.log(data)
+  axios.post(url, data)
+    .then(response => {
+      console.log('Success:', response.data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
     });
 };
 // 删除行
@@ -347,32 +373,19 @@ const addRow5 = () => {
   });
 };
 
-let stash = 0
+// let stash = 0
 
 const YesButton = ()=>{
-  stash = 3
+  // stash = 3
   SubmitMethod()
-}
+};
 
-const NoButton = () =>{
-  stash = 5
-  SubmitMethod()
-}
+// const NoButton = () =>{
+//   stash = 5
+//   SubmitMethod()
+// };
 
-const SubmitMethod = ()=>{
-  url = baseURL + '/';
-  data = {
 
-  };
-  console.log(data)
-  axios.post(url, data)
-    .then(response => {
-      console.log('Success:', response.data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
-}
 
 onMounted(() => {
   // 在组件挂载后获取后端数据
