@@ -21,5 +21,4 @@ app
 .use(ElementPlus)
 .use(store)
 .use(router)
-.component('QuillEditor', QuillEditor)
 .mount('#app')

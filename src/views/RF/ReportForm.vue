@@ -236,7 +236,8 @@ const submitForm = () => {
   // ArtTable.value = extractColumnsData(tableData4.value);
   // LaborTable.value = extractColumnsData(tableData5.value);
   const atoken = localStorage.getItem("token")
-  const url = "http://10.252.128.12:6443"+'/report/new'+'?t='+atoken+'&ID='+id;
+  const Cls = localStorage.getItem('Class')
+  const url = "http://10.252.128.12:6443"+'/report/new'+'?t='+atoken+'&ID='+id+'&class='+Cls;
   const data = {    
     userID: info.studentId,
     uuid:"",

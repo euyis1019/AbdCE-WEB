@@ -21,12 +21,12 @@
         <tr v-for="item in data" :key="item.uuid">
           <td>{{ item.uuid }}</td>
           <td>{{formatTime(item.updateTime) }}</td>
-          <td>{{  }}</td>
-          <td>{{  }}</td>
+          <td>{{ item.year }}</td>
+          <td>{{ item.class }}</td>
           <td>{{ item.userID }}</td>
-          <td>{{  }}</td>
-          <td>{{  }}</td>
-          <td><button>编辑/审核</button></td>
+          <td>{{ item.name }}</td>
+          <td>{{ item.stepID }}</td>
+          <td><button @click="ToAdmin(uuid=item.uuid,stepID=item.stepID)">编辑/审核</button></td>
         </tr>
       </tbody>
     </table>
@@ -65,7 +65,8 @@
         })
         .then((res) => {
           // 将数据存储到data中
-          this.data = res.data;
+          console.log(res.data)
+          this.data = res.data.data.toDoList;
           console.log(this.data)
         })
         .catch((err) => {
@@ -89,6 +90,15 @@
         // 返回一个字符串
         return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
         },
+        ToAdmin(uuid,stepID){
+          console.log(uuid,stepID)
+          this.$router.push({
+            name:"admin",
+            query:{
+              TID : uuid,
+              stepID : stepID,
+            }});
+        }
     },
   };
   </script>

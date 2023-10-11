@@ -5,7 +5,8 @@ import admin from '../views/admin.vue'
 import State from '../views/State.vue'
 const routes = [{
         path: "/Record",
-        component: ApplicationRecord
+        component: ApplicationRecord,
+        props : true
     },
 
     {
@@ -23,7 +24,9 @@ const routes = [{
     },
     {
         path:"/admin",
-        component:admin
+        name:"admin",
+        component:admin,
+        props:true
     },
     {
         path: "/state",

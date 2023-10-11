@@ -220,9 +220,10 @@
         </template>
       </el-table-column>
     </el-table>
-      <el-row class="mb-4">
-      <el-button type="primary" @click="YesButton">同意</el-button>
-      <!-- <el-button type="warning" @click="NoButton">不同意</el-button> -->
+      <el-row class="mb-4"> <!--此处为唯心主义代码，因无法连接服务器，暂时未作测试-->
+      <el-button type="primary"  v-if="Audit1" @click="YesButton">审核通过</el-button>
+      <el-button type="primary" v-if="Audit2" @click="YesButton">审核无异议</el-button>
+      <el-button type="warning" v-if="Audit2" @click="NoButton">审核有异议</el-button>
     </el-row>
 
     <button @click="fetchTableData">加载表格数据</button>
@@ -230,8 +231,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted,inject } from 'vue';
+import { ref, onMounted,inject,computed } from 'vue';
 import axios from 'axios'; 
+import { useRoute } from "vue-router";
+import { defineProps } from 'vue';
+
+// const { TID, stepID } = defineProps(['TID', 'stepID']);
 
 const moralityData = ref(null);
 const academicData = ref(null);
@@ -244,15 +249,14 @@ const baseURL = inject('baseURL');
 const atoken = localStorage.getItem("token");
 // 获取本地存储的学号
 const id = localStorage.getItem("ID");
-//扒拉下来的stepID
-const stepID = 0;
-//扒拉下来的uuid
-const TID = 0;
+let Audit1 = false;
+let Audit2 = false;
+
 
 // 从后端获取表格数据
 const fetchTableData = () => {
   
-  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID='+id+'&targetID='+targetID) 
+  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID='+id+'&targetID='+TID) 
     .then(response => {
       const data = response.data;
       console.log(data);
@@ -376,18 +380,33 @@ const addRow5 = () => {
 // let stash = 0
 
 const YesButton = ()=>{
-  // stash = 3
+  
   SubmitMethod()
 };
 
-// const NoButton = () =>{
-//   stash = 5
-//   SubmitMethod()
-// };
+const NoButton = () =>{
+  
+  SubmitMethod()
+};
 
+const route = useRoute();
+//扒拉下来的stepID
+const stepID = route.query.stepID;
+// const stepID = 1
+//扒拉下来的uuid
+const TID = route.query.TID;
 
 
 onMounted(() => {
+  console.log(TID,stepID)
+  if(stepID == 0 || 1 || 3|| 5){
+    Audit1 = true;
+    Audit2 = false;
+  }
+  else{
+    Audit1 = false;
+    Audit2 = true;
+  }
   // 在组件挂载后获取后端数据
   fetchTableData();
   // console.log(baseURL)
