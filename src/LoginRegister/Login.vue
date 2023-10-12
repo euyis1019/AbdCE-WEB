@@ -36,6 +36,7 @@
                   in</el-button>
               </el-form-item>
               <div class="uniform-margin">
+                <el-button type="info" plain @click="handleRegister"> 注册</el-button>
                 <el-button type="info" plain @click="handleLogin">按我获得跳转到子界面的权限</el-button>
               </div>
             </el-form>
@@ -68,6 +69,9 @@ const handleLogin = () => {
   localStorage.setItem("token", "d8ebd2a9-3b6f-46be-a873-868da52b60ac");
   router.push("/Report");
 };
+const handleRegister = () =>{
+  router.push("/Register")
+}
 
 // 表单绑定的响应式对象
 const loginForm = reactive({
