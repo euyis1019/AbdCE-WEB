@@ -31,7 +31,7 @@ const router = createRouter({
 //路由拦截
 router.beforeEach((to, from, next) => {
     NProgress.start();
-    if (to.name === 'login') { next() } else {   //是否授权
+    if (to.name === 'login' || to.name === 'Register') { next() } else {   //是否授权
 
         if (!localStorage.getItem("token")) { next({ path: "/login" }) } else {    //后期拓展很多页面的话用config.js配置循环路由
             //ConfigRouter()直接配置会死循环
