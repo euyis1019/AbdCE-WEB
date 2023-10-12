@@ -228,6 +228,7 @@ const info = reactive({
 });
 // 获取本地存储的学号
 const id = localStorage.getItem("ID")
+console.log(id)
 // const baseURL = inject('baseURL');
 const submitForm = () => {
   // MoralityTable.value = extractColumnsData(tableData1.value);

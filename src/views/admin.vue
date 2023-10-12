@@ -220,10 +220,12 @@
         </template>
       </el-table-column>
     </el-table>
-      <el-row class="mb-4"> <!--此处为唯心主义代码，因无法连接服务器，暂时未作测试-->
-      <el-button type="primary"  v-if="Audit1" @click="YesButton">审核通过</el-button>
+      <el-row class="mb-4"> 
+      <el-button type="primary"  v-if="Audit1" @click="YesButton">审核完毕</el-button>
       <el-button type="primary" v-if="Audit2" @click="YesButton">审核无异议</el-button>
       <el-button type="warning" v-if="Audit2" @click="NoButton">审核有异议</el-button>
+      <el-button type="primary" v-if="Audit3" @click="YesButton">已阅，同意</el-button>
+      <el-button type="primary" v-if="Audit3" @click="NoButton">老子不同意</el-button>
     </el-row>
 
     <button @click="fetchTableData">加载表格数据</button>
@@ -249,12 +251,16 @@ const baseURL = inject('baseURL');
 const atoken = localStorage.getItem("token");
 // 获取本地存储的学号
 const id = localStorage.getItem("ID");
-let Audit1 = false;
-let Audit2 = false;
+let Audit1 = ref(false);
+let Audit2 = ref(false);
+let Audit3 = ref(false);
+
 
 
 // 从后端获取表格数据
 const fetchTableData = () => {
+
+  
   
   axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID='+id+'&targetID='+TID) 
     .then(response => {
@@ -278,8 +284,6 @@ const fetchTableData = () => {
       physicalData.value = Array.isArray(data.physical._value) ? data.physical._value : [];
       artData.value = Array.isArray(data.art._value) ? data.art._value : [];
       laborData.value = Array.isArray(data.labor._value) ? data.labor._value : [];
-      console.log('data.labor='+data.labor._value)
-      console.log(laborData)
 
     })
     .catch(error => {
@@ -288,8 +292,10 @@ const fetchTableData = () => {
 };
 //把数据post回去
 const SubmitMethod = ()=>{
-  url = baseURL + '/report/audit'+'?t='+atoken+'&ID='+id+'&stepID='+stepID+'&targetID='+TID ;
-  data = {
+  console.log(stepID)
+  const url = baseURL + '/report/audit'+'?t='+atoken+'&ID='+id+'&stepID='+stepID+'&targetID='+TID ;
+  console.log(url)
+  const data = {
     morality:moralityData,
     academic:academicData,
     physical:physicalData,
@@ -380,32 +386,53 @@ const addRow5 = () => {
 // let stash = 0
 
 const YesButton = ()=>{
-  
+  if(stepID == 0 || stepID == 1 || stepID == 3 || stepID == 7){
+    stepID = parseInt(stepID)
+    stepID = stepID + 1
+  }
+  else if(stepID == 2 || stepID == 4){
+    stepID = parseInt(stepID)
+    stepID = 6
+  }
+  else{
+    stepID = parseInt(stepID)
+    stepID = 7
+  }
   SubmitMethod()
 };
 
 const NoButton = () =>{
-  
+  if(stepID == 1){
+    stepID = parseInt(stepID)
+    stepID = stepID + 2
+  }
+  else if (stepID == 2 || stepID == 4 || stepID == 7){
+    stepID = parseInt(stepID)
+    stepID = 5
+  }
+
   SubmitMethod()
 };
 
 const route = useRoute();
 //扒拉下来的stepID
-const stepID = route.query.stepID;
-// const stepID = 1
+let stepID = route.query.stepID;
 //扒拉下来的uuid
 const TID = route.query.TID;
 
 
 onMounted(() => {
   console.log(TID,stepID)
-  if(stepID == 0 || 1 || 3|| 5){
-    Audit1 = true;
-    Audit2 = false;
+  if(stepID== 0 || stepID ==3|| stepID ==5){
+    Audit1.value = !Audit1.value;
+    Audit2.value = Audit2.value;
+  }
+  else if (stepID == 1){
+    Audit2.value = !Audit2.value;
+    Audit1.value = Audit1.value;
   }
   else{
-    Audit1 = false;
-    Audit2 = true;
+    Audit3.value = !Audit3.value;
   }
   // 在组件挂载后获取后端数据
   fetchTableData();

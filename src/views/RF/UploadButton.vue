@@ -37,7 +37,7 @@
 
   const additionalData = {
   t: localStorage.getItem('token'),
-  ID:20223804039,
+  ID:localStorage.getItem('ID'),
 }
 const baseURL = inject('baseURL');
 const actionUrl = baseURL + '/report/upload';
