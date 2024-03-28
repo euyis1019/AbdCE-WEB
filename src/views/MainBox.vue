@@ -9,7 +9,7 @@
                 <el-icon>
                     <message-box />
                 </el-icon> <!-- 使用文档图标 -->
-                <span slot="title">代办项目</span>
+                <span slot="title">待办项目</span>  // 错别字更正，“代”->“待”
             </el-menu-item>
             <el-menu-item index="2" @click="handleClick1">
                  
@@ -37,6 +37,13 @@
                     
                 </el-icon> 
                 <span slot="title">个人状态</span>
+            </el-menu-item>
+
+            <el-menu-item  v-if="showPermissionButton" index="6" @click="managePermission">
+                <el-icon>
+                    <lock />
+                </el-icon> 
+                <span slot="title">权限管理</span>
             </el-menu-item>
 
             <el-menu-item index="5" @click="logout">
@@ -83,13 +90,18 @@ export default {
     data() {
         return {
             isCollapsed: false,
-            showAuditButton:false
+            showAuditButton:false,
+            showPermissionButton:true // 调试用，在没有办法正常登录的情况下，暂时默认显示权限管理按钮
         };
     },
     mounted(){
         let permission = localStorage.getItem("Permission");
         if (permission && Number(permission) > 1) {
             this.showAuditButton = true; // 如果权限大于1，则显示审核按钮
+            
+            if (Number(permission) === 2) {
+                this.showPermissionButton = true; // 如果权限为2，则显示权限管理按钮
+            }
         }
     },
     methods: {
@@ -114,6 +126,10 @@ export default {
         logout() {
             localStorage.clear();
             this.$router.push('login');
+        },
+        managePermission() {
+            // 还没写的权限管理页面
+            this.$router.push('/managePermission');
         }
     },
     //components: { Files }

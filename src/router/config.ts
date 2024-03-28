@@ -5,12 +5,13 @@ import admin from '../views/admin.vue'
 import State from '../views/State.vue'
 import ReportState from '../views/RF/ReportState.vue'
 import Register from '../LoginRegister/Register.vue'
-const routes = [{
+import ManagePermission from '../views/managePermission.vue'
+const routes = [
+    {
         path: "/Record",
         component: ApplicationRecord,
-        props : true
+        props: true
     },
-
     {
         path: "/Report",
         component: ReportForm
@@ -25,10 +26,10 @@ const routes = [{
         component: NotFound
     },
     {
-        path:"/admin",
-        name:"admin",
-        component:admin,
-        props:true
+        path: "/admin",
+        name: "admin",
+        component: admin,
+        props: true
     },
     {
         path: "/state",
@@ -37,7 +38,10 @@ const routes = [{
     {
         path: "/reportstate",
         component: ReportState
-
+    },
+    {
+        path: "/managepermission",
+        component: ManagePermission // 半成品的权限管理页面（约等于没做）
     }
 ]
 
