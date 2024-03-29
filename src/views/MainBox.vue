@@ -9,7 +9,7 @@
                 <el-icon>
                     <message-box />
                 </el-icon> <!-- 使用文档图标 -->
-                <span slot="title">待办项目</span>  // 错别字更正，“代”->“待”
+                <span slot="title">待办项目</span>  
             </el-menu-item>
             <el-menu-item index="2" @click="handleClick1">
                  
