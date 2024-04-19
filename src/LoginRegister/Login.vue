@@ -67,7 +67,7 @@ import CryptoJS from 'crypto-js';
 const store = useStore();
 const handleLogin = () => {
   localStorage.setItem("token", "d8ebd2a9-3b6f-46be-a873-868da52b60ac");
-  router.push("/Report");
+  router.push("/Record");
 };
 const handleRegister = () =>{
   router.push("/Register")

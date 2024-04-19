@@ -235,8 +235,11 @@
 <script setup>
 import { ref, onMounted,inject,computed } from 'vue';
 import axios from 'axios'; 
-import { useRoute } from "vue-router";
+import { useRoute,useRouter } from "vue-router";
 import { defineProps } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
+const router = useRouter();
+
 
 // const { TID, stepID } = defineProps(['TID', 'stepID']);
 
@@ -306,6 +309,24 @@ const SubmitMethod = ()=>{
   axios.post(url, data)
     .then(response => {
       console.log('Success:', response.data);
+      ElMessageBox.confirm(
+          '提交成功,是否退回待办事项页面？',
+          '提示',
+          {
+            confirmButtonText: 'OK',
+            cancelButtonText: 'Cancel',
+            type: 'warning',
+          }
+        )
+          .then(() => {
+            router.push("/Record");
+          })
+          .catch(() => {
+            ElMessage({
+              type: 'info',
+              message: 'Canceled',
+            })
+          })
     })
     .catch(error => {
       console.error('Error:', error);
@@ -423,6 +444,13 @@ const TID = route.query.TID;
 
 onMounted(() => {
   console.log(TID,stepID)
+  if (stepID == 1){
+    ElMessageBox.alert('若审核无异议，请不要改动表格内任何数据。若任何有异议，请直接在表格中修改！', '注意：', {
+    // if you want to disable its autofocus
+    // autofocus: false,
+    confirmButtonText: 'OK',
+    })
+  }
   if(stepID== 0 || stepID ==3|| stepID ==5){
     Audit1.value = !Audit1.value;
     Audit2.value = Audit2.value;

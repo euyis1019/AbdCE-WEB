@@ -23,17 +23,55 @@
     <el-table :data="tableData1" style="width: 100%">
       <el-table-column label="大分类" prop="Lclass">
         <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
+          <el-select
+          v-model="scope.row.Lclass"
+          placeholder="Select"
+          size="large"
+          style="width: 150px"
+        >
+          <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
         </template>
       </el-table-column>
       <el-table-column label="中分类" prop="Mclass">
         <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
+          <el-select
+          v-model="scope.row.Mclass"
+          placeholder="Select"
+          size="large"
+          style="width: 150px"
+          :disabled="!scope.row.Lclass"
+        >
+          <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
         </template>
       </el-table-column>
       <el-table-column label="小分类" prop="Sclass">
         <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
+          <el-select
+          v-model="scope.row.Sclass"
+          placeholder="Select"
+          size="large"
+          style="width: 150px"
+          :disabled="!scope.row.Mclass"
+        >
+          <el-option
+            v-for="item in options"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
         </template>
       </el-table-column>
       <el-table-column label="材料页码" prop="Page">
@@ -335,6 +373,31 @@ const extractColumnsData = (data) => {
   }
   return columnData
 };
+
+//选择器数据
+const options = [
+  {
+    value: 'Option1',
+    label: 'Option1',
+  },
+  {
+    value: 'Option2',
+    label: 'Option2',
+  },
+  {
+    value: 'Option3',
+    label: 'Option3',
+  },
+  {
+    value: 'Option4',
+    label: 'Option4',
+  },
+  {
+    value: 'Option5',
+    label: 'Option5',
+  },
+]
+
 // 添加行
 const addRow1 = () => {
   tableData1.value.push({

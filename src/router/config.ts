@@ -1,4 +1,4 @@
-import ReportForm from '../views/RF/ReportForm.vue'
+import ReportFormNew from '../views/RF/ReportFormNew.vue'
 import ApplicationRecord from '../views/Record/TestData.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
 import admin from '../views/admin.vue'
@@ -12,7 +12,7 @@ const routes = [{
 
     {
         path: "/Report",
-        component: ReportForm
+        component: ReportFormNew
     },
     {
         path: "/",
