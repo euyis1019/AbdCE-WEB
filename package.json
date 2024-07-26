@@ -21,7 +21,8 @@
     "vue": "^3.2.13",
     "vue-class-component": "^8.0.0-0",
     "vue-router": "^4.0.3",
-    "vuex": "^4.0.2"
+    "vuex": "^4.0.2",
+    "webpack-env": "^0.8.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~5.0.0",
