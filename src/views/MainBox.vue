@@ -16,31 +16,27 @@
         active-text-color="#409EFF"
       >
         <el-menu-item index="1">
-          <el-icon><icon-menu /></el-icon>
+          <el-icon><HomeFilled /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
         <el-menu-item index="2">
-          <el-icon><document /></el-icon>
+          <el-icon><EditPen /></el-icon>
           <template #title>申报填写</template>
         </el-menu-item>
-        <el-menu-item index="3">
-          <el-icon><upload /></el-icon>
-          <template #title>材料上传</template>
-        </el-menu-item>
         <el-menu-item index="4">
-          <el-icon><search /></el-icon>
+          <el-icon><InfoFilled /></el-icon>
           <template #title>进度查询</template>
         </el-menu-item>
-        <el-sub-menu index="5" v-if="isAdmin">
+        <el-sub-menu index="5" v-if="isAdmin || isReviewer">
           <template #title>
-            <el-icon><setting /></el-icon>
+            <el-icon><Tools /></el-icon>
             <span>审核管理</span>
           </template>
           <el-menu-item index="5-1">待办事项</el-menu-item>
           <el-menu-item index="5-2">审核历史</el-menu-item>
         </el-sub-menu>
         <el-menu-item index="6" v-if="isAdmin">
-          <el-icon><setting /></el-icon>
+          <el-icon><Setting /></el-icon>
           <template #title>权限管理</template>
         </el-menu-item>
       </el-menu>
@@ -51,27 +47,14 @@
           <el-icon class="collapse-btn" @click="toggleCollapse" v-if="!isMobile">
             <component :is="isCollapse ? 'Expand' : 'Fold'" />
           </el-icon>
-          <el-dropdown v-if="isMobile" @command="handleSelect">
-            <el-button icon="el-icon-menu"></el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="1">首页</el-dropdown-item>
-                <el-dropdown-item command="2">申报填写</el-dropdown-item>
-                <el-dropdown-item command="3">材料上传</el-dropdown-item>
-                <el-dropdown-item command="4">进度查询</el-dropdown-item>
-                <el-dropdown-item command="5-1" v-if="isAdmin">待办事项</el-dropdown-item>
-                <el-dropdown-item command="5-2" v-if="isAdmin">审核历史</el-dropdown-item>
-                <el-dropdown-item command="6" v-if="isAdmin">权限管理</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button v-if="isMobile" icon="Menu" @click="toggleMobileMenu"></el-button>
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
-          <el-dropdown @command="handleRoleChange" style="margin-right: 20px;">
-            <span class="el-dropdown-link">
+          <el-dropdown @command="handleRoleChange" class="role-dropdown">
+            <el-button type="primary" icon="SwitchButton">
               切换权限 <el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </span>
+            </el-button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="admin">超级管理员</el-dropdown-item>
@@ -80,11 +63,11 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-dropdown @command="handleCommand">
-            <span class="el-dropdown-link">
+          <el-dropdown @command="handleCommand" class="user-dropdown">
+            <el-button type="primary" icon="User">
               {{ userName }}
               <el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </span>
+            </el-button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人信息</el-dropdown-item>
@@ -103,13 +86,61 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <!-- 移动端菜单 -->
+  <el-drawer v-model="mobileMenuVisible" direction="ltr" size="80%">
+    <el-menu
+      :default-active="activeMenu"
+      @select="handleSelect"
+      background-color="#304156"
+      text-color="#bfcbd9"
+      active-text-color="#409EFF"
+    >
+      <el-menu-item index="1">
+        <el-icon><HomeFilled /></el-icon>
+        <span>首页</span>
+      </el-menu-item>
+      <el-menu-item index="2">
+        <el-icon><EditPen /></el-icon>
+        <span>申报填写</span>
+      </el-menu-item>
+      <el-menu-item index="4">
+        <el-icon><InfoFilled /></el-icon>
+        <span>进度查询</span>
+      </el-menu-item>
+      <el-sub-menu index="5" v-if="isAdmin || isReviewer">
+        <template #title>
+          <el-icon><Tools /></el-icon>
+          <span>审核管理</span>
+        </template>
+        <el-menu-item index="5-1">待办事项</el-menu-item>
+        <el-menu-item index="5-2">审核历史</el-menu-item>
+      </el-sub-menu>
+      <el-menu-item index="6" v-if="isAdmin">
+        <el-icon><Setting /></el-icon>
+        <span>权限管理</span>
+      </el-menu-item>
+    </el-menu>
+  </el-drawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Document, Menu as IconMenu, Upload, Search, Setting, ArrowDown, Expand, Fold } from '@element-plus/icons-vue'
+import { 
+  HomeFilled, 
+  EditPen, 
+  InfoFilled, 
+  Tools, 
+  Setting, 
+  ArrowDown, 
+  Expand, 
+  Fold, 
+  Menu,
+  User,
+  SwitchButton
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -119,6 +150,7 @@ const isAdmin = ref(false)
 const isReviewer = ref(false)
 const userName = ref('')
 const userRole = ref('')
+const mobileMenuVisible = ref(false)
 
 const isMobile = ref(false)
 const checkMobile = () => {
@@ -136,7 +168,6 @@ const currentPageTitle = computed(() => {
   const routeTitles = {
     '/': '首页',
     '/report': '申报填写',
-    '/upload': '材料上传',
     '/state': '进度查询',
     '/admin/todo': '待办事项',
     '/admin/history': '审核历史',
@@ -149,16 +180,18 @@ const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
+const toggleMobileMenu = () => {
+  mobileMenuVisible.value = !mobileMenuVisible.value
+}
+
 const handleSelect = (key: string) => {
+  mobileMenuVisible.value = false
   switch (key) {
     case '1':
       router.push('/')
       break
     case '2':
       router.push('/report')
-      break
-    case '3':
-      router.push('/upload')
       break
     case '4':
       router.push('/state')
@@ -270,7 +303,11 @@ onMounted(() => {
   align-items: center;
 }
 
-.el-dropdown-link {
+.role-dropdown {
+  margin-right: 15px;
+}
+
+.user-dropdown .el-dropdown-link {
   cursor: pointer;
   color: #409EFF;
 }
@@ -291,9 +328,7 @@ onMounted(() => {
   }
   
   .menu-aside {
-    position: absolute;
-    z-index: 1;
-    height: 100%;
+    display: none;
   }
 
   .main-header {
@@ -302,10 +337,21 @@ onMounted(() => {
 
   .header-left h2 {
     font-size: 18px;
+    margin-left: 10px;
   }
 
   .el-main {
     padding: 10px;
+  }
+
+  .header-right {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .role-dropdown,
+  .user-dropdown {
+    margin-bottom: 5px;
   }
 }
 </style>
