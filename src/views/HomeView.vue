@@ -41,7 +41,7 @@
               <span>快速操作</span>
             </div>
           </template>
-          <div class="text item">
+          <div class="text item button-group">
             <el-button type="primary" @click="goToReportForm" :disabled="loading.report">填写申报</el-button>
             <el-button type="info" @click="goToReportState" :disabled="loading.report">查看进度</el-button>
           </div>
@@ -245,6 +245,11 @@ onMounted(() => {
   margin-right: 10px;
 }
 
+.button-group {
+  display: flex;
+  justify-content: space-between;
+}
+
 @media (max-width: 768px) {
   .home {
     padding: 10px;
@@ -253,6 +258,10 @@ onMounted(() => {
   .el-button {
     margin-bottom: 10px;
     width: 100%;
+  }
+
+  .el-card {
+    margin-bottom: 15px;
   }
 }
 </style>
