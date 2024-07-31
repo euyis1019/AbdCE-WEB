@@ -1,9 +1,9 @@
 <template>
   <div class="immersive-review">
     <div class="top-bar">
-      <el-button @click="exitImmersiveMode" icon="ArrowLeft" class="exit-button">退出审核</el-button>
-      <span class="task-info">{{ currentTask.categoryName }} - {{ currentTask.studentName }}</span>
-      <span class="reviewer-info">审核员：{{ reviewerName }}</span>
+      <el-button @click="exitImmersiveMode" icon="ArrowLeft">退出审核</el-button>
+      <span>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</span>
+      <span>审核员：{{ reviewerName }}</span>
     </div>
     <div class="main-content">
       <div class="left-panel">
@@ -15,6 +15,7 @@
           <h3>申请材料</h3>
           <el-image v-if="currentTask.materialType === 'image'" :src="currentTask.materialUrl" fit="contain" />
           <iframe v-else-if="currentTask.materialType === 'pdf'" :src="currentTask.materialUrl" width="100%" height="600px"></iframe>
+          <!-- 可以根据需要添加其他类型的文件预览 -->
         </div>
       </div>
       <div class="right-panel">
@@ -38,6 +39,15 @@
         </el-form>
       </div>
     </div>
+    <el-dialog v-model="confirmDialogVisible" title="确认" width="30%">
+      <span>是否确认提交审核结果？</span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="confirmDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmSubmit">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -49,6 +59,9 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
+
+const activeTab = ref('rules')
+const confirmDialogVisible = ref(false)
 
 const currentTask = ref({
   id: '',
@@ -75,12 +88,17 @@ const exitImmersiveMode = () => {
   }
 }
 
-const submitReview = async () => {
+const submitReview = () => {
+  confirmDialogVisible.value = true
+}
+
+const confirmSubmit = async () => {
   try {
     // 这里应该调用API来提交审核结果
     console.log('提交审核结果:', reviewForm.value)
     
     ElMessage.success('审核结果已提交')
+    confirmDialogVisible.value = false
     
     // 获取下一个任务
     await getNextTask()
