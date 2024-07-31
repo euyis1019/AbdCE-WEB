@@ -1,3 +1,4 @@
+<!-- Start of Selection -->
 <template>
     <div class="admin-todo">
       <h1>待办事项</h1>
@@ -15,9 +16,10 @@
             {{ getStatusLabel(scope.row.stepID) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="200">
           <template #default="scope">
             <el-button size="small" @click="handleAudit(scope.row)">审核</el-button>
+            <el-button size="small" type="primary" @click="enterImmersiveMode(scope.row)">沉浸模式</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -26,8 +28,10 @@
   
   <script setup lang="ts">
   import { ref, onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
   import { ElMessage } from 'element-plus'
   
+  const router = useRouter()
   const todoItems = ref([])
   const loading = ref(false)
   
@@ -86,6 +90,13 @@
     // 实现审核逻辑，可能是打开一个对话框或导航到审核页面
     console.log('审核项目:', item)
   }
+
+  const enterImmersiveMode = (item) => {
+    router.push({
+      name: 'ImmersiveReview',
+      query: { taskId: item.uuid }
+    })
+  }
   </script>
   
   <style scoped>
@@ -99,3 +110,4 @@
     }
   }
   </style>
+<!-- End of Selection -->

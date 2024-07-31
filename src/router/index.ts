@@ -10,6 +10,7 @@ import Profile from '../views/Profile.vue'
 import Upload from '../views/Upload.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
 import PermissionManagement from '../views/PermissionManagement.vue'
+import ImmersiveReview from '../views/ImmersiveReview.vue'
 
 const routes = [
   {
@@ -74,6 +75,12 @@ const routes = [
         name: 'PermissionManagement',
         component: PermissionManagement,
         meta: { requiresAdmin: true }
+      },
+      {
+        path: '/immersive-review',
+        name: 'ImmersiveReview',
+        component: ImmersiveReview,
+        meta: { requiresReviewer: true }
       }
     ]
   },
