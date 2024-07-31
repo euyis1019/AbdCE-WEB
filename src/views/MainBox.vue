@@ -49,6 +49,18 @@
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
+          <el-dropdown @command="handleRoleChange" style="margin-right: 20px;">
+            <span class="el-dropdown-link">
+              切换权限 <el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="admin">超级管理员</el-dropdown-item>
+                <el-dropdown-item command="reviewer">审核员</el-dropdown-item>
+                <el-dropdown-item command="user">普通用户</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-dropdown @command="handleCommand">
             <span class="el-dropdown-link">
               {{ userName }}
@@ -75,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, Menu as IconMenu, Upload, Search, Setting, ArrowDown, Expand, Fold } from '@element-plus/icons-vue'
@@ -85,7 +97,9 @@ const route = useRoute()
 
 const isCollapse = ref(false)
 const isAdmin = ref(false)
+const isReviewer = ref(false)
 const userName = ref('')
+const userRole = ref('')
 
 const activeMenu = computed(() => route.path)
 
@@ -140,9 +154,24 @@ const handleCommand = (command: string) => {
   }
 }
 
+const handleRoleChange = (role: string) => {
+  userRole.value = role
+  localStorage.setItem('userRole', role)
+  isAdmin.value = role === 'admin'
+  isReviewer.value = role === 'reviewer'
+  ElMessage.success(`已切换到${role === 'admin' ? '超级管理员' : role === 'reviewer' ? '审核员' : '普通用户'}权限`)
+}
+
+watch(userRole, (newRole) => {
+  // 当用户角色变化时，可能需要重新加载某些组件或更新路由
+  // 这里可以添加相应的逻辑
+})
+
 onMounted(() => {
-  const userRole = localStorage.getItem('userRole')
-  isAdmin.value = userRole === 'admin'
+  const storedRole = localStorage.getItem('userRole')
+  userRole.value = storedRole || 'user'
+  isAdmin.value = userRole.value === 'admin'
+  isReviewer.value = userRole.value === 'reviewer'
   userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
