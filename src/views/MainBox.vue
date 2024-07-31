@@ -1,6 +1,7 @@
 <template>
   <el-container class="layout-container">
-    <el-aside :width="isCollapse ? '64px' : '200px'" class="menu-aside">
+    <el-aside :width="isCollapse ? '64px' : '200px'" class="menu-aside" v-if="!isMobile">
+      <!-- 桌面端侧边栏 -->
       <div class="logo">
         <img src="../assets/logo.png" alt="Logo" />
         <span v-if="!isCollapse">综合评价系统</span>
@@ -47,9 +48,23 @@
     <el-container>
       <el-header class="main-header">
         <div class="header-left">
-          <el-icon class="collapse-btn" @click="toggleCollapse">
+          <el-icon class="collapse-btn" @click="toggleCollapse" v-if="!isMobile">
             <component :is="isCollapse ? 'Expand' : 'Fold'" />
           </el-icon>
+          <el-dropdown v-if="isMobile" @command="handleSelect">
+            <el-button icon="el-icon-menu"></el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="1">首页</el-dropdown-item>
+                <el-dropdown-item command="2">申报填写</el-dropdown-item>
+                <el-dropdown-item command="3">材料上传</el-dropdown-item>
+                <el-dropdown-item command="4">进度查询</el-dropdown-item>
+                <el-dropdown-item command="5-1" v-if="isAdmin">待办事项</el-dropdown-item>
+                <el-dropdown-item command="5-2" v-if="isAdmin">审核历史</el-dropdown-item>
+                <el-dropdown-item command="6" v-if="isAdmin">权限管理</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
@@ -104,6 +119,16 @@ const isAdmin = ref(false)
 const isReviewer = ref(false)
 const userName = ref('')
 const userRole = ref('')
+
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
 
 const activeMenu = computed(() => route.path)
 
@@ -261,6 +286,10 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .layout-container {
+    flex-direction: column;
+  }
+  
   .menu-aside {
     position: absolute;
     z-index: 1;
@@ -273,6 +302,10 @@ onMounted(() => {
 
   .header-left h2 {
     font-size: 18px;
+  }
+
+  .el-main {
+    padding: 10px;
   }
 }
 </style>
