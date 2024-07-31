@@ -49,7 +49,7 @@
         <div class="header-right">
           <el-dropdown @command="handleRoleChange" class="role-dropdown">
             <el-button type="primary" icon="SwitchButton">
-              切换权限 <el-icon class="el-icon--right"><arrow-down /></el-icon>
+              切换权限 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -62,7 +62,7 @@
           <el-dropdown @command="handleCommand" class="user-dropdown">
             <el-button type="primary" icon="User">
               {{ userName }}
-              <el-icon class="el-icon--right"><arrow-down /></el-icon>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -231,10 +231,6 @@ onMounted(() => {
   userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
-
-<style scoped>
-/* 样式保持不变 */
-</style>
 
 <style scoped>
 .layout-container {
