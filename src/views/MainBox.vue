@@ -14,19 +14,19 @@
         text-color="#bfcbd9"
         active-text-color="#409EFF"
       >
-        <el-menu-item index="/">
+        <el-menu-item index="1">
           <el-icon><icon-menu /></el-icon>
           <template #title>首页</template>
         </el-menu-item>
-        <el-menu-item index="/report">
+        <el-menu-item index="2">
           <el-icon><document /></el-icon>
           <template #title>申报填写</template>
         </el-menu-item>
-        <el-menu-item index="/upload">
+        <el-menu-item index="3">
           <el-icon><upload /></el-icon>
           <template #title>材料上传</template>
         </el-menu-item>
-        <el-menu-item index="/state">
+        <el-menu-item index="4">
           <el-icon><search /></el-icon>
           <template #title>进度查询</template>
         </el-menu-item>
@@ -35,8 +35,8 @@
             <el-icon><setting /></el-icon>
             <span>审核管理</span>
           </template>
-          <el-menu-item index="/admin/todo">待办事项</el-menu-item>
-          <el-menu-item index="/admin/history">审核历史</el-menu-item>
+          <el-menu-item index="5-1">待办事项</el-menu-item>
+          <el-menu-item index="5-2">审核历史</el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>
@@ -106,7 +106,26 @@ const toggleCollapse = () => {
 }
 
 const handleSelect = (key: string) => {
-  router.push(key)
+  switch (key) {
+    case '1':
+      router.push('/')
+      break
+    case '2':
+      router.push('/report')
+      break
+    case '3':
+      router.push('/upload')
+      break
+    case '4':
+      router.push('/state')
+      break
+    case '5-1':
+      router.push('/admin/todo')
+      break
+    case '5-2':
+      router.push('/admin/history')
+      break
+  }
 }
 
 const handleCommand = (command: string) => {

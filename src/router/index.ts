@@ -1,7 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainBox from '../views/MainBox.vue'
+import HomeView from '../views/HomeView.vue'
 import ReportForm from '../views/RF/ReportForm.vue'
 import ReportState from '../views/RF/ReportState.vue'
+import AdminView from '../views/admin.vue'
+import AdminHistory from '../views/admin/AdminHistory.vue'
+import AdminTodo from '../views/admin/AdminTodo.vue'
+import Profile from '../views/Profile.vue'
+import Upload from '../views/Upload.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
 
 const routes = [
@@ -22,7 +28,7 @@ const routes = [
       {
         path: '',
         name: 'Home',
-        component: () => import('../views/HomeView.vue')
+        component: HomeView
       },
       {
         path: 'report',
@@ -35,10 +41,32 @@ const routes = [
         component: ReportState
       },
       {
-        path: 'audit',
-        name: 'AuditProcess',
-        component: () => import('../views/admin.vue'),
+        path: 'admin',
+        name: 'AdminView',
+        component: AdminView,
         meta: { requiresAdmin: true }
+      },
+      {
+        path: 'admin/history',
+        name: 'AdminHistory',
+        component: AdminHistory,
+        meta: { requiresAdmin: true }
+      },
+      {
+        path: 'admin/todo',
+        name: 'AdminTodo',
+        component: AdminTodo,
+        meta: { requiresAdmin: true }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: Profile
+      },
+      {
+        path: 'upload',
+        name: 'Upload',
+        component: Upload
       }
     ]
   },
@@ -56,15 +84,12 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token')
-  if (to.name !== 'Login' && !isAuthenticated) {
+  const userRole = localStorage.getItem('userRole')
+
+  if (to.name !== 'Login' && to.name !== 'Register' && !isAuthenticated) {
     next({ name: 'Login' })
-  } else if (to.meta.requiresAdmin) {
-    const userRole = localStorage.getItem('userRole')
-    if (userRole === 'admin') {
-      next()
-    } else {
-      next({ name: 'Home' })
-    }
+  } else if (to.meta.requiresAdmin && userRole !== 'admin') {
+    next({ name: 'Home' })
   } else {
     next()
   }

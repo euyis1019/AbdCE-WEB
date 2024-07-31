@@ -1,484 +1,345 @@
 <template>
-    <!-- 表格1 - 思品 -->
-    <div class="table-title">思品</div>
-    <el-button @click="addRow1">添加行</el-button>
-    <el-table :data="moralityData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="中分类" prop="Mclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小分类" prop="Sclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="Page">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="得分" prop="Point">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" prop="FileDst">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            tag="a"
-            :href='baseURL+scope.row.FileDst'
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            can can need
-          </el-button>
-          <el-button type="danger" @click="removeRow(1, scope.$index)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    
+  <div class="admin-view">
+    <h1>审核管理</h1>
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="待审核项目" name="pending">
+        <el-table :data="pendingItems" v-loading="loading.pending" style="width: 100%">
+          <el-table-column prop="uuid" label="ID" width="220"></el-table-column>
+          <el-table-column prop="name" label="学生姓名" width="120"></el-table-column>
+          <el-table-column prop="class" label="班级" width="120"></el-table-column>
+          <el-table-column prop="updateTime" label="提交时间" width="180">
+            <template #default="scope">
+              {{ formatDate(scope.row.updateTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="stepID" label="状态" width="120">
+            <template #default="scope">
+              {{ getStatusLabel(scope.row.stepID) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
+              <el-button size="small" @click="handleAudit(scope.row)">审核</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+      <el-tab-pane label="已审核项目" name="reviewed">
+        <el-table :data="reviewedItems" v-loading="loading.reviewed" style="width: 100%">
+          <el-table-column prop="uuid" label="ID" width="220"></el-table-column>
+          <el-table-column prop="name" label="学生姓名" width="120"></el-table-column>
+          <el-table-column prop="class" label="班级" width="120"></el-table-column>
+          <el-table-column prop="updateTime" label="审核时间" width="180">
+            <template #default="scope">
+              {{ formatDate(scope.row.updateTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="stepID" label="状态" width="120">
+            <template #default="scope">
+              {{ getStatusLabel(scope.row.stepID) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="scope">
+              <el-button size="small" @click="viewDetails(scope.row)">查看详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-tab-pane>
+    </el-tabs>
 
-    <div class="table-title">学业</div>
-    <el-button @click="addRow2">添加行</el-button>
-    <el-table :data="academicData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="中分类" prop="Mclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小分类" prop="Sclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="Page">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="得分" prop="Point">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" prop="FileDst">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            tag="a"
-            :href='baseURL+scope.row.FileDst'
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            can can need
-          </el-button>
-          <el-button type="danger" @click="removeRow(2, scope.$index)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <el-dialog v-model="auditDialogVisible" title="审核项目" width="80%" :before-close="handleCloseAuditDialog">
+      <div v-if="currentAuditItem" v-loading="loading.auditDetails">
+        <h2>学生信息</h2>
+        <p><strong>姓名：</strong>{{ currentAuditItem.name }}</p>
+        <p><strong>学号：</strong>{{ currentAuditItem.userID }}</p>
+        <p><strong>班级：</strong>{{ currentAuditItem.class }}</p>
+        <p><strong>提交时间：</strong>{{ formatDate(currentAuditItem.updateTime) }}</p>
 
-    <div class="table-title">体育</div>
-    <el-button @click="addRow3">添加行</el-button>
-    <el-table :data="physicalData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="中分类" prop="Mclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小分类" prop="Sclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="Page">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="得分" prop="Point">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" prop="FileDst">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            tag="a"
-            :href='baseURL+scope.row.FileDst'
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            can can need
-          </el-button>
-          <el-button type="danger" @click="removeRow(3, scope.$index)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        <h2>申报内容</h2>
+        <el-tabs v-model="activeAuditTab">
+          <el-tab-pane v-for="category in categories" :key="category.value" :label="category.label" :name="category.value">
+            <el-table :data="currentAuditItem[category.value] || []" border style="width: 100%">
+              <el-table-column prop="description" label="描述"></el-table-column>
+              <el-table-column prop="score" label="分数" width="100"></el-table-column>
+              <el-table-column label="材料" width="180">
+                <template #default="scope">
+                  <el-button v-if="scope.row.materialUrl" size="small" type="primary" @click="viewMaterial(scope.row.materialUrl)">
+                    查看材料
+                  </el-button>
+                  <span v-else>无材料</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
 
-    <div class="table-title">美育</div>
-    <el-button @click="addRow4">添加行</el-button>
-    <el-table :data="artData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="中分类" prop="Mclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小分类" prop="Sclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="Page">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="得分" prop="Point">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" prop="FileDst">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            tag="a"
-            :href='baseURL+scope.row.FileDst'
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            can can need
-          </el-button>
-          <el-button type="danger" @click="removeRow(4, scope.$index)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <div class="table-title">劳动</div>
-    <el-button @click="addRow5">添加行</el-button>
-    <el-table :data="laborData" style="width: 100%">
-      <el-table-column label="大分类" prop="Lclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Lclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="中分类" prop="Mclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Mlcass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="小分类" prop="Sclass">
-        <template #default="scope">
-          <el-input v-model="scope.row.Sclass" />
-        </template>
-      </el-table-column>
-      <el-table-column label="材料页码" prop="Page">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Page" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="得分" prop="Point">
-        <template #default="scope">
-          <el-input-number v-model="scope.row.Point" :min="0" :step="1" />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" prop="FileDst">
-        <template #default="scope">
-          <el-button
-            type="primary"
-            tag="a"
-            :href='baseURL+scope.row.FileDst'
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            can can need
-          </el-button>
-          <el-button type="danger" @click="removeRow(5, scope.$index)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-      <el-row class="mb-4"> 
-      <el-button type="primary"  v-if="Audit1" @click="YesButton">审核完毕</el-button>
-      <el-button type="primary" v-if="Audit2" @click="YesButton">审核无异议</el-button>
-      <el-button type="warning" v-if="Audit2" @click="NoButton">审核有异议</el-button>
-      <el-button type="primary" v-if="Audit3" @click="YesButton">已阅，同意</el-button>
-      <el-button type="primary" v-if="Audit3" @click="NoButton">老子不同意</el-button>
-    </el-row>
-
-    <button @click="fetchTableData">加载表格数据</button>
-    
+        <h2>审核意见</h2>
+        <el-form :model="auditForm" label-width="120px">
+          <el-form-item label="审核结果">
+            <el-radio-group v-model="auditForm.result">
+              <el-radio label="pass">通过</el-radio>
+              <el-radio label="reject">驳回</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="审核意见">
+            <el-input v-model="auditForm.comment" type="textarea" :rows="4"></el-input>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="auditDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAudit" :loading="loading.submitAudit">提交审核</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
-<script setup>
-import { ref, onMounted,inject,computed } from 'vue';
-import axios from 'axios'; 
-import { useRoute } from "vue-router";
-import { defineProps } from 'vue';
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
-// const { TID, stepID } = defineProps(['TID', 'stepID']);
+const activeTab = ref('pending')
+const activeAuditTab = ref('morality')
+const auditDialogVisible = ref(false)
+const currentAuditItem = ref(null)
+const pendingItems = ref([])
+const reviewedItems = ref([])
 
-const moralityData = ref(null);
-const academicData = ref(null);
-const physicalData = ref(null);
-const artData = ref(null);
-const laborData = ref(null);
-const targetID = '274b129e-9ad2-4894-8025-dba3d49465dc'
-const baseURL = inject('baseURL');
-//获取本地储存的token
-const atoken = localStorage.getItem("token");
-// 获取本地存储的学号
-const id = localStorage.getItem("ID");
-let Audit1 = ref(false);
-let Audit2 = ref(false);
-let Audit3 = ref(false);
+const categories = [
+  { label: '思想品德', value: 'morality' },
+  { label: '学业发展', value: 'academic' },
+  { label: '身心健康', value: 'physical' },
+  { label: '艺术素养', value: 'art' },
+  { label: '社会实践', value: 'social' }
+]
 
+const loading = reactive({
+  pending: false,
+  reviewed: false,
+  auditDetails: false,
+  submitAudit: false
+})
 
-
-// 从后端获取表格数据
-const fetchTableData = () => {
-
-  
-  
-  axios.get("http://10.252.128.12:6443"+'/admin/getCE'+'?t='+atoken+'&ID='+id+'&targetID='+TID) 
-    .then(response => {
-      const data = response.data;
-      console.log(data);
-    //   // 提取各表格的数据
-    //   const moralityJson = JSON.parse(data.morality);
-    //   const academicJson = JSON.parse(data.academic);
-    //   const physicalJson = JSON.parse(data.physical);
-    //   const artJson = JSON.parse(data.art);
-    //   const laborJson = JSON.parse(data.labor);
-
-    // // 更新表格数据
-    //   moralityData.value = moralityJson;
-    //   academicData.value = academicJson;
-    //   physicalData.value = physicalJson;
-    //   artData.value = artJson;
-    //   laborData.value = laborJson;
-      moralityData.value = Array.isArray(data.morality._value) ? data.morality._value : [];
-      academicData.value = Array.isArray(data.academic._value) ? data.academic._value : [];
-      physicalData.value = Array.isArray(data.physical._value) ? data.physical._value : [];
-      artData.value = Array.isArray(data.art._value) ? data.art._value : [];
-      laborData.value = Array.isArray(data.labor._value) ? data.labor._value : [];
-
-    })
-    .catch(error => {
-      console.error('获取数据失败', error);
-    });
-};
-//把数据post回去
-const SubmitMethod = ()=>{
-  console.log(stepID)
-  const url = baseURL + '/report/audit'+'?t='+atoken+'&ID='+id+'&stepID='+stepID+'&targetID='+TID ;
-  console.log(url)
-  const data = {
-    morality:moralityData,
-    academic:academicData,
-    physical:physicalData,
-    art:artData,
-    labor:laborData,  
-  };
-  console.log(data)
-  axios.post(url, data)
-    .then(response => {
-      console.log('Success:', response.data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
-};
-// 删除行
-const removeRow = (tableIndex, rowIndex) => {
-  switch (tableIndex) {
-    case 1:
-      moralityData.value.splice(rowIndex, 1);
-      break;
-    case 2:
-      academicData.value.splice(rowIndex, 1);
-      break;
-    case 3:
-      physicalData.value.splice(rowIndex, 1);
-      break;
-    case 4:
-      artData.value.splice(rowIndex, 1);
-      break;
-    case 5:
-      laborData.value.splice(rowIndex, 1);
-      break;
-  }
-};
-// 添加行
-const addRow1 = () => {
-  moralityData.value.push({
-    Lclass: '',
-    Mclass: '',
-    Sclass: '',
-    Page: 0,
-    Point: 0,
-    FileDst: 0,
-  });
-};
-const addRow2 = () => {
-  academicData.value.push({
-    Lclass: '',
-    Mclass: '',
-    Sclass: '',
-    Page: 0,
-    Point: 0,
-    FileDst: 0,
-  });
-};
-const addRow3 = () => {
-  physicalData.value.push({
-    Lclass: '',
-    Mclass: '',
-    Sclass: '',
-    Page: 0,
-    Point: 0,
-    FileDst: 0,
-  });
-};
-const addRow4 = () => {
-  artData.value.push({
-    Lclass: '',
-    Mclass: '',
-    Sclass: '',
-    Page: 0,
-    Point: 0,
-    FileDst: 0,
-  });
-};
-const addRow5 = () => {
-  laborData.value.push({
-    Lclass: '',
-    Mclass: '',
-    Sclass: '',
-    Page: 0,
-    Point: 0,
-    FileDst: 0,
-  });
-};
-
-// let stash = 0
-
-const YesButton = ()=>{
-  if(stepID == 0 || stepID == 1 || stepID == 3 || stepID == 7){
-    stepID = parseInt(stepID)
-    stepID = stepID + 1
-  }
-  else if(stepID == 2 || stepID == 4){
-    stepID = parseInt(stepID)
-    stepID = 6
-  }
-  else{
-    stepID = parseInt(stepID)
-    stepID = 7
-  }
-  SubmitMethod()
-};
-
-const NoButton = () =>{
-  if(stepID == 1){
-    stepID = parseInt(stepID)
-    stepID = stepID + 2
-  }
-  else if (stepID == 2 || stepID == 4 || stepID == 7){
-    stepID = parseInt(stepID)
-    stepID = 5
-  }
-
-  SubmitMethod()
-};
-
-const route = useRoute();
-//扒拉下来的stepID
-let stepID = route.query.stepID;
-//扒拉下来的uuid
-const TID = route.query.TID;
-
+const auditForm = reactive({
+  result: '',
+  comment: ''
+})
 
 onMounted(() => {
-  console.log(TID,stepID)
-  if(stepID== 0 || stepID ==3|| stepID ==5){
-    Audit1.value = !Audit1.value;
-    Audit2.value = Audit2.value;
+  fetchPendingItems()
+  fetchReviewedItems()
+})
+
+const fetchPendingItems = async () => {
+  loading.pending = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    pendingItems.value = Array(5).fill(null).map((_, index) => ({
+      uuid: `pending-${index + 1}`,
+      name: `学生${index + 1}`,
+      class: `软件工程${index % 2 + 1}班`,
+      userID: `2022380000${index + 1}`,
+      updateTime: Date.now() - Math.random() * 86400000,
+      stepID: Math.floor(Math.random() * 3)
+    }))
+
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/report/getTDList', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID')
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   pendingItems.value = response.data.data.toDoList
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
+  } catch (error) {
+    console.error('获取待审核项目失败:', error)
+    ElMessage.error('获取待审核项目失败，请稍后重试')
+  } finally {
+    loading.pending = false
   }
-  else if (stepID == 1){
-    Audit2.value = !Audit2.value;
-    Audit1.value = Audit1.value;
+}
+
+
+
+const fetchReviewedItems = async () => {
+  loading.reviewed = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    reviewedItems.value = Array(5).fill(null).map((_, index) => ({
+      uuid: `reviewed-${index + 1}`,
+      name: `学生${index + 6}`,
+      class: `软件工程${index % 2 + 1}班`,
+      userID: `2022380000${index + 6}`,
+      updateTime: Date.now() - Math.random() * 86400000,
+      stepID: Math.floor(Math.random() * 3) + 3
+    }))
+
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/admin/history', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID')
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   reviewedItems.value = response.data.data
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
+  } catch (error) {
+    console.error('获取已审核项目失败:', error)
+    ElMessage.error('获取已审核项目失败，请稍后重试')
+  } finally {
+    loading.reviewed = false
   }
-  else{
-    Audit3.value = !Audit3.value;
+}
+
+const handleAudit = async (item) => {
+  currentAuditItem.value = item
+  auditDialogVisible.value = true
+  loading.auditDetails = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    currentAuditItem.value = {
+      ...item,
+      morality: [{ description: '思想品德项目1', score: 85, materialUrl: '#' }],
+      academic: [{ description: '学业发展项目1', score: 90, materialUrl: '#' }],
+      physical: [{ description: '身心健康项目1', score: 80, materialUrl: '#' }],
+      art: [{ description: '艺术素养项目1', score: 75, materialUrl: '#' }],
+      social: [{ description: '社会实践项目1', score: 88, materialUrl: '#' }]
+    }
+
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/admin/getCE', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     targetID: item.uuid
+    //   }
+    // })
+    // if (response.data) {
+    //   currentAuditItem.value = { ...item, ...response.data }
+    // } else {
+    //   throw new Error('Failed to fetch audit details')
+    // }
+  } catch (error) {
+    console.error('获取审核详情失败:', error)
+    ElMessage.error('获取审核详情失败，请稍后重试')
+  } finally {
+    loading.auditDetails = false
   }
-  // 在组件挂载后获取后端数据
-  fetchTableData();
-  // console.log(baseURL)
-});
+}
+
+const submitAudit = async () => {
+  if (!auditForm.result) {
+    ElMessage.warning('请选择审核结果')
+    return
+  }
+  loading.submitAudit = true
+  try {
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    ElMessage.success('审核提交成功')
+    auditDialogVisible.value = false
+    fetchPendingItems()
+    fetchReviewedItems()
+
+    // 实际的API调用可能如下：
+    // const response = await axios.post('/report/audit', {
+    //   result: auditForm.result,
+    //   comment: auditForm.comment
+    // }, {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     targetID: currentAuditItem.value.uuid,
+    //     stepID: getNextStepID(currentAuditItem.value.stepID, auditForm.result)
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   ElMessage.success('审核提交成功')
+    //   auditDialogVisible.value = false
+    //   fetchPendingItems()
+    //   fetchReviewedItems()
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
+  } catch (error) {
+    console.error('提交审核失败:', error)
+    ElMessage.error('提交审核失败，请稍后重试')
+  } finally {
+    loading.submitAudit = false
+  }
+}
+
+const handleCloseAuditDialog = (done) => {
+  ElMessageBox.confirm('确认关闭？未保存的更改将丢失')
+    .then(() => {
+      done()
+      auditForm.result = ''
+      auditForm.comment = ''
+    })
+    .catch(() => {})
+}
+
+const viewDetails = (item) => {
+  handleAudit(item)
+}
+
+const viewMaterial = (url) => {
+  window.open(url, '_blank')
+}
+
+const formatDate = (timestamp) => {
+  return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const getStatusLabel = (stepID) => {
+  const statusMap = {
+    0: '待班委初审',
+    1: '待交叉复审',
+    2: '待本人确认',
+    3: '待级委审核',
+    4: '待本人确认',
+    5: '待超管审核',
+    6: '已完成',
+    7: '待本人确认',
+    8: '已完成'
+  }
+  return statusMap[stepID] || '未知状态'
+}
+
+const getNextStepID = (currentStepID, result) => {
+  if (result === 'pass') {
+    return String(Number(currentStepID) + 1)
+  } else {
+    return '-1' // 假设 -1 表示驳回
+  }
+}
 </script>
 
-<style lang="scss" scoped>
-#hello {position: relative;}
-#contextmenu {
-  position:absolute;
-  top: 0;
-  left: 0;
-  height:auto;
-  width:120px;
-  border-radius: 3px;
-  border: 1px solid #999999;
-  background-color: #f4f4f4;
-  padding: 10px;
-  z-index: 12;
-  button {display:block;margin:0 0 5px;}
-}
-.app {
-  margin: 20px;
-  font-family: Arial, sans-serif;
+<style scoped>
+.admin-view {
+  padding: 20px;
 }
 
-.total {
-  margin-top: 10px;
-  text-align: right;
-  font-weight: bold;
+.el-table {
+  margin-top: 20px;
 }
 
-.form-item-row {
-  text-align: center;
+@media (max-width: 768px) {
+  .admin-view {
+    padding: 10px;
+  }
 }
-
-.input-wrapper {
-  display: inline-block;
-  margin-right: 10px;
-  text-align: left;
-}
-
-.input-wrapper label {
-  white-space: nowrap;
-  margin-right: 6px;
-}
-
 </style>
