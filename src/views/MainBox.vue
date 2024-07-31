@@ -38,6 +38,10 @@
           <el-menu-item index="5-1">待办事项</el-menu-item>
           <el-menu-item index="5-2">审核历史</el-menu-item>
         </el-sub-menu>
+        <el-menu-item index="6" v-if="isAdmin">
+          <el-icon><setting /></el-icon>
+          <template #title>权限管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -110,7 +114,8 @@ const currentPageTitle = computed(() => {
     '/upload': '材料上传',
     '/state': '进度查询',
     '/admin/todo': '待办事项',
-    '/admin/history': '审核历史'
+    '/admin/history': '审核历史',
+    '/permission-management': '权限管理'
   }
   return routeTitles[route.path] || '综合评价信息申报系统'
 })
@@ -138,6 +143,9 @@ const handleSelect = (key: string) => {
       break
     case '5-2':
       router.push('/admin/history')
+      break
+    case '6':
+      router.push('/permission-management')
       break
   }
 }

@@ -9,6 +9,7 @@ import AdminTodo from '../views/admin/AdminTodo.vue'
 import Profile from '../views/Profile.vue'
 import Upload from '../views/Upload.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
+import PermissionManagement from '../views/PermissionManagement.vue'
 
 const routes = [
   {
@@ -67,6 +68,12 @@ const routes = [
         path: 'upload',
         name: 'Upload',
         component: Upload
+      },
+      {
+        path: '/permission-management',
+        name: 'PermissionManagement',
+        component: PermissionManagement,
+        meta: { requiresAdmin: true }
       }
     ]
   },
