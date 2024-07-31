@@ -1,7 +1,7 @@
 <template>
   <div class="report-state">
     <h1>申报进度查询</h1>
-    <el-card class="box-card">
+    <el-card class="box-card" v-loading="loading">
       <template #header>
         <div class="card-header">
           <span>当前进度</span>
@@ -16,7 +16,7 @@
       </el-steps>
     </el-card>
 
-    <el-card class="box-card" v-if="currentStep === 3">
+    <el-card class="box-card" v-if="currentStep === 3" v-loading="loading">
       <template #header>
         <div class="card-header">
           <span>审核结果</span>
@@ -66,6 +66,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const currentStep = ref(0)
+const loading = ref(false)
 const result = ref({
   morality: 0,
   academic: 0,
@@ -85,25 +86,45 @@ onMounted(() => {
 })
 
 const fetchReportStatus = async () => {
+  loading.value = true
   try {
-    // 实际项目中，这里应该调用后端 API
-    // const response = await axios.get('/api/report-status')
-    // 模拟 API 响应
+    // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     currentStep.value = Math.floor(Math.random() * 4)
     if (currentStep.value === 3) {
       fetchReportResult()
     }
+
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/report/getStepID', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     targetID: 'latest' // 或者是特定的报告ID
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   currentStep.value = parseInt(response.data.data.stepID)
+    //   if (currentStep.value === 3) {
+    //     fetchReportResult()
+    //   }
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
   } catch (error) {
+    console.error('获取申报状态失败:', error)
     ElMessage.error('获取申报状态失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
+
+
 const fetchReportResult = async () => {
+  loading.value = true
   try {
-    // 实际项目中，这里应该调用后端 API
-    // const response = await axios.get('/api/report-result')
-    // 模拟 API 响应
+    // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     result.value = {
       morality: Math.floor(Math.random() * 100),
@@ -114,8 +135,33 @@ const fetchReportResult = async () => {
       total: 0
     }
     result.value.total = Object.values(result.value).reduce((a, b) => a + b, 0)
+
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/report/seekCE', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     targetID: 'latest' // 或者是特定的报告ID
+    //   }
+    // })
+    // if (response.data) {
+    //   result.value = {
+    //     morality: response.data.morality || 0,
+    //     academic: response.data.academic || 0,
+    //     physical: response.data.physical || 0,
+    //     art: response.data.art || 0,
+    //     social: response.data.social || 0,
+    //     total: 0
+    //   }
+    //   result.value.total = Object.values(result.value).reduce((a, b) => a + b, 0)
+    // } else {
+    //   throw new Error('Failed to fetch report result')
+    // }
   } catch (error) {
+    console.error('获取评价结果失败:', error)
     ElMessage.error('获取评价结果失败，请稍后重试')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -125,12 +171,26 @@ const refreshStatus = () => {
 
 const confirmResult = async () => {
   try {
-    // 实际项目中，这里应该调用后端 API
-    // await axios.post('/api/confirm-result')
-    // 模拟 API 调用
+    // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     ElMessage.success('已确认评价结果')
+
+    // 实际的API调用可能如下：
+    // const response = await axios.post('/report/audit', null, {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     stepID: '6', // 或 '8'，取决于具体的业务逻辑
+    //     targetID: 'latest' // 或者是特定的报告ID
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   ElMessage.success('已确认评价结果')
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
   } catch (error) {
+    console.error('确认失败:', error)
     ElMessage.error('确认失败，请稍后重试')
   }
 }
@@ -141,9 +201,7 @@ const raiseObjection = () => {
 
 const submitObjection = async () => {
   try {
-    // 实际项目中，这里应该调用后端 API
-    // await axios.post('/api/submit-objection', objectionForm.value)
-    // 模拟 API 调用
+    // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     ElMessage.success('异议已提交，等待处理')
     objectionDialogVisible.value = false
@@ -151,7 +209,31 @@ const submitObjection = async () => {
       category: '',
       content: ''
     }
+
+    // 实际的API调用可能如下：
+    // const response = await axios.post('/report/audit', {
+    //   category: objectionForm.value.category,
+    //   content: objectionForm.value.content
+    // }, {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     stepID: '5',
+    //     targetID: 'latest' // 或者是特定的报告ID
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   ElMessage.success('异议已提交，等待处理')
+    //   objectionDialogVisible.value = false
+    //   objectionForm.value = {
+    //     category: '',
+    //     content: ''
+    //   }
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
   } catch (error) {
+    console.error('提交异议失败:', error)
     ElMessage.error('提交异议失败，请稍后重试')
   }
 }
@@ -175,5 +257,16 @@ const submitObjection = async () => {
 .action-buttons {
   margin-top: 20px;
   text-align: center;
+}
+
+@media (max-width: 768px) {
+  .report-state {
+    padding: 10px;
+  }
+  
+  .el-button {
+    margin-bottom: 10px;
+    width: 100%;
+  }
 }
 </style>
