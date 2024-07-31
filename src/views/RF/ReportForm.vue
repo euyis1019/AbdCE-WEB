@@ -248,5 +248,14 @@ onMounted(() => {
   .el-form-item {
     margin-bottom: 10px;
   }
+
+  .el-table {
+    font-size: 14px;
+  }
+
+  .el-button {
+    margin-bottom: 10px;
+    width: 100%;
+  }
 }
 </style>
