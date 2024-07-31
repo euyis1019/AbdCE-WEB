@@ -18,6 +18,7 @@
     "nprogress": "^0.2.0",
     "particles.vue3": "^2.12.0",
     "pdf-parse": "^1.1.1",
+    "pinia": "^2.2.0",
     "tsparticles": "^3.5.0",
     "vue": "^3.4.34",
     "vue-class-component": "^8.0.0-0",

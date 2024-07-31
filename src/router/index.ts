@@ -1,57 +1,73 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
-import Login from '../LoginRegister/Login.vue'
-import mainbox from '../views/MainBox.vue'
-import Register from '../LoginRegister/Register.vue'
-import RoutesConfig from './config.ts'
-import store from "../store/index"
-import NProgress from './nprogress.js';
-import 'nprogress/nprogress.css';
+import { createRouter, createWebHistory } from 'vue-router'
+import MainBox from '../views/MainBox.vue'
+import ReportForm from '../views/RF/ReportForm.vue'
+import ReportState from '../views/RF/ReportState.vue'
+import NotFound from '../views/Notfound/NotFound.vue'
 
-const routes = [{
-    path: "/login",
-    name: "login",
-    component: Login
-},
-{
-    path: "/mainbox",
-    name: "mainbox",
-    component: mainbox
-},
-{
-    path: "/Register",
-    name: "Register",
-    component: Register
-},
+const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../LoginRegister/Login.vue')
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../LoginRegister/Register.vue')
+  },
+  {
+    path: '/',
+    component: MainBox,
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: () => import('../views/HomeView.vue')
+      },
+      {
+        path: 'report',
+        name: 'ReportForm',
+        component: ReportForm
+      },
+      {
+        path: 'state',
+        name: 'ReportState',
+        component: ReportState
+      },
+      {
+        path: 'audit',
+        name: 'AuditProcess',
+        component: () => import('../views/admin.vue'),
+        meta: { requiresAdmin: true }
+      }
+    ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound
+  }
 ]
 
 const router = createRouter({
-    history: createWebHashHistory(),
-    routes
+  history: createWebHistory(),
+  routes
 })
-//路由拦截
+
 router.beforeEach((to, from, next) => {
-    NProgress.start();
-    if (to.name === 'login' || to.name === 'Register') { next() } else {   //是否授权
-
-        if (!localStorage.getItem("token")) { next({ path: "/login" }) } else {    //后期拓展很多页面的话用config.js配置循环路由
-            //ConfigRouter()直接配置会死循环
-
-            if (!store.state.isGetterRouter) { ConfigRouter(); next({ path: to.fullPath }) }
-            else { next() }
-        }
+  const isAuthenticated = localStorage.getItem('token')
+  if (to.name !== 'Login' && !isAuthenticated) {
+    next({ name: 'Login' })
+  } else if (to.meta.requiresAdmin) {
+    const userRole = localStorage.getItem('userRole')
+    if (userRole === 'admin') {
+      next()
+    } else {
+      next({ name: 'Home' })
     }
+  } else {
+    next()
+  }
 })
 
-router.afterEach(() => {
-    NProgress.done();
-});
-
-const ConfigRouter = () => {
-    RoutesConfig.forEach(item => {
-        router.addRoute("mainbox", item)
-    }); //结束循环
-
-    store.commit("changeGetterRouter", true)
-}; //结束函数体
-
-export default router; //导出路由实例
+export default router

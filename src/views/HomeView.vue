@@ -1,42 +1,92 @@
 <template>
-  <div>
-    <h1>个人信息展示</h1>
-    <el-card class="box-card">
-      <div slot="header">基本信息</div>
-      <p>姓名: {{ fullName }}</p>
-      <p>班级: {{ classr }}</p>
-      <p>学号: {{ studentId }}</p>
-    </el-card>
-    <el-card class="box-card">
-      <div slot="header">目前的分数</div>
-      <p>分数1: {{ score1 }}</p>
-      <p>分数2: {{ score2 }}</p>
-    </el-card>
+  <div class="home">
+    <h1>欢迎使用综合评价信息申报系统</h1>
+    <el-row :gutter="20">
+      <el-col :span="8">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <span>个人信息</span>
+              <el-button class="button" text>编辑</el-button>
+            </div>
+          </template>
+          <div class="text item">
+            <p>姓名：{{ userInfo.name }}</p>
+            <p>学号：{{ userInfo.studentId }}</p>
+            <p>班级：{{ userInfo.class }}</p>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <span>申报状态</span>
+              <el-button class="button" text @click="goToReportState">查看详情</el-button>
+            </div>
+          </template>
+          <div class="text item">
+            <el-progress :percentage="reportProgress" :format="format"></el-progress>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card class="box-card">
+          <template #header>
+            <div class="card-header">
+              <span>快速操作</span>
+            </div>
+          </template>
+          <div class="text item">
+            <el-button @click="goToReportForm">填写申报</el-button>
+            <el-button @click="goToReportState">查看进度</el-button>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
-  <el-card class="box-card">
-    <template #header>
-      <div class="card-header">
-        <span>进度</span>
-        <el-button class="button" text>Operation button</el-button>
-      </div>
-    </template>
-    <div v-for="o in 4" :key="o" class="text item">
-      <div>{{ 'List item ' + o }}</div>
-      <el-button>can can word</el-button>
-    </div>
-  </el-card>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
-const fullName = '张三';
-const classr = 114;
-const studentId = '男';
-const score1 = 114514;
-const score2 = '一九一九八一零';
+const router = useRouter()
+
+const userInfo = ref({
+  name: '张三',
+  studentId: '20223800000',
+  class: '软件工程2班'
+})
+
+const reportProgress = ref(30)
+
+const format = (percentage) => {
+  return percentage === 100 ? '完成' : `${percentage}%`
+}
+
+const goToReportForm = () => {
+  router.push('/report')
+}
+
+const goToReportState = () => {
+  router.push('/state')
+}
+
+onMounted(() => {
+  // 在这里可以添加获取用户信息和申报进度的逻辑
+})
 </script>
 
-<style>
+<style scoped>
+.home {
+  padding: 20px;
+}
+
+.box-card {
+  margin-bottom: 20px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -49,9 +99,5 @@ const score2 = '一九一九八一零';
 
 .item {
   margin-bottom: 18px;
-}
-
-.box-card {
-  width: 480px;
 }
 </style>

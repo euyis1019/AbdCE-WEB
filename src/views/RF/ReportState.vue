@@ -1,398 +1,179 @@
 <template>
-    <div class="form-item">
-      <div class="form-item-row">
-        <div class="input-wrapper">
-          <label>姓名：</label>
-          <el-input v-model="info.name" size="small"></el-input>
+  <div class="report-state">
+    <h1>申报进度查询</h1>
+    <el-card class="box-card">
+      <template #header>
+        <div class="card-header">
+          <span>当前进度</span>
+          <el-button class="button" text @click="refreshStatus">刷新</el-button>
         </div>
-  
-        <div class="input-wrapper">
-          <label>班级：</label>
-          <el-input v-model="info.class" size="small"></el-input>
-        </div>
-  
-        <div class="input-wrapper">
-          <label>学号：</label>
-          <el-input v-model="info.studentId" size="small"></el-input>
-        </div>
-      </div>
-    </div>
-    <el-divider content-position="left"><el-icon>
-        <Pointer />
-      </el-icon><el-text class="mx-1" size="large" tag="b">申报进度</el-text></el-divider>
-    <div class="app">
-      <el-card shadow="always">
-        <!-- 表格1 - 思品 -->
-        <div class="table-title">思品</div>
-        <el-table :data="tableData1" style="width: 100%">
-          <el-table-column label="材料" prop="category1">
-            <template #default="scope">
-              <el-input v-model="scope.row.category1" />
-            </template>
-          </el-table-column>
-          <el-table-column label="进度" prop="category2">
-            <template #default="scope">
-              <el-input v-model="scope.row.category2" />
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-  
-      <el-card shadow="always">
-        <div class="table-title1">学业</div>
-        <el-table :data="tableData2" style="width: 100%">
-          <el-table-column label="材料" prop="category1">
-            <template #default="scope">
-              <el-input v-model="scope.row.category1" />
-            </template>
-          </el-table-column>
-          <el-table-column label="进度" prop="category2">
-            <template #default="scope">
-              <el-input v-model="scope.row.category2" />
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-  
-      <el-card shadow="always">
-        <div class="table-title2">体育</div>
-        <el-table :data="tableData3" style="width: 100%">
-          <el-table-column label="材料" prop="category1">
-            <template #default="scope">
-              <el-input v-model="scope.row.category1" />
-            </template>
-          </el-table-column>
-          <el-table-column label="进度" prop="category2">
-            <template #default="scope">
-              <el-input v-model="scope.row.category2" />
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-  
-      <el-card shadow="always">
-        <div class="table-title3">美育</div>
-        <el-table :data="tableData4" style="width: 100%">
-          <el-table-column label="材料" prop="category1">
-            <template #default="scope">
-              <el-input v-model="scope.row.category1" />
-            </template>
-          </el-table-column>
-          <el-table-column label="进度" prop="category2">
-            <template #default="scope">
-              <el-input v-model="scope.row.category2" />
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-  
-      <el-card shadow="always">
-        <div class="table-title4">劳动</div>
-        <el-table :data="tableData5" style="width: 100%">
-          <el-table-column label="材料" prop="category1">
-            <template #default="scope">
-              <el-input v-model="scope.row.category1" />
-            </template>
-          </el-table-column>
-          <el-table-column label="进度" prop="category2">
-            <template #default="scope">
-              <el-input v-model="scope.row.category2" />
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-  
-      <el-divider content-position="left"><el-icon>
-          <CircleCheck />
-        </el-icon><el-text class="mx-1" size="large" tag="b">总分统计</el-text></el-divider>
-      <el-card shadow="hover">
-        <!-- 总表格 -->
-        <div class="total-table">
-          <el-table :data="totalData" style="width: 100%">
-            <el-table-column label="项目" prop="title" width="100"></el-table-column>
-            <el-table-column label="总得分" prop="totalScore" width="100"></el-table-column>
-            <el-table-column label="总扣分" prop="totalDeduction" width="100"></el-table-column>
-            <el-table-column label="合计" prop="total" width="100"></el-table-column>
-          </el-table>
-        </div>
-      </el-card>
-    </div>
-    <el-divider content-position="left"><el-icon>
-        <EditPen />
-      </el-icon><el-text class="mx-1" size="large" tag="b">额外补充</el-text></el-divider>
-    <el-card shadow="never">
-      
+      </template>
+      <el-steps :active="currentStep" finish-status="success" align-center>
+        <el-step title="提交申报" description="已提交待审核"></el-step>
+        <el-step title="班委初审" description="班委审核中"></el-step>
+        <el-step title="交叉复审" description="其他班级班委审核"></el-step>
+        <el-step title="最终确认" description="确认最终结果"></el-step>
+      </el-steps>
     </el-card>
-  
-    <el-form-item>
-      <!--提交按钮-->
-      <el-button type="primary" @click="submitForm()">提交</el-button>
-    </el-form-item>
-  </template>
-  
-  <script setup>
-  import axios from 'axios';
-  import { reactive } from 'vue'
-  import { ref, computed, inject } from 'vue';
-  import UploadButton from './UploadButton.vue';
-  
-  //info用于储存学生基本信息
-  const info = reactive({
-    name: "",
-    class: "",
-    studentId: ""
-  });
-  
-  
-  
-  // const baseURL = inject('baseURL');
-  
-  const submitForm = () => {
-    const url = 'http://14.155.175.41:1443/NewReport';
-    const data = {
-      ID: info.studentId,
-      morality: totalSumData.moralitySum,
-      academic: totalSumData.academicSum,
-      physical: totalSumData.physicalSum,
-      art: totalSumData.artSum,
-      labor: totalSumData.laborSum
-    };
-    console.log(data)
-    axios.post(url, data)
-      .then(response => {
-        console.log('Success:', response.data);
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
-  }
-  // const sendGetRequest = () => {
-  //     const url = 'http://14.155.175.41:1443/login';
-  //     const params = {
-  //         ID: "20223800000",
-  //         pass: "456123"
-  //     };
-  //     console.log("131")
-  //     axios.get(url, { params: params })
-  //         .then(response => {
-  //             console.log('Success:', response.data);
-  //             if (response.data && response.data.msg) {
-  //                 console.log('Received token:', response.data.msg);
-  //             } else {
-  //                 console.log('Token not found in response.');
-  //             }
-  //         })
-  //         .catch(error => {
-  //             console.error('Error:', error);
-  //         });
-  // }
-  
-  // 表格1 - 思品
-  const tableData1 = ref([
-    // 初始数据行
-  ]);
-  
-  // 表格2 - 学业
-  const tableData2 = ref([
-    // 初始数据行
-  ]);
-  
-  // 表格3 - 体育
-  const tableData3 = ref([
-    // 初始数据行
-  ]);
-  
-  // 表格4 - 美育
-  const tableData4 = ref([
-    // 初始数据行
-  ]);
-  
-  // 表格5 - 劳动
-  const tableData5 = ref([
-    // 初始数据行
-  ]);
-  
-  // 计算总得分和总扣分
-  const getTotalScore = (data) => {
-    return data.reduce((total, row) => total + row.Point, 0);
-  };
-  
-  const getTotalDeduction = (data) => {
-    return data.reduce((total, row) => total + row.deduction, 0);
-  };
-  
-  
-  
-  const totalSumData = reactive({
-    moralitySum: 0,
-    academicSum: 0,
-    physicalSum: 0,
-    artSum: 0,
-    laborSum: 0,
-  });
-  
-  //合计数据表格的data
-  const totalData = computed(() => {
-    const moralitySum = getTotalScore(tableData1.value) - getTotalDeduction(tableData1.value);
-    const academicSum = getTotalScore(tableData2.value) - getTotalDeduction(tableData2.value);
-    const physicalSum = getTotalScore(tableData3.value) - getTotalDeduction(tableData3.value);
-    const artSum = getTotalScore(tableData4.value) - getTotalDeduction(tableData4.value);
-    const laborSum = getTotalScore(tableData5.value) - getTotalDeduction(tableData5.value);
-  
-    totalSumData.moralitySum = moralitySum;
-    totalSumData.academicSum = academicSum;
-    totalSumData.physicalSum = physicalSum;
-    totalSumData.artSum = artSum;
-    totalSumData.laborSum = laborSum;
-    return [
-      { title: '思品', totalScore: getTotalScore(tableData1.value), totalDeduction: getTotalDeduction(tableData1.value), total: moralitySum },
-      { title: '学业', totalScore: getTotalScore(tableData2.value), totalDeduction: getTotalDeduction(tableData2.value), total: academicSum },
-      { title: '体育', totalScore: getTotalScore(tableData3.value), totalDeduction: getTotalDeduction(tableData3.value), total: physicalSum },
-      { title: '美育', totalScore: getTotalScore(tableData4.value), totalDeduction: getTotalDeduction(tableData4.value), total: artSum },
-      { title: '劳动', totalScore: getTotalScore(tableData5.value), totalDeduction: getTotalDeduction(tableData5.value), total: laborSum },
-    ]
-  });
-  
-  
-  const extractColumnsData = (data) => {
-    const columnData = {};
-    for (const column of Object.keys(data[0])) {
-      columnData[column] = data.map(item => item[column]);
-    }
-    return columnData
-  };
 
-  
-  
-  // 删除行
-  const removeRow = (tableIndex, rowIndex) => {
-    switch (tableIndex) {
-      case 1:
-        tableData1.value.splice(rowIndex, 1);
-        break;
-      case 2:
-        tableData2.value.splice(rowIndex, 1);
-        break;
-      case 3:
-        tableData3.value.splice(rowIndex, 1);
-        break;
-      case 4:
-        tableData4.value.splice(rowIndex, 1);
-        break;
-      case 5:
-        tableData5.value.splice(rowIndex, 1);
-        break;
+    <el-card class="box-card" v-if="currentStep === 3">
+      <template #header>
+        <div class="card-header">
+          <span>审核结果</span>
+        </div>
+      </template>
+      <el-descriptions title="综合评价结果" :column="2" border>
+        <el-descriptions-item label="思想品德">{{ result.morality }}</el-descriptions-item>
+        <el-descriptions-item label="学业发展">{{ result.academic }}</el-descriptions-item>
+        <el-descriptions-item label="身心健康">{{ result.physical }}</el-descriptions-item>
+        <el-descriptions-item label="艺术素养">{{ result.art }}</el-descriptions-item>
+        <el-descriptions-item label="社会实践">{{ result.social }}</el-descriptions-item>
+        <el-descriptions-item label="总分">{{ result.total }}</el-descriptions-item>
+      </el-descriptions>
+      <div class="action-buttons" v-if="currentStep === 3">
+        <el-button type="primary" @click="confirmResult">确认结果</el-button>
+        <el-button type="warning" @click="raiseObjection">提出异议</el-button>
+      </div>
+    </el-card>
+
+    <el-dialog v-model="objectionDialogVisible" title="提出异议" width="50%">
+      <el-form :model="objectionForm" label-width="120px">
+        <el-form-item label="异议类别">
+          <el-select v-model="objectionForm.category" placeholder="请选择异议类别">
+            <el-option label="思想品德" value="morality"></el-option>
+            <el-option label="学业发展" value="academic"></el-option>
+            <el-option label="身心健康" value="physical"></el-option>
+            <el-option label="艺术素养" value="art"></el-option>
+            <el-option label="社会实践" value="social"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="异议内容">
+          <el-input v-model="objectionForm.content" type="textarea" :rows="4"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="objectionDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitObjection">提交异议</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+
+const currentStep = ref(0)
+const result = ref({
+  morality: 0,
+  academic: 0,
+  physical: 0,
+  art: 0,
+  social: 0,
+  total: 0
+})
+const objectionDialogVisible = ref(false)
+const objectionForm = ref({
+  category: '',
+  content: ''
+})
+
+onMounted(() => {
+  fetchReportStatus()
+})
+
+const fetchReportStatus = async () => {
+  try {
+    // 实际项目中，这里应该调用后端 API
+    // const response = await axios.get('/api/report-status')
+    // 模拟 API 响应
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    currentStep.value = Math.floor(Math.random() * 4)
+    if (currentStep.value === 3) {
+      fetchReportResult()
     }
-  };
-  const handleFileUploaded = (tableIndex, rowIndex, fileUrl) => {
-    switch (tableIndex) {
-      case 1:
-        tableData1.value[rowIndex].FileDst = fileUrl;
-        break;
-      case 2:
-        tableData2.value[rowIndex].FileDst = fileUrl;
-        break;
-      case 3:
-        tableData3.value[rowIndex].FileDst = fileUrl;
-        break;
-      case 4:
-        tableData4.value[rowIndex].FileDst = fileUrl;
-        break;
-      case 5:
-        tableData5.value[rowIndex].FileDst = fileUrl;
-        break;
-      default:
-        // 处理未知的表格索引
-        break;
+  } catch (error) {
+    ElMessage.error('获取申报状态失败，请稍后重试')
+  }
+}
+
+const fetchReportResult = async () => {
+  try {
+    // 实际项目中，这里应该调用后端 API
+    // const response = await axios.get('/api/report-result')
+    // 模拟 API 响应
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    result.value = {
+      morality: Math.floor(Math.random() * 100),
+      academic: Math.floor(Math.random() * 100),
+      physical: Math.floor(Math.random() * 100),
+      art: Math.floor(Math.random() * 100),
+      social: Math.floor(Math.random() * 100),
+      total: 0
     }
-  };
-  
-  </script>
-  
-  <style lang="scss" scoped>
-  #hello {
-    position: relative;
+    result.value.total = Object.values(result.value).reduce((a, b) => a + b, 0)
+  } catch (error) {
+    ElMessage.error('获取评价结果失败，请稍后重试')
   }
-  
-  #contextmenu {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: auto;
-    width: 120px;
-    border-radius: 3px;
-    border: 1px solid #999999;
-    background-color: #f4f4f4;
-    padding: 10px;
-    z-index: 12;
-  
-    button {
-      display: block;
-      margin: 0 0 5px;
+}
+
+const refreshStatus = () => {
+  fetchReportStatus()
+}
+
+const confirmResult = async () => {
+  try {
+    // 实际项目中，这里应该调用后端 API
+    // await axios.post('/api/confirm-result')
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    ElMessage.success('已确认评价结果')
+  } catch (error) {
+    ElMessage.error('确认失败，请稍后重试')
+  }
+}
+
+const raiseObjection = () => {
+  objectionDialogVisible.value = true
+}
+
+const submitObjection = async () => {
+  try {
+    // 实际项目中，这里应该调用后端 API
+    // await axios.post('/api/submit-objection', objectionForm.value)
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    ElMessage.success('异议已提交，等待处理')
+    objectionDialogVisible.value = false
+    objectionForm.value = {
+      category: '',
+      content: ''
     }
+  } catch (error) {
+    ElMessage.error('提交异议失败，请稍后重试')
   }
-  
-  .app {
-    margin: 20px;
-    font-family: Arial, sans-serif;
-  }
-  
-  .total {
-    margin-top: 10px;
-    text-align: right;
-    font-weight: bold;
-  }
-  
-  .form-item-row {
-    text-align: center;
-  }
-  
-  .input-wrapper {
-    display: inline-block;
-    margin-right: 10px;
-    text-align: left;
-  }
-  
-  .input-wrapper label {
-    white-space: nowrap;
-    margin-right: 6px;
-  }
-  
-  .table-title {
-    background-color: #c6e2ff; // 模块1的背景颜色
-    padding: 10px;
-    border-radius: 5px;
-  }
-  
-  .table-title1 {
-    background-color: #d1edc4; // 模块1的背景颜色
-    padding: 10px;
-    border-radius: 5px;
-  }
-  
-  .table-title2 {
-    background-color: #f8e3c5; // 模块1的背景颜色
-    padding: 10px;
-    border-radius: 5px;
-  }
-  
-  .table-title3 {
-    background-color: #fcd3d3; // 模块1的背景颜色
-    padding: 10px;
-    border-radius: 5px;
-  }
-  
-  .table-title4 {
-    background-color: #dedfe0; // 模块1的背景颜色
-    padding: 10px;
-    border-radius: 5px;
-  }
-  
-  .el-card {
-    margin-bottom: 20px; // 为了更清晰地区分卡片
-  }
-  
-  .table-color {
-    background-color: #f2f2f2; // 使用不同的底色
-  }
-  </style>
+}
+</script>
+
+<style scoped>
+.report-state {
+  padding: 20px;
+}
+
+.box-card {
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.action-buttons {
+  margin-top: 20px;
+  text-align: center;
+}
+</style>
