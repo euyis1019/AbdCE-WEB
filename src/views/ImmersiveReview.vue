@@ -14,7 +14,7 @@
         <div class="material-preview">
           <h3>申请材料</h3>
           <el-image v-if="currentTask.materialType === 'image'" :src="currentTask.materialUrl" fit="contain" />
-          <el-button v-else-if="currentTask.materialType === 'pdf'" @click="openPdfPreview">查看 PDF</el-button> <!-- 日后考虑引入 pdf.js 做成 iframe 嵌入 -->
+          <iframe v-else-if="currentTask.materialType === 'pdf'" :src="currentTask.materialUrl" width="100%" height="600px"></iframe>
         </div>
       </div>
       <div class="right-panel">
@@ -151,6 +151,7 @@ onMounted(async () => {
   left: 0;
   width: 100vw;
   height: 100vh;
+  padding: 20px; /* 左右边距加大 */
   background: linear-gradient(135deg, #f0f7ff 0%, #c0e8ff 100%);
   display: flex;
   flex-direction: column;
@@ -186,6 +187,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   overflow: hidden;
+  margin: 20px; /* 卡片四周边距 */
 }
 
 .left-panel, .right-panel {
@@ -198,7 +200,7 @@ onMounted(async () => {
 }
 
 .left-panel {
-  margin-right: 10px;
+  margin-right: 20px; /* 边距增大 */
 }
 
 .rules-section, .material-preview {
