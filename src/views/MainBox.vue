@@ -335,13 +335,30 @@ onMounted(() => {
   }
 
   .header-right {
-    flex-direction: column;
-    align-items: flex-end;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
   }
-
+  
   .role-dropdown,
   .user-dropdown {
-    margin-bottom: 5px;
+    margin-left: 10px;
+  }
+  
+  .el-button {
+    padding: 8px 15px;
+  }
+  
+  .el-dropdown-link {
+    font-size: 14px;
+  }
+  
+  .collapse-btn {
+    background-color: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #409EFF;
   }
 }
 </style>
