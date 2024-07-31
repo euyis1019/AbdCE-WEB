@@ -23,19 +23,15 @@
           <el-icon><EditPen /></el-icon>
           <template #title>申报填写</template>
         </el-menu-item>
-        <el-menu-item index="4">
+        <el-menu-item index="3">
           <el-icon><InfoFilled /></el-icon>
           <template #title>进度查询</template>
         </el-menu-item>
-        <el-sub-menu index="5" v-if="isAdmin || isReviewer">
-          <template #title>
-            <el-icon><Tools /></el-icon>
-            <span>审核管理</span>
-          </template>
-          <el-menu-item index="5-1">待办事项</el-menu-item>
-          <el-menu-item index="5-2">审核历史</el-menu-item>
-        </el-sub-menu>
-        <el-menu-item index="6" v-if="isAdmin">
+        <el-menu-item index="4" v-if="isReviewer || isAdmin">
+          <el-icon><Document /></el-icon>
+          <template #title>待办事项</template>
+        </el-menu-item>
+        <el-menu-item index="5" v-if="isAdmin">
           <el-icon><Setting /></el-icon>
           <template #title>权限管理</template>
         </el-menu-item>
@@ -104,19 +100,15 @@
         <el-icon><EditPen /></el-icon>
         <span>申报填写</span>
       </el-menu-item>
-      <el-menu-item index="4">
+      <el-menu-item index="3">
         <el-icon><InfoFilled /></el-icon>
         <span>进度查询</span>
       </el-menu-item>
-      <el-sub-menu index="5" v-if="isAdmin || isReviewer">
-        <template #title>
-          <el-icon><Tools /></el-icon>
-          <span>审核管理</span>
-        </template>
-        <el-menu-item index="5-1">待办事项</el-menu-item>
-        <el-menu-item index="5-2">审核历史</el-menu-item>
-      </el-sub-menu>
-      <el-menu-item index="6" v-if="isAdmin">
+      <el-menu-item index="4" v-if="isReviewer || isAdmin">
+        <el-icon><Document /></el-icon>
+        <span>待办事项</span>
+      </el-menu-item>
+      <el-menu-item index="5" v-if="isAdmin">
         <el-icon><Setting /></el-icon>
         <span>权限管理</span>
       </el-menu-item>
@@ -132,7 +124,7 @@ import {
   HomeFilled, 
   EditPen, 
   InfoFilled, 
-  Tools, 
+  Document, 
   Setting, 
   ArrowDown, 
   Expand, 
@@ -170,8 +162,8 @@ const currentPageTitle = computed(() => {
     '/report': '申报填写',
     '/state': '进度查询',
     '/admin/todo': '待办事项',
-    '/admin/history': '审核历史',
-    '/permission-management': '权限管理'
+    '/permission-management': '权限管理',
+    '/profile': '个人信息'
   }
   return routeTitles[route.path] || '综合评价信息申报系统'
 })
@@ -193,16 +185,13 @@ const handleSelect = (key: string) => {
     case '2':
       router.push('/report')
       break
-    case '4':
+    case '3':
       router.push('/state')
       break
-    case '5-1':
+    case '4':
       router.push('/admin/todo')
       break
-    case '5-2':
-      router.push('/admin/history')
-      break
-    case '6':
+    case '5':
       router.push('/permission-management')
       break
   }
@@ -226,11 +215,12 @@ const handleRoleChange = (role: string) => {
   isAdmin.value = role === 'admin'
   isReviewer.value = role === 'reviewer'
   ElMessage.success(`已切换到${role === 'admin' ? '超级管理员' : role === 'reviewer' ? '审核员' : '普通用户'}权限`)
+  router.push('/')
 }
 
 watch(userRole, (newRole) => {
-  // 当用户角色变化时，可能需要重新加载某些组件或更新路由
-  // 这里可以添加相应的逻辑
+  isAdmin.value = newRole === 'admin'
+  isReviewer.value = newRole === 'reviewer'
 })
 
 onMounted(() => {
@@ -241,6 +231,10 @@ onMounted(() => {
   userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
+
+<style scoped>
+/* 样式保持不变 */
+</style>
 
 <style scoped>
 .layout-container {
