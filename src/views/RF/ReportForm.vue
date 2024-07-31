@@ -4,90 +4,61 @@
     <el-steps :active="activeStep" finish-status="success" align-center>
       <el-step v-for="(category, index) in categories" :key="index" :title="category.label" />
     </el-steps>
-    <el-form :model="form" :rules="rules" ref="formRef" label-width="120px" @submit.prevent="submitForm">
-      <el-card class="form-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>{{ categories[activeStep].label }}</span>
-            <el-button type="primary" icon="Plus" @click="addItem">添加项目</el-button>
-          </div>
-        </template>
-        
-        <el-table :data="form[categories[activeStep].value]" style="width: 100%">
-          <el-table-column label="描述" prop="description">
-            <template #default="scope">
-              <el-input v-model="scope.row.description" placeholder="请输入项目描述"></el-input>
-            </template>
-          </el-table-column>
-          <el-table-column label="材料" width="250">
-            <template #default="scope">
-              <el-upload
-                :action="uploadUrl"
-                :on-success="(res) => handleUploadSuccess(res, scope.row)"
-                :on-error="handleUploadError"
-                :before-upload="beforeUpload"
-                :on-progress="(event, file) => handleUploadProgress(event, file, scope.row)"
-              >
-                <el-button size="small" type="primary" icon="Upload">上传材料</el-button>
-              </el-upload>
-              <el-progress v-if="scope.row.uploadProgress > 0 && scope.row.uploadProgress < 100" 
-                           :percentage="scope.row.uploadProgress"></el-progress>
-              <span v-if="scope.row.materialUrl">已上传</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="120">
-            <template #default="scope">
-              <el-button type="danger" icon="Delete" circle @click="removeItem(categories[activeStep].value, scope.$index)"></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        
-        <div class="form-actions">
-          <el-button v-if="activeStep > 0" @click="prevStep">上一步</el-button>
-          <el-button v-if="activeStep < categories.length - 1" type="primary" @click="nextStep">下一步</el-button>
-          <el-button v-if="activeStep === categories.length - 1" type="success" @click="submitForm" :loading="submitting">提交申报</el-button>
-        </div>
-      </el-card>
-    </el-form>
-
-    <el-dialog v-model="addItemDialogVisible" title="添加项目" width="50%">
-      <el-form :model="newItem" label-width="120px">
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="newItem.description" type="textarea" :rows="3"></el-input>
-        </el-form-item>
-        <el-form-item label="材料">
+    <el-card class="form-card" shadow="hover">
+  <template #header>
+    <div class="card-header">
+      <span>{{ categories[activeStep].label }}</span>
+      <el-progress :percentage="calculateProgress()" style="width: 50%; margin-left: 20px;" />
+    </div>
+  </template>
+  
+  <el-form :model="form" :rules="rules" ref="formRef" label-width="120px" @submit.prevent="submitForm">
+    <transition name="fade" mode="out-in">
+      <div :key="activeStep">
+        <el-form-item 
+          v-for="(item, index) in form[categories[activeStep].value]" 
+          :key="index"
+          :label="`项目 ${index + 1}`"
+        >
+          <el-input v-model="item.description" placeholder="请输入项目描述"></el-input>
           <el-upload
+            class="upload-demo"
             :action="uploadUrl"
-            :on-success="(res) => handleUploadSuccess(res, newItem)"
+            :on-success="(res) => handleUploadSuccess(res, item)"
             :on-error="handleUploadError"
             :before-upload="beforeUpload"
-            :on-progress="(event, file) => handleUploadProgress(event, file, newItem)"
+            :on-progress="(event, file) => handleUploadProgress(event, file, item)"
           >
-            <el-button size="small" type="primary" icon="Upload">上传材料</el-button>
+            <el-button size="small" type="primary">上传材料</el-button>
           </el-upload>
-          <el-progress v-if="newItem.uploadProgress > 0 && newItem.uploadProgress < 100" 
-                       :percentage="newItem.uploadProgress"></el-progress>
-          <span v-if="newItem.materialUrl">已上传</span>
+          <el-progress v-if="item.uploadProgress > 0 && item.uploadProgress < 100" 
+                       :percentage="item.uploadProgress"></el-progress>
+          <span v-if="item.materialUrl">已上传: {{ item.materialUrl }}</span>
         </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="addItemDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddItem">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </div>
+      </div>
+    </transition>
+    
+    <el-form-item>
+      <el-button type="primary" @click="addItem">添加项目</el-button>
+      <el-button @click="removeItem" :disabled="form[categories[activeStep].value].length <= 1">删除最后一项</el-button>
+    </el-form-item>
+    
+    <el-form-item>
+      <el-button v-if="activeStep > 0" @click="prevStep">上一步</el-button>
+      <el-button v-if="activeStep < categories.length - 1" type="primary" @click="nextStep">下一步</el-button>
+      <el-button v-if="activeStep === categories.length - 1" type="success" @click="submitForm" :loading="submitting">提交申报</el-button>
+      <el-button @click="saveDraft">保存草稿</el-button>
+    </el-form-item>
+  </el-form>
+</el-card>
+</div>
 </template>
-
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Upload, Delete } from '@element-plus/icons-vue'
 
 const formRef = ref(null)
 const activeStep = ref(0)
-const addItemDialogVisible = ref(false)
 const submitting = ref(false)
 
 const categories = [
@@ -99,17 +70,11 @@ const categories = [
 ]
 
 const form = reactive({
-  morality: [],
-  academic: [],
-  physical: [],
-  art: [],
-  social: []
-})
-
-const newItem = reactive({
-  description: '',
-  materialUrl: '',
-  uploadProgress: 0
+  morality: [{ description: '', materialUrl: '', uploadProgress: 0 }],
+  academic: [{ description: '', materialUrl: '', uploadProgress: 0 }],
+  physical: [{ description: '', materialUrl: '', uploadProgress: 0 }],
+  art: [{ description: '', materialUrl: '', uploadProgress: 0 }],
+  social: [{ description: '', materialUrl: '', uploadProgress: 0 }]
 })
 
 const rules = {
@@ -123,23 +88,13 @@ const uploadUrl = 'http://example.com/upload'
 // const uploadUrl = `${baseURL}/report/upload?t=${localStorage.getItem('token')}&ID=${localStorage.getItem('ID')}`
 
 const addItem = () => {
-  addItemDialogVisible.value = true
+  form[categories[activeStep.value].value].push({ description: '', materialUrl: '', uploadProgress: 0 })
 }
 
-const confirmAddItem = () => {
-  if (newItem.description.trim() === '') {
-    ElMessage.warning('请输入项目描述')
-    return
+const removeItem = () => {
+  if (form[categories[activeStep.value].value].length > 1) {
+    form[categories[activeStep.value].value].pop()
   }
-  form[categories[activeStep.value].value].push({ ...newItem })
-  addItemDialogVisible.value = false
-  newItem.description = ''
-  newItem.materialUrl = ''
-  newItem.uploadProgress = 0
-}
-
-const removeItem = (category, index) => {
-  form[category].splice(index, 1)
 }
 
 const handleUploadSuccess = (res, item) => {
@@ -172,6 +127,12 @@ const beforeUpload = (file) => {
     ElMessage.error('上传文件大小不能超过 10MB!')
   }
   return isLt10M
+}
+
+const calculateProgress = () => {
+  const totalSteps = categories.length
+  const completedSteps = activeStep.value
+  return Math.round((completedSteps / totalSteps) * 100)
 }
 
 const nextStep = () => {
@@ -256,7 +217,6 @@ onMounted(() => {
   loadDraft()
 })
 </script>
-
 <style scoped>
 .report-form {
   padding: 20px;
@@ -268,18 +228,21 @@ onMounted(() => {
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 
-.el-table {
-  margin-top: 20px;
+.el-steps {
+  margin-bottom: 20px;
 }
 
-.form-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-between;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 @media (max-width: 768px) {
@@ -288,20 +251,12 @@ onMounted(() => {
   }
   
   .el-form-item {
-    margin-bottom: 10px;
-  }
-
-  .el-table {
-    font-size: 14px;
+    margin-bottom: 15px;
   }
 
   .el-button {
     margin-bottom: 10px;
     width: 100%;
-  }
-
-  .form-actions {
-    flex-direction: column;
   }
 }
 </style>
