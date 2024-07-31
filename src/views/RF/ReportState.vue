@@ -1,50 +1,59 @@
 <template>
   <div class="report-state">
     <h1>申报进度查询</h1>
-    <el-card class="box-card" v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>当前进度</span>
-          <el-button class="button" text @click="refreshStatus">刷新</el-button>
-        </div>
-      </template>
-      <el-steps :active="currentStep" finish-status="success" align-center>
-        <el-step title="提交申报" description="已提交待审核"></el-step>
-        <el-step title="班委初审" description="班委审核中"></el-step>
-        <el-step title="交叉复审" description="其他班级班委审核"></el-step>
-        <el-step title="最终确认" description="确认最终结果"></el-step>
-      </el-steps>
-    </el-card>
-
-    <el-card class="box-card" v-if="currentStep === 3" v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>审核结果</span>
-        </div>
-      </template>
-      <el-descriptions title="综合评价结果" :column="2" border>
-        <el-descriptions-item label="思想品德">{{ result.morality }}</el-descriptions-item>
-        <el-descriptions-item label="学业发展">{{ result.academic }}</el-descriptions-item>
-        <el-descriptions-item label="身心健康">{{ result.physical }}</el-descriptions-item>
-        <el-descriptions-item label="艺术素养">{{ result.art }}</el-descriptions-item>
-        <el-descriptions-item label="社会实践">{{ result.social }}</el-descriptions-item>
-        <el-descriptions-item label="总分">{{ result.total }}</el-descriptions-item>
-      </el-descriptions>
-      <div class="action-buttons" v-if="currentStep === 3">
-        <el-button type="primary" @click="confirmResult">确认结果</el-button>
-        <el-button type="warning" @click="raiseObjection">提出异议</el-button>
-      </div>
-    </el-card>
+    <el-row :gutter="20">
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card class="progress-card" shadow="hover" v-loading="loading">
+          <template #header>
+            <div class="card-header">
+              <span>当前进度</span>
+              <el-button class="refresh-btn" type="primary" icon="Refresh" @click="refreshStatus">刷新</el-button>
+            </div>
+          </template>
+          <div class="progress-container">
+            <el-progress type="circle" :percentage="currentProgress" :status="progressStatus">
+              <template #default="{ percentage }">
+                <span class="progress-value">{{ percentage }}%</span>
+                <span class="progress-label">{{ currentStatus }}</span>
+              </template>
+            </el-progress>
+          </div>
+          <div class="progress-steps">
+            <el-steps :active="currentStep" finish-status="success" align-center>
+              <el-step title="提交申报" description="已提交待审核"></el-step>
+              <el-step title="班委初审" description="班委审核中"></el-step>
+              <el-step title="交叉复审" description="其他班级班委审核"></el-step>
+              <el-step title="最终确认" description="确认最终结果"></el-step>
+            </el-steps>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card class="result-card" v-if="currentStep === 3" shadow="hover" v-loading="loading">
+          <template #header>
+            <div class="card-header">
+              <span>审核结果</span>
+            </div>
+          </template>
+          <el-descriptions title="综合评价结果" :column="1" border>
+            <el-descriptions-item v-for="(value, key) in result" :key="key" :label="getCategoryLabel(key)">
+              {{ value }}
+            </el-descriptions-item>
+            <el-descriptions-item label="总分">{{ calculateTotalScore() }}</el-descriptions-item>
+          </el-descriptions>
+          <div class="action-buttons">
+            <el-button type="primary" @click="confirmResult">确认结果</el-button>
+            <el-button type="warning" @click="raiseObjection">提出异议</el-button>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <el-dialog v-model="objectionDialogVisible" title="提出异议" width="50%">
       <el-form :model="objectionForm" label-width="120px">
         <el-form-item label="异议类别">
           <el-select v-model="objectionForm.category" placeholder="请选择异议类别">
-            <el-option label="思想品德" value="morality"></el-option>
-            <el-option label="学业发展" value="academic"></el-option>
-            <el-option label="身心健康" value="physical"></el-option>
-            <el-option label="艺术素养" value="art"></el-option>
-            <el-option label="社会实践" value="social"></el-option>
+            <el-option v-for="category in categories" :key="category.value" :label="category.label" :value="category.value"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="异议内容">
@@ -62,23 +71,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 
 const currentStep = ref(0)
 const loading = ref(false)
+const objectionDialogVisible = ref(false)
+
 const result = ref({
   morality: 0,
   academic: 0,
   physical: 0,
   art: 0,
-  social: 0,
-  total: 0
+  social: 0
 })
-const objectionDialogVisible = ref(false)
+
 const objectionForm = ref({
   category: '',
   content: ''
+})
+
+const categories = [
+  { label: '思想品德', value: 'morality' },
+  { label: '学业发展', value: 'academic' },
+  { label: '身心健康', value: 'physical' },
+  { label: '艺术素养', value: 'art' },
+  { label: '社会实践', value: 'social' }
+]
+
+const currentProgress = computed(() => {
+  return (currentStep.value / 3) * 100
+})
+
+const progressStatus = computed(() => {
+  if (currentStep.value === 3) return 'success'
+  if (currentStep.value > 0) return 'exception'
+  return 'warning'
+})
+
+const currentStatus = computed(() => {
+  const statusMap = ['待审核', '班委初审中', '交叉复审中', '待确认']
+  return statusMap[currentStep.value]
 })
 
 onMounted(() => {
@@ -129,10 +163,8 @@ const fetchReportResult = async () => {
       academic: Math.floor(Math.random() * 100),
       physical: Math.floor(Math.random() * 100),
       art: Math.floor(Math.random() * 100),
-      social: Math.floor(Math.random() * 100),
-      total: 0
+      social: Math.floor(Math.random() * 100)
     }
-    result.value.total = Object.values(result.value).reduce((a, b) => a + b, 0)
 
     // 实际的API调用可能如下：
     // const response = await axios.get('/report/seekCE', {
@@ -148,10 +180,8 @@ const fetchReportResult = async () => {
     //     academic: response.data.academic || 0,
     //     physical: response.data.physical || 0,
     //     art: response.data.art || 0,
-    //     social: response.data.social || 0,
-    //     total: 0
+    //     social: response.data.social || 0
     //   }
-    //   result.value.total = Object.values(result.value).reduce((a, b) => a + b, 0)
     // } else {
     //   throw new Error('Failed to fetch report result')
     // }
@@ -235,6 +265,15 @@ const submitObjection = async () => {
     ElMessage.error('提交异议失败，请稍后重试')
   }
 }
+
+const getCategoryLabel = (key: string) => {
+  const category = categories.find(c => c.value === key)
+  return category ? category.label : key
+}
+
+const calculateTotalScore = () => {
+  return Object.values(result.value).reduce((a, b) => a + b, 0)
+}
 </script>
 
 <style scoped>
@@ -242,7 +281,8 @@ const submitObjection = async () => {
   padding: 20px;
 }
 
-.box-card {
+.progress-card,
+.result-card {
   margin-bottom: 20px;
 }
 
@@ -252,9 +292,32 @@ const submitObjection = async () => {
   align-items: center;
 }
 
+.progress-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.progress-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.progress-label {
+  display: block;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.progress-steps {
+  margin-top: 30px;
+}
+
 .action-buttons {
   margin-top: 20px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
 }
 
 @media (max-width: 768px) {
@@ -277,6 +340,10 @@ const submitObjection = async () => {
 
   .el-step__title {
     font-size: 12px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
   }
 }
 </style>
