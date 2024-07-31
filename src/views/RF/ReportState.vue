@@ -119,8 +119,6 @@ const fetchReportStatus = async () => {
   }
 }
 
-
-
 const fetchReportResult = async () => {
   loading.value = true
   try {
@@ -267,6 +265,18 @@ const submitObjection = async () => {
   .el-button {
     margin-bottom: 10px;
     width: 100%;
+  }
+
+  .el-card {
+    margin-bottom: 15px;
+  }
+
+  .el-steps {
+    padding: 0;
+  }
+
+  .el-step__title {
+    font-size: 12px;
   }
 }
 </style>
