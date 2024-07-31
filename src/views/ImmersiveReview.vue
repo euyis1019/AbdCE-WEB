@@ -1,9 +1,9 @@
 <template>
   <div class="immersive-review">
     <div class="top-bar">
-      <el-button @click="exitImmersiveMode" icon="ArrowLeft">退出审核</el-button>
-      <span>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</span>
-      <span>审核员：{{ reviewerName }}</span>
+      <el-button @click="exitImmersiveMode" icon="ArrowLeft" class="exit-button">退出审核</el-button>
+      <span class="task-info">{{ currentTask.categoryName }} - {{ currentTask.studentName }}</span>
+      <span class="reviewer-info">审核员：{{ reviewerName }}</span>
     </div>
     <div class="main-content">
       <div class="left-panel">
@@ -14,8 +14,7 @@
         <div class="material-preview">
           <h3>申请材料</h3>
           <el-image v-if="currentTask.materialType === 'image'" :src="currentTask.materialUrl" fit="contain" />
-          <el-button v-else-if="currentTask.materialType === 'pdf'" @click="openPdfPreview">查看 PDF</el-button>
-          <!-- 可以根据需要添加其他类型的文件预览 -->
+          <el-button v-else-if="currentTask.materialType === 'pdf'" @click="openPdfPreview">查看 PDF</el-button> <!-- 日后考虑引入 pdf.js 做成 iframe 嵌入 -->
         </div>
       </div>
       <div class="right-panel">
@@ -69,7 +68,11 @@ const reviewForm = ref({
 })
 
 const exitImmersiveMode = () => {
-  router.push('/admin/todo')
+  if (route.query.returnTo === 'queue') {
+    router.push('/admin/todo')
+  } else {
+    router.push('/admin/todo')
+  }
 }
 
 const submitReview = async () => {
@@ -95,8 +98,8 @@ const getNextTask = async () => {
       categoryName: '学习成绩',
       studentName: '张三',
       rules: '根据学生提供的成绩单和获奖证书进行评分。',
-      materialType: 'image',
-      materialUrl: 'https://example.com/sample-transcript.jpg',
+      materialType: 'pdf',
+      materialUrl: 'https://box.ygxz.xyz/?explorer/share/file&hash=4022sldCx_Y86ueANYd4QeGjK_xGcVVaLhEy5wuwu_8MRROEEK33dF7P0lHTiWtDEpA',
     }
   
     // 重置审核结果
@@ -104,6 +107,12 @@ const getNextTask = async () => {
       result: '',
       score: 0,
       comment: '',
+    }
+
+    // 如果没有下一个任务，返回到审核队列
+    if (!currentTask.value.id) {
+      ElMessage.info('所有任务已审核完毕')
+      exitImmersiveMode()
     }
   } catch (error) {
     ElMessage.error('获取下一个任务失败，请重试')
@@ -142,18 +151,35 @@ onMounted(async () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #f0f2f5;
+  background: linear-gradient(135deg, #f0f7ff 0%, #c0e8ff 100%);
   display: flex;
   flex-direction: column;
 }
 
 .top-bar {
-  background-color: #fff;
-  padding: 10px;
+  background-color: #ffffffdd;
+  padding: 10px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,.1);
+  border-bottom: 2px solid #007bff;
+}
+
+.exit-button {
+  background-color: #fff;
+  border: 1px solid #007bff;
+  color: #007bff;
+}
+
+.task-info {
+  font-weight: bold;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.reviewer-info {
+  color: #666;
 }
 
 .main-content {
@@ -166,23 +192,27 @@ onMounted(async () => {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  background-color: #ffffffcc;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.1);
 }
 
 .left-panel {
-  background-color: #fff;
   margin-right: 10px;
-}
-
-.right-panel {
-  background-color: #fff;
 }
 
 .rules-section, .material-preview {
   margin-bottom: 20px;
 }
 
+.rules-section h3, .material-preview h3 {
+  color: #007bff;
+}
+
 .el-image {
   max-width: 100%;
   max-height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
 }
 </style>
