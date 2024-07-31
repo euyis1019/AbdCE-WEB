@@ -1,8 +1,8 @@
 <template>
   <div class="report-state">
     <h1>申报进度查询</h1>
-    <el-row :gutter="20">
-      <el-col :xs="24" :sm="24" :md="12">
+    <el-row :gutter="20" justify="center">
+      <el-col :xs="24" :sm="24" :md="12" align="middle">
         <el-card class="progress-card" shadow="hover" v-loading="loading">
           <template #header>
             <div class="card-header">
@@ -10,10 +10,10 @@
               <el-button class="refresh-btn" type="primary" icon="Refresh" @click="refreshStatus">刷新</el-button>
             </div>
           </template>
-          <div class="progress-container">
-            <el-progress type="circle" :percentage="currentProgress" :status="progressStatus">
+          <div class="progress-container large-container">
+            <el-progress type="circle" :percentage="Math.floor(currentProgress)" :status="progressStatus">
               <template #default="{ percentage }">
-                <span class="progress-value">{{ percentage }}%</span>
+                <span class="progress-value">{{ Math.floor(percentage) }}%</span>
                 <span class="progress-label">{{ currentStatus }}</span>
               </template>
             </el-progress>
@@ -295,17 +295,23 @@ const calculateTotalScore = () => {
 .progress-container {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 300px;
   margin: 20px 0;
 }
 
+.large-container {
+  transform: scale(1);
+}
+
 .progress-value {
-  font-size: 24px;
+  font-size: 36px;
   font-weight: bold;
 }
 
 .progress-label {
   display: block;
-  font-size: 14px;
+  font-size: 18px;
   margin-top: 5px;
 }
 
