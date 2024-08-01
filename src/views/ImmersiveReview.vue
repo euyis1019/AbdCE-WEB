@@ -1,46 +1,66 @@
 <template>
   <div class="immersive-review">
-    <div class="top-bar">
-      <el-button @click="exitImmersiveMode" icon="ArrowLeft">退出审核</el-button>
-      <span>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</span>
+    <header class="review-header">
+      <el-button @click="exitImmersiveMode" type="text" icon="ArrowLeft">退出审核</el-button>
+      <h2>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</h2>
       <span>审核员：{{ reviewerName }}</span>
-    </div>
-    <div class="main-content">
-      <div class="left-panel">
-        <div class="rules-section">
-          <h3>审核规则</h3>
+    </header>
+
+    <main class="review-content">
+      <section class="review-left">
+        <el-card class="review-card">
+          <template #header>
+            <h3>审核规则</h3>
+          </template>
           <p>{{ currentTask.rules }}</p>
-        </div>
-        <div class="material-preview">
-          <h3>申请材料</h3>
+        </el-card>
+        
+        <el-card class="review-card material-preview">
+          <template #header>
+            <h3>申请材料</h3>
+          </template>
           <el-image v-if="currentTask.materialType === 'image'" :src="currentTask.materialUrl" fit="contain" />
           <iframe v-else-if="currentTask.materialType === 'pdf'" :src="currentTask.materialUrl" width="100%" height="600px"></iframe>
-          <!-- 可以根据需要添加其他类型的文件预览 -->
+        </el-card>
+      </section>
+      
+      <section class="review-right">
+        <div class="review-actions">
+          <el-button 
+            type="success" 
+            size="large" 
+            @click="submitReview('pass')" 
+            icon="Check"
+          >
+            通过 (1)
+          </el-button>
+          <el-button 
+            type="danger" 
+            size="large" 
+            @click="submitReview('reject')" 
+            icon="Close"
+          >
+            拒绝 (2)
+          </el-button>
         </div>
-      </div>
-      <div class="right-panel">
-        <h3>审核表单</h3>
-        <el-form :model="reviewForm" label-width="100px">
-          <el-form-item label="审核结果">
-            <el-radio-group v-model="reviewForm.result">
-              <el-radio label="pass">通过</el-radio>
-              <el-radio label="reject">驳回</el-radio>
-            </el-radio-group>
-          </el-form-item>
+        
+        <el-form :model="reviewForm" label-position="top">
           <el-form-item label="评分">
-            <el-input-number v-model="reviewForm.score" :min="0" :max="100"></el-input-number>
+            <el-input-number v-model="reviewForm.score" :min="0" :max="100" :step="1" step-strictly controls-position="right"></el-input-number>
           </el-form-item>
           <el-form-item label="审核意见">
-            <el-input type="textarea" v-model="reviewForm.comment" rows="4"></el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="submitReview">提交审核结果</el-button>
+            <el-input type="textarea" v-model="reviewForm.comment" :rows="4" placeholder="请输入审核意见（可选）"></el-input>
           </el-form-item>
         </el-form>
-      </div>
-    </div>
-    <el-dialog v-model="confirmDialogVisible" title="确认" width="30%">
-      <span>是否确认提交审核结果？</span>
+
+        <div class="bottom-actions">
+          <el-button @click="getNextTask" type="primary" icon="ArrowRight">下一个 (Enter)</el-button>
+        </div>
+      </section>
+    </main>
+
+    <el-dialog v-model="confirmDialogVisible" title="确认提交" width="30%" center>
+      <span>是否确认提交当前审核结果？</span>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="confirmDialogVisible = false">取消</el-button>
@@ -48,20 +68,48 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="guideVisible" title="欢迎进入材料审核模式" width="50%" center>
+      <div class="guide-content">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <h4>键盘快捷键：</h4>
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="通过申请">1</el-descriptions-item>
+              <el-descriptions-item label="拒绝申请">2</el-descriptions-item>
+              <el-descriptions-item label="下一个任务">Enter</el-descriptions-item>
+              <el-descriptions-item label="退出审核模式">Esc</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+          <el-col :span="12">
+            <h4>操作说明：</h4>
+            <ol>
+              <li>查看左侧的审核规则和申请材料</li>
+              <li>使用右侧的按钮或键盘快捷键进行审核</li>
+              <li>可选择调整评分和添加审核意见</li>
+              <li>点击"下一个"或按 Enter 键继续下一项审核</li>
+            </ol>
+          </el-col>
+        </el-row>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="closeGuide">开始审核</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 
-const activeTab = ref('rules')
 const confirmDialogVisible = ref(false)
+const guideVisible = ref(true)
 
 const currentTask = ref({
   id: '',
@@ -88,29 +136,47 @@ const exitImmersiveMode = () => {
   }
 }
 
-const submitReview = () => {
+const submitReview = (result: 'pass' | 'reject') => {
+  reviewForm.value.result = result
   confirmDialogVisible.value = true
 }
 
 const confirmSubmit = async () => {
   try {
-    // 这里应该调用API来提交审核结果
-    console.log('提交审核结果:', reviewForm.value)
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // 实际的API调用可能如下：
+    // const response = await axios.post('/report/audit', {
+    //   targetID: currentTask.value.id,
+    //   result: reviewForm.value.result,
+    //   score: reviewForm.value.score,
+    //   comment: reviewForm.value.comment
+    // }, {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID'),
+    //     stepID: getNextStepID()
+    //   }
+    // })
+    // if (response.data.statusID !== 0) {
+    //   throw new Error(response.data.msg)
+    // }
     
     ElMessage.success('审核结果已提交')
     confirmDialogVisible.value = false
     
-    // 获取下一个任务
     await getNextTask()
   } catch (error) {
+    console.error('提交审核结果失败:', error)
     ElMessage.error('提交审核结果失败，请重试')
   }
 }
 
 const getNextTask = async () => {
   try {
-    // 这里应该调用API来获取下一个待审核任务
-    // 暂时使用模拟数据
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
     currentTask.value = {
       id: Math.random().toString(36).substr(2, 9),
       categoryName: '学习成绩',
@@ -120,29 +186,64 @@ const getNextTask = async () => {
       materialUrl: 'https://box.ygxz.xyz/?explorer/share/file&hash=4022sldCx_Y86ueANYd4QeGjK_xGcVVaLhEy5wuwu_8MRROEEK33dF7P0lHTiWtDEpA',
     }
   
-    // 重置审核结果
+    // 实际的API调用可能如下：
+    // const response = await axios.get('/report/getTDList', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID')
+    //   }
+    // })
+    // if (response.data.statusID === 0 && response.data.data.toDoList.length > 0) {
+    //   const nextTask = response.data.data.toDoList[0]
+    //   currentTask.value = {
+    //     id: nextTask.uuid,
+    //     categoryName: nextTask.categoryName,
+    //     studentName: nextTask.name,
+    //     rules: '根据学生提供的材料进行评分。',
+    //     materialType: 'pdf',
+    //     materialUrl: nextTask.materialUrl
+    //   }
+    // } else {
+    //   throw new Error('No more tasks')
+    // }
+
     reviewForm.value = {
       result: '',
       score: 0,
       comment: '',
     }
 
-    // 如果没有下一个任务，返回到审核队列
     if (!currentTask.value.id) {
       ElMessage.info('所有任务已审核完毕')
       exitImmersiveMode()
     }
   } catch (error) {
+    console.error('获取下一个任务失败:', error)
     ElMessage.error('获取下一个任务失败，请重试')
   }
 }
 
-const openPdfPreview = () => {
-  window.open(currentTask.value.materialUrl, '_blank')
+const closeGuide = () => {
+  guideVisible.value = false
+}
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === '1') {
+    submitReview('pass')
+  } else if (event.key === '2') {
+    submitReview('reject')
+  } else if (event.key === 'Enter') {
+    getNextTask()
+  } else if (event.key === 'Escape') {
+    exitImmersiveMode()
+  }
 }
 
 onMounted(async () => {
+  document.addEventListener('keydown', handleKeyDown)
+
   reviewerName.value = localStorage.getItem('userName') || '未知审核员'
+
   const taskId = route.params.taskId as string
   if (taskId) {
     // 根据 taskId 获取任务详情
@@ -160,6 +261,10 @@ onMounted(async () => {
     await getNextTask()
   }
 })
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+})
 </script>
 
 <style scoped>
@@ -169,70 +274,106 @@ onMounted(async () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  padding: 20px; /* 左右边距加大 */
-  background: linear-gradient(135deg, #f0f7ff 0%, #c0e8ff 100%);
+  background-color: #f0f2f5;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.top-bar {
-  background-color: #ffffffdd;
+.review-header {
+  background-color: #fff;
   padding: 10px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,.1);
-  border-bottom: 2px solid #007bff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.exit-button {
-  background-color: #fff;
-  border: 1px solid #007bff;
-  color: #007bff;
-}
-
-.task-info {
-  font-weight: bold;
-  font-size: 1.2em;
-  color: #333;
-}
-
-.reviewer-info {
-  color: #666;
-}
-
-.main-content {
+.review-content {
   flex: 1;
   display: flex;
   overflow: hidden;
-  margin: 20px; /* 卡片四周边距 */
 }
 
-.left-panel, .right-panel {
+.review-left,
+.review-right {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background-color: #ffffffcc;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.1);
 }
 
-.left-panel {
-  margin-right: 20px; /* 边距增大 */
+.review-left {
+  background-color: #fff;
 }
 
-.rules-section, .material-preview {
+.review-card {
   margin-bottom: 20px;
 }
 
-.rules-section h3, .material-preview h3 {
-  color: #007bff;
+.material-preview {
+  height: calc(100% - 200px);
 }
 
-.el-image {
+.material-preview .el-card__body {
+  height: calc(100% - 60px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.el-image,
+iframe {
   max-width: 100%;
-  max-height: 400px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.review-actions {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+}
+
+.review-actions .el-button {
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+.bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.guide-content {
+  margin-bottom: 20px;
+}
+
+.guide-content h4 {
+  margin-bottom: 10px;
+  color: #409EFF;
+}
+
+.guide-content ol {
+  padding-left: 20px;
+}
+
+@media (max-width: 768px) {
+  .review-content {
+    flex-direction: column;
+  }
+
+  .review-left,
+  .review-right {
+    width: 100%;
+  }
+
+  .review-actions {
+    flex-direction: column;
+  }
+
+  .review-actions .el-button {
+    margin-bottom: 10px;
+  }
 }
 </style>
