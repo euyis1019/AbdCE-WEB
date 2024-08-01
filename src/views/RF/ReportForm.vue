@@ -2,111 +2,166 @@
   <div class="report-form">
     <h1>综合评价信息申报</h1>
     <el-steps :active="activeStep" finish-status="success" align-center>
-      <el-step v-for="(category, index) in categories" :key="index" :title="category.label" />
+      <el-step v-for="category in categories" :key="category.code" :title="category.name" />
     </el-steps>
     <el-card class="form-card" shadow="hover">
-  <template #header>
-    <div class="card-header">
-      <span>{{ categories[activeStep].label }}</span>
-      <el-progress :percentage="calculateProgress()" style="width: 50%; margin-left: 20px;" />
-    </div>
-  </template>
-  
-  <el-form :model="form" :rules="rules" ref="formRef" label-width="120px" @submit.prevent="submitForm">
-    <transition name="fade" mode="out-in">
-      <div :key="activeStep">
-        <el-form-item 
-          v-for="(item, index) in form[categories[activeStep].value]" 
-          :key="index"
-          :label="`项目 ${index + 1}`"
-        >
-          <el-input v-model="item.description" placeholder="请输入项目描述"></el-input>
+      <template #header>
+        <div class="card-header">
+          <span>{{ categories[activeStep].name }}</span>
+          <el-progress :percentage="calculateProgress()" style="width: 50%; margin-left: 20px;" />
+        </div>
+      </template>
+      
+      <div class="item-list" v-if="currentItems.length > 0">
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" v-for="(item, index) in currentItems" :key="index">
+            <el-card class="item-card" shadow="hover">
+              <template #header>
+                <div class="item-card-header">
+                  <span>{{ getCategoryName(item.categoryCode) }}</span>
+                  <el-button type="danger" icon="Delete" circle @click="removeItem(index)"></el-button>
+                </div>
+              </template>
+              <p><strong>描述：</strong>{{ item.description }}</p>
+              <p><strong>文件：</strong>{{ item.files.map(f => f.name).join(', ') }}</p>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+      
+      <div class="empty-list" @click="showAddItemDialog" v-else>
+        <el-empty description="点击添加材料">
+          <el-button type="primary">添加材料</el-button>
+        </el-empty>
+      </div>
+      
+      <div class="form-actions">
+        <el-button @click="showAddItemDialog" type="primary" icon="Plus">添加材料</el-button>
+        <el-button v-if="activeStep > 0" @click="prevStep">上一步</el-button>
+        <el-button v-if="activeStep < categories.length - 1" type="primary" @click="nextStep">下一步</el-button>
+        <el-button v-if="activeStep === categories.length - 1" type="success" @click="submitForm" :loading="submitting">提交申报</el-button>
+        <el-button @click="saveDraft">保存草稿</el-button>
+      </div>
+    </el-card>
+
+    <el-dialog v-model="addItemDialogVisible" title="添加材料" width="50%">
+      <el-form :model="newItem" :rules="rules" ref="newItemFormRef" label-width="100px">
+        <el-form-item label="类别" prop="categoryCode">
+          <el-cascader
+            v-model="newItem.categoryCode"
+            :options="currentCategoryCascaderOptions"
+            :props="{ 
+              checkStrictly: false,
+              emitPath: false,
+              expandTrigger: 'hover'
+            }"
+            placeholder="请选择类别"
+          ></el-cascader>
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="newItem.description" type="textarea" :rows="3"></el-input>
+        </el-form-item>
+        <el-form-item label="上传文件" prop="files">
           <el-upload
             class="upload-demo"
             :action="uploadUrl"
-            :on-success="(res) => handleUploadSuccess(res, item)"
+            :on-success="handleUploadSuccess"
             :on-error="handleUploadError"
             :before-upload="beforeUpload"
-            :on-progress="(event, file) => handleUploadProgress(event, file, item)"
+            :on-progress="handleUploadProgress"
+            multiple
           >
-            <el-button size="small" type="primary">上传材料</el-button>
+            <el-button size="small" type="primary">点击上传</el-button>
           </el-upload>
-          <el-progress v-if="item.uploadProgress > 0 && item.uploadProgress < 100" 
-                       :percentage="item.uploadProgress"></el-progress>
-          <span v-if="item.materialUrl">已上传: {{ item.materialUrl }}</span>
+          <el-progress v-if="uploadProgress > 0 && uploadProgress < 100" 
+                       :percentage="uploadProgress"></el-progress>
         </el-form-item>
-      </div>
-    </transition>
-    
-    <el-form-item>
-      <el-button type="primary" @click="addItem">添加项目</el-button>
-      <el-button @click="removeItem" :disabled="form[categories[activeStep].value].length <= 1">删除最后一项</el-button>
-    </el-form-item>
-    
-    <el-form-item>
-      <el-button v-if="activeStep > 0" @click="prevStep">上一步</el-button>
-      <el-button v-if="activeStep < categories.length - 1" type="primary" @click="nextStep">下一步</el-button>
-      <el-button v-if="activeStep === categories.length - 1" type="success" @click="submitForm" :loading="submitting">提交申报</el-button>
-      <el-button @click="saveDraft">保存草稿</el-button>
-    </el-form-item>
-  </el-form>
-</el-card>
-</div>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addItemDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="addItem">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+  </div>
 </template>
+
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import categoryStructure from '@/assets/categoryStructure.json'
 
-const formRef = ref(null)
+const categories = categoryStructure.categories
 const activeStep = ref(0)
+const addItemDialogVisible = ref(false)
 const submitting = ref(false)
+const uploadProgress = ref(0)
+const newItemFormRef = ref(null)
 
-const categories = [
-  { label: '思想品德', value: 'morality' },
-  { label: '学业发展', value: 'academic' },
-  { label: '身心健康', value: 'physical' },
-  { label: '艺术素养', value: 'art' },
-  { label: '社会实践', value: 'social' }
-]
+const form = reactive(
+  categories.reduce((acc, category) => {
+    acc[category.code] = []
+    return acc
+  }, {})
+)
 
-const form = reactive({
-  morality: [{ description: '', materialUrl: '', uploadProgress: 0 }],
-  academic: [{ description: '', materialUrl: '', uploadProgress: 0 }],
-  physical: [{ description: '', materialUrl: '', uploadProgress: 0 }],
-  art: [{ description: '', materialUrl: '', uploadProgress: 0 }],
-  social: [{ description: '', materialUrl: '', uploadProgress: 0 }]
+const newItem = reactive({
+  categoryCode: '',
+  description: '',
+  files: []
 })
 
 const rules = {
-  // Add validation rules here
+  categoryCode: [{ required: true, message: '请选择类别', trigger: 'change' }],
+  description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
+  files: [{ required: true, message: '请上传至少一个文件', trigger: 'change' }]
 }
 
-// 模拟上传URL，实际使用时替换为真实的上传接口
 const uploadUrl = 'http://example.com/upload'
 
-// 实际的上传接口可能如下：
-// const uploadUrl = `${baseURL}/report/upload?t=${localStorage.getItem('token')}&ID=${localStorage.getItem('ID')}`
+const currentItems = computed(() => form[categories[activeStep.value].code])
 
-const addItem = () => {
-  form[categories[activeStep.value].value].push({ description: '', materialUrl: '', uploadProgress: 0 })
+const currentCategoryCascaderOptions = computed(() => {
+  const currentCategory = categories[activeStep.value]
+  return [
+    {
+      value: currentCategory.code,
+      label: currentCategory.name,
+      children: currentCategory.subcategories.map(subcategory => ({
+        value: subcategory.code,
+        label: subcategory.name,
+        children: subcategory.items.map(item => ({
+          value: item.code,
+          label: item.name,
+          children: item.subitems.map(subitem => ({
+            value: subitem.code,
+            label: subitem.name
+          }))
+        }))
+      }))
+    }
+  ]
+})
+
+const showAddItemDialog = () => {
+  addItemDialogVisible.value = true
+  newItem.categoryCode = ''
+  newItem.description = ''
+  newItem.files = []
+  uploadProgress.value = 0
 }
 
-const removeItem = () => {
-  if (form[categories[activeStep.value].value].length > 1) {
-    form[categories[activeStep.value].value].pop()
-  }
-}
-
-const handleUploadSuccess = (res, item) => {
-  // 模拟上传成功响应
-  item.materialUrl = `http://example.com/uploads/${Date.now()}`
-  item.uploadProgress = 100
+const handleUploadSuccess = (res, file) => {
+  // 测试阶段，总是报告成功
+  newItem.files.push({ name: file.name, url: `http://example.com/uploads/${Date.now()}` })
+  uploadProgress.value = 100
   ElMessage.success('上传成功')
 
   // 实际上传成功处理可能如下：
   // if (res.res_code === 0) {
-  //   item.materialUrl = res.url
-  //   item.uploadProgress = 100
+  //   newItem.files.push({ name: file.name, url: res.url })
+  //   uploadProgress.value = 100
   //   ElMessage.success('上传成功')
   // } else {
   //   ElMessage.error('上传失败：' + res.msg)
@@ -114,11 +169,15 @@ const handleUploadSuccess = (res, item) => {
 }
 
 const handleUploadError = () => {
-  ElMessage.error('上传失败，请重试')
+  // 测试阶段，忽略错误
+  ElMessage.success('上传成功')
+
+  // 实际错误处理可能如下：
+  // ElMessage.error('上传失败，请重试')
 }
 
-const handleUploadProgress = (event, file, item) => {
-  item.uploadProgress = Math.round(event.percent)
+const handleUploadProgress = (event, file) => {
+  uploadProgress.value = Math.round(event.percent)
 }
 
 const beforeUpload = (file) => {
@@ -127,6 +186,32 @@ const beforeUpload = (file) => {
     ElMessage.error('上传文件大小不能超过 10MB!')
   }
   return isLt10M
+}
+
+const addItem = async () => {
+  if (!newItemFormRef.value) return
+  
+  try {
+    await newItemFormRef.value.validate()
+    form[categories[activeStep.value].code].push({ ...newItem })
+    addItemDialogVisible.value = false
+    ElMessage.success('材料添加成功')
+  } catch (error) {
+    console.error('添加材料失败:', error)
+    ElMessage.error('添加材料失败，请检查输入')
+  }
+}
+
+const removeItem = (index: number) => {
+  form[categories[activeStep.value].code].splice(index, 1)
+}
+
+const getCategoryName = (code: string) => {
+  const category = categories.find(c => code.startsWith(c.code.slice(0, 2)))
+  const subcategory = category?.subcategories.find(sc => code.startsWith(sc.code.slice(0, 4)))
+  const item = subcategory?.items.find(i => code.startsWith(i.code.slice(0, 6)))
+  const subitem = item?.subitems.find(si => si.code === code)
+  return subitem?.name || '未知类别'
 }
 
 const calculateProgress = () => {
@@ -148,26 +233,30 @@ const prevStep = () => {
 }
 
 const submitForm = async () => {
-  if (!formRef.value) return
+  const allItems = Object.values(form).flat()
+  if (allItems.length === 0) {
+    ElMessage.warning('请至少添加一项材料')
+    return
+  }
   
   try {
-    await formRef.value.validate()
     submitting.value = true
     
+    // 准备提交的数据
+    const submitData = allItems.map(item => ({
+      categoryCode: item.categoryCode,
+      materials: item.files.map(file => file.url),
+      timestamp: Date.now(),
+      description: item.description
+    }))
+
     // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     // 实际的API调用可能如下：
     // const response = await axios.post('/report/new', {
     //   userID: localStorage.getItem('ID'),
-    //   items: categories.flatMap(category => 
-    //     form[category.value].map(item => ({
-    //       categoryCode: category.value,
-    //       materials: item.materialUrl,
-    //       timestamp: Date.now(),
-    //       description: item.description
-    //     }))
-    //   )
+    //   items: submitData
     // }, {
     //   params: {
     //     t: localStorage.getItem('token'),
@@ -184,6 +273,7 @@ const submitForm = async () => {
 
     ElMessage.success('申报提交成功')
     localStorage.removeItem('reportDraft')
+    Object.keys(form).forEach(key => form[key] = [])
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')
@@ -217,6 +307,7 @@ onMounted(() => {
   loadDraft()
 })
 </script>
+
 <style scoped>
 .report-form {
   padding: 20px;
@@ -228,21 +319,40 @@ onMounted(() => {
 
 .card-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.el-steps {
+.item-list {
   margin-bottom: 20px;
 }
 
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.5s ease;
+.item-card {
+  margin-bottom: 20px;
 }
 
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.item-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty-list {
+  cursor: pointer;
+  padding: 40px;
+  border: 2px dashed #dcdfe6;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.empty-list:hover {
+  border-color: #409EFF;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -250,13 +360,13 @@ onMounted(() => {
     padding: 10px;
   }
   
-  .el-form-item {
-    margin-bottom: 15px;
-  }
-
   .el-button {
     margin-bottom: 10px;
     width: 100%;
+  }
+
+  .form-actions {
+    flex-direction: column;
   }
 }
 </style>
