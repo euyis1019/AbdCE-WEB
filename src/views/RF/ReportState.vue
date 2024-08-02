@@ -184,38 +184,7 @@ const confirmResult = async () => {
   }
 }
 
-const submitObjection = async () => {
-  try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('异议已提交，等待处理')
-    objectionDialogVisible.value = false
-    objectionForm.value = {
-      category: '',
-      content: ''
-    }
-    await fetchReportStatus()
 
-    // 实际的 API 调用可能如下：
-    // const response = await axios.post('/api/submit-objection', objectionForm.value, {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   ElMessage.success('异议已提交，等待处理')
-    //   objectionDialogVisible.value = false
-    //   objectionForm.value = { category: '', content: '' }
-    //   await fetchReportStatus()
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
-  } catch (error) {
-    console.error('提交异议失败:', error)
-    ElMessage.error('提交异议失败，请重试')
-  }
-}
 </script>
 
 <style scoped>
