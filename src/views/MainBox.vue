@@ -48,12 +48,28 @@
       <el-header class="main-header">
         <div class="header-left">
           <el-icon class="collapse-btn" @click="toggleCollapse" v-if="!isMobile">
-            <component :is="isCollapse ? 'Expand' : 'Fold'" />
+            <el-icon :component="isCollapse ? Expand : Fold" />
           </el-icon>
           <el-button v-if="isMobile" icon="Menu" @click="toggleMobileMenu"></el-button>
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
+          <!-- 开发阶段使用的角色切换按钮 -->
+          <!-- 在生产环境中请删除以下注释块 -->
+
+          <el-dropdown @command="handleRoleChange" class="role-dropdown">
+            <el-button type="primary" icon="SwitchButton">
+              切换权限 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="admin">超级管理员</el-dropdown-item>
+                <el-dropdown-item command="reviewer">审核员</el-dropdown-item>
+                <el-dropdown-item command="user">普通用户</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
           <el-badge :value="notificationCount" class="notification-badge">
             <el-button icon="Bell" @click="showNotifications">通知</el-button>
           </el-badge>
@@ -74,7 +90,9 @@
       <el-main>
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
-            <component :is="Component" />
+            <keep-alive>
+              <component :is="Component" />
+            </keep-alive>
           </transition>
         </router-view>
       </el-main>
@@ -145,6 +163,7 @@ import {
   Menu,
   User,
   Bell,
+  SwitchButton,
   DataLine,
   Files
 } from '@element-plus/icons-vue'
@@ -153,6 +172,7 @@ const router = useRouter()
 const route = useRoute()
 
 const isCollapse = ref(false)
+const userRole = ref('user')
 const isAdmin = ref(false)
 const isReviewer = ref(false)
 const userName = ref('')
@@ -245,7 +265,7 @@ const showNotifications = () => {
 
 const fetchNotifications = async () => {
   try {
-    // 模拟 API 调用
+    // 通知功能是一个示例，后端暂无相关实现
     await new Promise(resolve => setTimeout(resolve, 1000))
     notifications.value = [
       { title: '系统公告', content: '系统将于本周日进行维护升级', date: '2023-05-10' },
@@ -272,6 +292,23 @@ const fetchNotifications = async () => {
   }
 }
 
+// 开发阶段使用的角色切换函数
+// 在生产环境中请删除以下注释块
+
+const handleRoleChange = (role: string) => {
+  userRole.value = role
+  localStorage.setItem('userRole', role)
+  isAdmin.value = role === 'admin'
+  isReviewer.value = role === 'reviewer'
+  ElMessage.success(`已切换到${role === 'admin' ? '超级管理员' : role === 'reviewer' ? '审核员' : '普通用户'}权限`)
+  router.push('/')
+}
+
+watch(userRole, (newRole) => {
+  isAdmin.value = newRole === 'admin'
+  isReviewer.value = newRole === 'reviewer'
+})
+
 watch(() => route.path, () => {
   if (isMobile.value) {
     mobileMenuVisible.value = false
@@ -280,8 +317,9 @@ watch(() => route.path, () => {
 
 onMounted(() => {
   const storedRole = localStorage.getItem('userRole')
-  isAdmin.value = storedRole === 'admin'
-  isReviewer.value = storedRole === 'reviewer'
+  userRole.value = storedRole || 'user'
+  isAdmin.value = userRole.value === 'admin'
+  isReviewer.value = userRole.value === 'reviewer'
   userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
@@ -370,7 +408,7 @@ onMounted(() => {
   .layout-container {
     flex-direction: column;
   }
-  
+
   .menu-aside {
     display: none;
   }
