@@ -8,82 +8,101 @@ import PermissionManagement from '../views/PermissionManagement.vue'
 import Profile from '../views/Profile.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
+import DataDashboard from '../views/DataDashboard.vue'
+import ReviewManagement from '../views/ReviewManagement.vue'
+
 const routes = [
-{
-path: '/login',
-name: 'Login',
-component: () => import('../LoginRegister/Login.vue')
-},
-{
-path: '/register',
-name: 'Register',
-component: () => import('../LoginRegister/Register.vue')
-},
-{
-path: '/',
-component: MainBox,
-children: [
-{
-path: '',
-name: 'Home',
-component: HomeView
-},
-{
-path: 'report',
-name: 'ReportForm',
-component: ReportForm
-},
-{
-path: 'state',
-name: 'ReportState',
-component: ReportState
-},
-{
-path: 'admin/todo',
-name: 'AdminTodo',
-component: AdminTodo,
-meta: { requiresReviewer: true }
-},
-{
-path: 'permission-management',
-name: 'PermissionManagement',
-component: PermissionManagement,
-meta: { requiresAdmin: true }
-},
-{
-path: 'profile',
-name: 'Profile',
-component: Profile
-},
-{
-path: '/immersive-review',
-name: 'ImmersiveReview',
-component: ImmersiveReview,
-meta: { requiresReviewer: true }
-}
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../LoginRegister/Login.vue')
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../LoginRegister/Register.vue')
+  },
+  {
+    path: '/',
+    component: MainBox,
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: HomeView
+      },
+      {
+        path: 'report',
+        name: 'ReportForm',
+        component: ReportForm
+      },
+      {
+        path: 'state',
+        name: 'ReportState',
+        component: ReportState
+      },
+      {
+        path: 'admin/todo',
+        name: 'AdminTodo',
+        component: AdminTodo,
+        meta: { requiresReviewer: true }
+      },
+      {
+        path: 'permission-management',
+        name: 'PermissionManagement',
+        component: PermissionManagement,
+        meta: { requiresAdmin: true }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: Profile
+      },
+      {
+        path: 'immersive-review',
+        name: 'ImmersiveReview',
+        component: ImmersiveReview,
+        meta: { requiresReviewer: true }
+      },
+      {
+        path: 'data-dashboard',
+        name: 'DataDashboard',
+        component: DataDashboard,
+        meta: { requiresAdmin: true }
+      },
+      {
+        path: 'review-management',
+        name: 'ReviewManagement',
+        component: ReviewManagement,
+        meta: { requiresAdmin: true }
+      }
+    ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound
+  }
 ]
-},
-{
-path: '/:pathMatch(.)',
-name: 'NotFound',
-component: NotFound
-}
-]
+
 const router = createRouter({
-history: createWebHistory(),
-routes
+  history: createWebHistory(),
+  routes
 })
+
 router.beforeEach((to, from, next) => {
-const isAuthenticated = localStorage.getItem('token')
-const userRole = localStorage.getItem('userRole')
-if (to.name !== 'Login' && to.name !== 'Register' && !isAuthenticated) {
-next({ name: 'Login' })
-} else if (to.meta.requiresAdmin && userRole !== 'admin') {
-next({ name: 'Home' })
-} else if (to.meta.requiresReviewer && userRole !== 'admin' && userRole !== 'reviewer') {
-next({ name: 'Home' })
-} else {
-next()
-}
+  const isAuthenticated = localStorage.getItem('token')
+  const userRole = localStorage.getItem('userRole')
+
+  if (to.name !== 'Login' && to.name !== 'Register' && !isAuthenticated) {
+    next({ name: 'Login' })
+  } else if (to.meta.requiresAdmin && userRole !== 'admin') {
+    next({ name: 'Home' })
+  } else if (to.meta.requiresReviewer && userRole !== 'admin' && userRole !== 'reviewer') {
+    next({ name: 'Home' })
+  } else {
+    next()
+  }
 })
+
 export default router
