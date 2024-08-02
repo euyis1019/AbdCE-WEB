@@ -1,7 +1,7 @@
 <template>
   <div class="immersive-review">
     <header class="review-header">
-      <el-button @click="exitImmersiveMode" type="text" icon="ArrowLeft">退出审核</el-button>
+      <el-button @click="exitReview" type="text" icon="ArrowLeft">退出审核</el-button>
       <h2>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</h2>
       <span>审核员：{{ reviewerName }}</span>
     </header>
@@ -25,6 +25,18 @@
       </section>
       
       <section class="review-right">
+        <el-card v-if="isConflictResolution || isReReview" class="previous-reviews">
+          <template #header>
+            <h3>先前审核结果</h3>
+          </template>
+          <div v-for="(review, index) in previousReviews" :key="index" class="previous-review">
+            <p><strong>审核员{{ index + 1 }}：</strong>{{ review.reviewerName }}</p>
+            <p><strong>结果：</strong>{{ review.result === 'pass' ? '通过' : '拒绝' }}</p>
+            <p><strong>评分：</strong>{{ review.score }}</p>
+            <p><strong>意见：</strong>{{ review.comment }}</p>
+          </div>
+        </el-card>
+
         <div class="review-actions">
           <el-button 
             type="success" 
@@ -100,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
@@ -128,7 +140,12 @@ const reviewForm = ref({
   comment: '',
 })
 
-const exitImmersiveMode = () => {
+const previousReviews = ref([])
+
+const isConflictResolution = computed(() => route.query.mode === 'conflict')
+const isReReview = computed(() => route.query.mode === 'rereview')
+
+const exitReview = () => {
   if (route.query.returnTo === 'queue') {
     router.push('/admin/todo')
   } else {
@@ -151,7 +168,8 @@ const confirmSubmit = async () => {
     //   targetID: currentTask.value.id,
     //   result: reviewForm.value.result,
     //   score: reviewForm.value.score,
-    //   comment: reviewForm.value.comment
+    //   comment: reviewForm.value.comment,
+    //   mode: isConflictResolution.value ? 'conflict' : (isReReview.value ? 'rereview' : 'normal')
     // }, {
     //   params: {
     //     t: localStorage.getItem('token'),
@@ -185,12 +203,22 @@ const getNextTask = async () => {
       materialType: 'pdf',
       materialUrl: 'https://box.ygxz.xyz/?explorer/share/file&hash=4022sldCx_Y86ueANYd4QeGjK_xGcVVaLhEy5wuwu_8MRROEEK33dF7P0lHTiWtDEpA',
     }
+
+    if (isConflictResolution.value || isReReview.value) {
+      previousReviews.value = [
+        { reviewerName: '李四', result: 'pass', score: 85, comment: '表现良好，建议通过。' },
+        { reviewerName: '王五', result: 'reject', score: 65, comment: '资料不完整，建议补充。' }
+      ]
+    } else {
+      previousReviews.value = []
+    }
   
     // 实际的API调用可能如下：
     // const response = await axios.get('/report/getTDList', {
     //   params: {
     //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
+    //     ID: localStorage.getItem('ID'),
+    //     mode: isConflictResolution.value ? 'conflict' : (isReReview.value ? 'rereview' : 'normal')
     //   }
     // })
     // if (response.data.statusID === 0 && response.data.data.toDoList.length > 0) {
@@ -200,9 +228,10 @@ const getNextTask = async () => {
     //     categoryName: nextTask.categoryName,
     //     studentName: nextTask.name,
     //     rules: '根据学生提供的材料进行评分。',
-    //     materialType: 'pdf',
+    //     materialType: nextTask.materialType,
     //     materialUrl: nextTask.materialUrl
     //   }
+    //   previousReviews.value = nextTask.previousReviews || []
     // } else {
     //   throw new Error('No more tasks')
     // }
@@ -215,7 +244,7 @@ const getNextTask = async () => {
 
     if (!currentTask.value.id) {
       ElMessage.info('所有任务已审核完毕')
-      exitImmersiveMode()
+      exitReview()
     }
   } catch (error) {
     console.error('获取下一个任务失败:', error)
@@ -235,7 +264,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   } else if (event.key === 'Enter') {
     getNextTask()
   } else if (event.key === 'Escape') {
-    exitImmersiveMode()
+    exitReview()
   }
 }
 
@@ -257,6 +286,12 @@ onMounted(async () => {
       materialType: 'image',
       materialUrl: 'https://example.com/sample-transcript.jpg',
     }
+    if (isConflictResolution.value || isReReview.value) {
+      previousReviews.value = [
+        { reviewerName: '李四', result: 'pass', score: 85, comment: '表现良好，建议通过。' },
+        { reviewerName: '王五', result: 'reject', score: 65, comment: '资料不完整，建议补充。' }
+      ]
+    }
   } else {
     await getNextTask()
   }
@@ -268,6 +303,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 保留原有样式 */
 .immersive-review {
   position: fixed;
   top: 0;
@@ -356,6 +392,23 @@ iframe {
 
 .guide-content ol {
   padding-left: 20px;
+}
+
+/* 新增样式 */
+.previous-reviews {
+  margin-bottom: 20px;
+}
+
+.previous-review {
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.previous-review:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 @media (max-width: 768px) {
