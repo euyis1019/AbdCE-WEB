@@ -1,91 +1,58 @@
 <template>
   <div class="report-state">
     <h1>申报进度查询</h1>
-    <el-row :gutter="20" justify="center">
-      <el-col :xs="24" :sm="24" :md="12" align="middle">
-        <el-card class="progress-card" shadow="hover" v-loading="loading">
-          <template #header>
-            <div class="card-header">
-              <span>当前进度</span>
-              <el-button class="refresh-btn" type="primary" icon="Refresh" @click="refreshStatus">刷新</el-button>
+    <el-card v-loading="loading" shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <span>申报进度</span>
+          <el-button type="primary" @click="refreshStatus" icon="Refresh">刷新</el-button>
+        </div>
+      </template>
+      <div v-if="reportItems.length > 0">
+        <div v-for="(category, categoryIndex) in categories" :key="category.value" class="category-progress">
+          <h3>{{ category.label }}</h3>
+          <div v-for="(item, itemIndex) in getCategoryItems(category.value)" :key="`${category.value}-${itemIndex}`" class="report-item">
+            <div class="item-header">
+              <span class="item-title">{{ item.title }}</span>
+              <el-tag :type="getStatusType(item.status)">{{ getStatusLabel(item.status) }}</el-tag>
             </div>
-          </template>
-          <div class="progress-container large-container">
-            <el-progress type="circle" :percentage="Math.floor(currentProgress)" :status="progressStatus">
-              <template #default="{ percentage }">
-                <span class="progress-value">{{ Math.floor(percentage) }}%</span>
-                <span class="progress-label">{{ currentStatus }}</span>
-              </template>
-            </el-progress>
+            <el-progress 
+              :percentage="getProgressPercentage(item.status)" 
+              :status="getProgressStatus(item.status)"
+              :stroke-width="10"
+              class="item-progress"
+            ></el-progress>
+            <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.lastUpdate) }}</p>
+            <el-divider v-if="itemIndex < getCategoryItems(category.value).length - 1"></el-divider>
           </div>
-          <div class="progress-steps">
-            <el-steps :active="currentStep" finish-status="success" align-center>
-              <el-step title="提交申报" description="已提交待审核"></el-step>
-              <el-step title="班委初审" description="班委审核中"></el-step>
-              <el-step title="交叉复审" description="其他班级班委审核"></el-step>
-              <el-step title="最终确认" description="确认最终结果"></el-step>
-            </el-steps>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="24" :md="12">
-        <el-card class="result-card" v-if="currentStep === 3" shadow="hover" v-loading="loading">
-          <template #header>
-            <div class="card-header">
-              <span>审核结果</span>
-            </div>
-          </template>
-          <el-descriptions title="综合评价结果" :column="1" border>
-            <el-descriptions-item v-for="(value, key) in result" :key="key" :label="getCategoryLabel(key)">
-              {{ value }}
-            </el-descriptions-item>
-            <el-descriptions-item label="总分">{{ calculateTotalScore() }}</el-descriptions-item>
-          </el-descriptions>
-          <div class="action-buttons">
-            <el-button type="primary" @click="confirmResult">确认结果</el-button>
-            <el-button type="warning" @click="raiseObjection">提出异议</el-button>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </div>
+      <el-empty v-else description="暂无申报记录"></el-empty>
+    </el-card>
 
-    <el-dialog v-model="objectionDialogVisible" title="提出异议" width="50%">
-      <el-form :model="objectionForm" label-width="120px">
-        <el-form-item label="异议类别">
-          <el-select v-model="objectionForm.category" placeholder="请选择异议类别">
-            <el-option v-for="category in categories" :key="category.value" :label="category.label" :value="category.value"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="异议内容">
-          <el-input v-model="objectionForm.content" type="textarea" :rows="4"></el-input>
-        </el-form-item>
-      </el-form>
+    <el-dialog v-model="confirmDialogVisible" title="确认结果" width="30%">
+      <p>您确定要确认当前的评价结果吗？</p>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="objectionDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitObjection">提交异议</el-button>
+          <el-button @click="confirmDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmResult">确认</el-button>
         </span>
       </template>
     </el-dialog>
+
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 
-const currentStep = ref(0)
 const loading = ref(false)
+const confirmDialogVisible = ref(false)
 const objectionDialogVisible = ref(false)
-
-const result = ref({
-  morality: 0,
-  academic: 0,
-  physical: 0,
-  art: 0,
-  social: 0
-})
+const reportItems = ref([])
 
 const objectionForm = ref({
   category: '',
@@ -100,21 +67,6 @@ const categories = [
   { label: '社会实践', value: 'social' }
 ]
 
-const currentProgress = computed(() => {
-  return (currentStep.value / 3) * 100
-})
-
-const progressStatus = computed(() => {
-  if (currentStep.value === 3) return 'success'
-  if (currentStep.value > 0) return 'exception'
-  return 'warning'
-})
-
-const currentStatus = computed(() => {
-  const statusMap = ['待审核', '班委初审中', '交叉复审中', '待确认']
-  return statusMap[currentStep.value]
-})
-
 onMounted(() => {
   fetchReportStatus()
 })
@@ -122,26 +74,28 @@ onMounted(() => {
 const fetchReportStatus = async () => {
   loading.value = true
   try {
-    // 模拟API调用
+    // 模拟 API 调用
     await new Promise(resolve => setTimeout(resolve, 1000))
-    currentStep.value = Math.floor(Math.random() * 4)
-    if (currentStep.value === 3) {
-      fetchReportResult()
-    }
+    reportItems.value = [
+      { category: 'morality', title: '思想政治表现', status: 'pending', lastUpdate: Date.now() },
+      { category: 'morality', title: '道德修养', status: 'reviewing', lastUpdate: Date.now() - 86400000 },
+      { category: 'academic', title: '学习成绩', status: 'cross_review', lastUpdate: Date.now() - 172800000 },
+      { category: 'academic', title: '学习能力', status: 'grade_review', lastUpdate: Date.now() - 259200000 },
+      { category: 'physical', title: '体育锻炼', status: 'confirmed', lastUpdate: Date.now() - 345600000 },
+      { category: 'art', title: '艺术活动参与', status: 'pending', lastUpdate: Date.now() - 432000000 },
+      { category: 'social', title: '志愿服务', status: 'reviewing', lastUpdate: Date.now() - 518400000 },
+      { category: 'social', title: '社会实践活动', status: 'cross_review', lastUpdate: Date.now() - 604800000 },
+    ]
 
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/report/getStepID', {
+    // 实际的 API 调用可能如下：
+    // const response = await axios.get('/api/report-status', {
     //   params: {
     //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     targetID: 'latest' // 或者是特定的报告ID
+    //     ID: localStorage.getItem('ID')
     //   }
     // })
     // if (response.data.statusID === 0) {
-    //   currentStep.value = parseInt(response.data.data.stepID)
-    //   if (currentStep.value === 3) {
-    //     fetchReportResult()
-    //   }
+    //   reportItems.value = response.data.items
     // } else {
     //   throw new Error(response.data.msg)
     // }
@@ -153,67 +107,74 @@ const fetchReportStatus = async () => {
   }
 }
 
-const fetchReportResult = async () => {
-  loading.value = true
-  try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    result.value = {
-      morality: Math.floor(Math.random() * 100),
-      academic: Math.floor(Math.random() * 100),
-      physical: Math.floor(Math.random() * 100),
-      art: Math.floor(Math.random() * 100),
-      social: Math.floor(Math.random() * 100)
-    }
-
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/report/seekCE', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     targetID: 'latest' // 或者是特定的报告ID
-    //   }
-    // })
-    // if (response.data) {
-    //   result.value = {
-    //     morality: response.data.morality || 0,
-    //     academic: response.data.academic || 0,
-    //     physical: response.data.physical || 0,
-    //     art: response.data.art || 0,
-    //     social: response.data.social || 0
-    //   }
-    // } else {
-    //   throw new Error('Failed to fetch report result')
-    // }
-  } catch (error) {
-    console.error('获取评价结果失败:', error)
-    ElMessage.error('获取评价结果失败，请稍后重试')
-  } finally {
-    loading.value = false
-  }
-}
-
 const refreshStatus = () => {
   fetchReportStatus()
 }
 
+const formatDate = (timestamp: number) => {
+  return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const getStatusLabel = (status: string) => {
+  const statusMap = {
+    'pending': '待审核',
+    'reviewing': '班委初审中',
+    'cross_review': '交叉复审中',
+    'grade_review': '级委审核中',
+    'confirmed': '已确认'
+  }
+  return statusMap[status] || '未知状态'
+}
+
+const getStatusType = (status: string) => {
+  const statusTypeMap = {
+    'pending': 'info',
+    'reviewing': 'warning',
+    'cross_review': 'warning',
+    'grade_review': 'warning',
+    'confirmed': 'success'
+  }
+  return statusTypeMap[status] || 'info'
+}
+
+const getProgressPercentage = (status: string) => {
+  const percentageMap = {
+    'pending': 20,
+    'reviewing': 40,
+    'cross_review': 60,
+    'grade_review': 80,
+    'confirmed': 100
+  }
+  return percentageMap[status] || 0
+}
+
+const getProgressStatus = (status: string) => {
+  return status === 'confirmed' ? 'success' : ''
+}
+
+const getCategoryItems = (category: string) => {
+  return reportItems.value.filter(item => item.category === category)
+}
+
 const confirmResult = async () => {
   try {
-    // 模拟API调用
+    // 模拟 API 调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     ElMessage.success('已确认评价结果')
+    confirmDialogVisible.value = false
+    await fetchReportStatus()
 
-    // 实际的API调用可能如下：
-    // const response = await axios.post('/report/audit', null, {
+    // 实际的 API 调用可能如下：
+    // const response = await axios.post('/api/confirm-result', null, {
     //   params: {
     //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     stepID: '6', // 或 '8'，取决于具体的业务逻辑
-    //     targetID: 'latest' // 或者是特定的报告ID
+    //     ID: localStorage.getItem('ID')
     //   }
     // })
     // if (response.data.statusID === 0) {
     //   ElMessage.success('已确认评价结果')
+    //   confirmDialogVisible.value = false
+    //   await fetchReportStatus()
     // } else {
     //   throw new Error(response.data.msg)
     // }
@@ -223,13 +184,9 @@ const confirmResult = async () => {
   }
 }
 
-const raiseObjection = () => {
-  objectionDialogVisible.value = true
-}
-
 const submitObjection = async () => {
   try {
-    // 模拟API调用
+    // 模拟 API 调用
     await new Promise(resolve => setTimeout(resolve, 1000))
     ElMessage.success('异议已提交，等待处理')
     objectionDialogVisible.value = false
@@ -237,42 +194,27 @@ const submitObjection = async () => {
       category: '',
       content: ''
     }
+    await fetchReportStatus()
 
-    // 实际的API调用可能如下：
-    // const response = await axios.post('/report/audit', {
-    //   category: objectionForm.value.category,
-    //   content: objectionForm.value.content
-    // }, {
+    // 实际的 API 调用可能如下：
+    // const response = await axios.post('/api/submit-objection', objectionForm.value, {
     //   params: {
     //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     stepID: '5',
-    //     targetID: 'latest' // 或者是特定的报告ID
+    //     ID: localStorage.getItem('ID')
     //   }
     // })
     // if (response.data.statusID === 0) {
     //   ElMessage.success('异议已提交，等待处理')
     //   objectionDialogVisible.value = false
-    //   objectionForm.value = {
-    //     category: '',
-    //     content: ''
-    //   }
+    //   objectionForm.value = { category: '', content: '' }
+    //   await fetchReportStatus()
     // } else {
     //   throw new Error(response.data.msg)
     // }
   } catch (error) {
     console.error('提交异议失败:', error)
-    ElMessage.error('提交异议失败，请稍后重试')
+    ElMessage.error('提交异议失败，请重试')
   }
-}
-
-const getCategoryLabel = (key: string) => {
-  const category = categories.find(c => c.value === key)
-  return category ? category.label : key
-}
-
-const calculateTotalScore = () => {
-  return Object.values(result.value).reduce((a, b) => a + b, 0)
 }
 </script>
 
@@ -281,49 +223,38 @@ const calculateTotalScore = () => {
   padding: 20px;
 }
 
-.progress-card,
-.result-card {
-  margin-bottom: 20px;
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.progress-container {
+.category-progress {
+  margin-bottom: 30px;
+}
+
+.report-item {
+  margin-bottom: 20px;
+}
+
+.item-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  height: 300px;
-  margin: 20px 0;
+  margin-bottom: 10px;
 }
 
-.large-container {
-  transform: scale(1);
-}
-
-.progress-value {
-  font-size: 36px;
+.item-title {
   font-weight: bold;
 }
 
-.progress-label {
-  display: block;
-  font-size: 18px;
-  margin-top: 5px;
+.item-progress {
+  margin: 10px 0;
 }
 
-.progress-steps {
-  margin-top: 30px;
-}
-
-.action-buttons {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 20px;
+.item-update {
+  font-size: 0.9em;
+  color: #606266;
 }
 
 @media (max-width: 768px) {
@@ -331,25 +262,13 @@ const calculateTotalScore = () => {
     padding: 10px;
   }
   
-  .el-button {
-    margin-bottom: 10px;
-    width: 100%;
-  }
-
-  .el-card {
-    margin-bottom: 15px;
-  }
-
-  .el-steps {
-    padding: 0;
-  }
-
-  .el-step__title {
-    font-size: 12px;
-  }
-
-  .action-buttons {
+  .item-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .item-title {
+    margin-bottom: 5px;
   }
 }
 </style>
