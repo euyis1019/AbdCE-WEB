@@ -1,7 +1,6 @@
 <template>
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '200px'" class="menu-aside" v-if="!isMobile">
-      <!-- 桌面端侧边栏 -->
       <div class="logo">
         <img src="../assets/logo.png" alt="Logo" />
         <span v-if="!isCollapse">综合评价系统</span>
@@ -35,6 +34,14 @@
           <el-icon><Setting /></el-icon>
           <template #title>权限管理</template>
         </el-menu-item>
+        <el-menu-item index="6" v-if="isAdmin">
+          <el-icon><DataLine /></el-icon>
+          <template #title>数据看板</template>
+        </el-menu-item>
+        <el-menu-item index="7" v-if="isAdmin">
+          <el-icon><Files /></el-icon>
+          <template #title>复审管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -47,18 +54,9 @@
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
-          <el-dropdown @command="handleRoleChange" class="role-dropdown">
-            <el-button type="primary" icon="SwitchButton">
-              切换权限 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="admin">超级管理员</el-dropdown-item>
-                <el-dropdown-item command="reviewer">审核员</el-dropdown-item>
-                <el-dropdown-item command="user">普通用户</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-badge :value="notificationCount" class="notification-badge">
+            <el-button icon="Bell" @click="showNotifications">通知</el-button>
+          </el-badge>
           <el-dropdown @command="handleCommand" class="user-dropdown">
             <el-button type="primary" icon="User">
               {{ userName }}
@@ -83,7 +81,6 @@
     </el-container>
   </el-container>
 
-  <!-- 移动端菜单 -->
   <el-drawer v-model="mobileMenuVisible" direction="ltr" size="80%">
     <el-menu
       :default-active="activeMenu"
@@ -112,8 +109,24 @@
         <el-icon><Setting /></el-icon>
         <span>权限管理</span>
       </el-menu-item>
+      <el-menu-item index="6" v-if="isAdmin">
+        <el-icon><DataLine /></el-icon>
+        <span>数据看板</span>
+      </el-menu-item>
+      <el-menu-item index="7" v-if="isAdmin">
+        <el-icon><Files /></el-icon>
+        <span>复审管理</span>
+      </el-menu-item>
     </el-menu>
   </el-drawer>
+
+  <el-dialog v-model="notificationDialogVisible" title="通知" width="50%">
+    <el-table :data="notifications" style="width: 100%">
+      <el-table-column prop="title" label="标题" width="180"></el-table-column>
+      <el-table-column prop="content" label="内容"></el-table-column>
+      <el-table-column prop="date" label="日期" width="180"></el-table-column>
+    </el-table>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -131,7 +144,9 @@ import {
   Fold, 
   Menu,
   User,
-  SwitchButton
+  Bell,
+  DataLine,
+  Files
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -141,8 +156,10 @@ const isCollapse = ref(false)
 const isAdmin = ref(false)
 const isReviewer = ref(false)
 const userName = ref('')
-const userRole = ref('')
 const mobileMenuVisible = ref(false)
+const notificationDialogVisible = ref(false)
+const notificationCount = ref(0)
+const notifications = ref([])
 
 const isMobile = ref(false)
 const checkMobile = () => {
@@ -152,6 +169,7 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  fetchNotifications()
 })
 
 const activeMenu = computed(() => route.path)
@@ -163,7 +181,9 @@ const currentPageTitle = computed(() => {
     '/state': '进度查询',
     '/admin/todo': '待办事项',
     '/permission-management': '权限管理',
-    '/profile': '个人信息'
+    '/profile': '个人信息',
+    '/data-dashboard': '数据看板',
+    '/review-management': '复审管理'
   }
   return routeTitles[route.path] || '综合评价信息申报系统'
 })
@@ -194,40 +214,74 @@ const handleSelect = (key: string) => {
     case '5':
       router.push('/permission-management')
       break
+    case '6':
+      router.push('/data-dashboard')
+      break
+    case '7':
+      router.push('/review-management')
+      break
   }
 }
 
 const handleCommand = (command: string) => {
   if (command === 'logout') {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userName')
-    router.push('/login')
-    ElMessage.success('已成功退出登录')
+    logout()
   } else if (command === 'profile') {
     router.push('/profile')
   }
 }
 
-const handleRoleChange = (role: string) => {
-  userRole.value = role
-  localStorage.setItem('userRole', role)
-  isAdmin.value = role === 'admin'
-  isReviewer.value = role === 'reviewer'
-  ElMessage.success(`已切换到${role === 'admin' ? '超级管理员' : role === 'reviewer' ? '审核员' : '普通用户'}权限`)
-  router.push('/')
+const logout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('userRole')
+  localStorage.removeItem('userName')
+  router.push('/login')
+  ElMessage.success('已成功退出登录')
 }
 
-watch(userRole, (newRole) => {
-  isAdmin.value = newRole === 'admin'
-  isReviewer.value = newRole === 'reviewer'
+const showNotifications = () => {
+  notificationDialogVisible.value = true
+}
+
+const fetchNotifications = async () => {
+  try {
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    notifications.value = [
+      { title: '系统公告', content: '系统将于本周日进行维护升级', date: '2023-05-10' },
+      { title: '审核提醒', content: '您有新的待审核项目', date: '2023-05-09' }
+    ]
+    notificationCount.value = notifications.value.length
+
+    // 实际的 API 调用可能如下：
+    // const response = await axios.get('/api/notifications', {
+    //   params: {
+    //     t: localStorage.getItem('token'),
+    //     ID: localStorage.getItem('ID')
+    //   }
+    // })
+    // if (response.data.statusID === 0) {
+    //   notifications.value = response.data.notifications
+    //   notificationCount.value = notifications.value.length
+    // } else {
+    //   throw new Error(response.data.msg)
+    // }
+  } catch (error) {
+    console.error('获取通知失败:', error)
+    ElMessage.error('获取通知失败，请稍后重试')
+  }
+}
+
+watch(() => route.path, () => {
+  if (isMobile.value) {
+    mobileMenuVisible.value = false
+  }
 })
 
 onMounted(() => {
   const storedRole = localStorage.getItem('userRole')
-  userRole.value = storedRole || 'user'
-  isAdmin.value = userRole.value === 'admin'
-  isReviewer.value = userRole.value === 'reviewer'
+  isAdmin.value = storedRole === 'admin'
+  isReviewer.value = storedRole === 'reviewer'
   userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
@@ -293,7 +347,7 @@ onMounted(() => {
   align-items: center;
 }
 
-.role-dropdown {
+.notification-badge {
   margin-right: 15px;
 }
 
@@ -340,7 +394,7 @@ onMounted(() => {
     justify-content: flex-end;
   }
   
-  .role-dropdown,
+  .notification-badge,
   .user-dropdown {
     margin-left: 10px;
   }
