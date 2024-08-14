@@ -138,69 +138,61 @@ import {
   DataLine,
   Files
 } from '@element-plus/icons-vue'
-import axios from 'axios'
+import authService from '../services/authService'; // 引入 authService
 
-const router = useRouter()
-const route = useRoute()
+// 定义路由实例
+const router = useRouter();
+// 定义路由信息
+const route = useRoute();
 
-const isCollapse = ref(false)
-const isAdmin = ref(false)
-const isReviewer = ref(false)
-const userName = ref('')
-const mobileMenuVisible = ref(false)
+// 定义侧边栏折叠状态
+const isCollapse = ref(false);
+// 定义管理员权限
+const isAdmin = ref(false);
+// 定义审核员权限
+const isReviewer = ref(false);
+// 定义用户名
+const userName = ref('');
+// 定义移动端菜单可见性
+const mobileMenuVisible = ref(false);
 
-const isMobile = ref(false)
+// 定义是否为移动设备
+const isMobile = ref(false);
+// 检查是否为移动设备的方法
 const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
+  isMobile.value = window.innerWidth <= 768;
+};
 
+// 组件挂载时执行
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  checkAuth()
-})
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  checkAuth(); // 检查用户权限
+});
 
+// 检查用户权限的方法
 const checkAuth = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    router.push('/login')
-    return
+  // 使用 authService 获取当前用户信息
+  const user = authService.getCurrentUser(); 
+  // 如果用户未登录
+  if (!user) { 
+    // 跳转到登录页面
+    router.push('/login'); 
+    return;
   }
 
-  // 开始：测试登录逻辑处理
-  if (token === 'test-token') {
-    console.log('使用测试账号，跳过后端验证')
-    userName.value = localStorage.getItem('userName') || 'TestUser'
-    isAdmin.value = localStorage.getItem('Permission') === '3'
-    isReviewer.value = ['1', '2', '3'].includes(localStorage.getItem('Permission') || '')
-    return
-  }
-  // 结束：测试登录逻辑处理
+  // 设置用户名
+  userName.value = user.Name || 'User'; 
+  // 设置管理员权限
+  isAdmin.value = user.Permission === '3'; 
+  // 设置审核员权限
+  isReviewer.value = ['1', '2', '3'].includes(user.Permission || ''); 
+};
 
-  try {
-    // 验证 token 有效性
-    const response = await axios.get('/user/info', {
-      params: {
-        t: token,
-        ID: localStorage.getItem('ID')
-      }
-    })
-    if (response.data.statusID === 0) {
-      userName.value = response.data.data.name
-      isAdmin.value = response.data.data.role === '3'
-      isReviewer.value = ['1', '2', '3'].includes(response.data.data.role)
-    } else {
-      throw new Error('Token 无效')
-    }
-  } catch (error) {
-    console.error('验证失败:', error)
-    localStorage.removeItem('token')
-    router.push('/login')
-  }
-}
+// 计算当前激活菜单项的方法
+const activeMenu = computed(() => route.path);
 
-const activeMenu = computed(() => route.path)
-
+// 计算当前页面标题的方法
 const currentPageTitle = computed(() => {
   const routeTitles = {
     '/': '首页',
@@ -211,80 +203,74 @@ const currentPageTitle = computed(() => {
     '/profile': '个人信息',
     '/data-dashboard': '数据看板',
     '/review-management': '复审管理'
-  }
-  return routeTitles[route.path] || '综合评价信息申报系统'
-})
+  };
+  return routeTitles[route.path] || '综合评价信息申报系统';
+});
 
+// 切换侧边栏折叠状态的方法
 const toggleCollapse = () => {
-  isCollapse.value = !isCollapse.value
-}
+  isCollapse.value = !isCollapse.value;
+};
 
+// 切换移动端菜单可见性的方法
 const toggleMobileMenu = () => {
-  mobileMenuVisible.value = !mobileMenuVisible.value
-}
+  mobileMenuVisible.value = !mobileMenuVisible.value;
+};
 
+// 处理菜单项选择的方法
 const handleSelect = (key: string) => {
-  mobileMenuVisible.value = false
+  mobileMenuVisible.value = false;
   switch (key) {
     case '1':
-      router.push('/')
-      break
+      router.push('/');
+      break;
     case '2':
-      router.push('/report')
-      break
+      router.push('/report');
+      break;
     case '3':
-      router.push('/state')
-      break
+      router.push('/state');
+      break;
     case '4':
-      router.push('/admin/todo')
-      break
+      router.push('/admin/todo');
+      break;
     case '5':
-      router.push('/permission-management')
-      break
+      router.push('/permission-management');
+      break;
     case '6':
-      router.push('/data-dashboard')
-      break
+      router.push('/data-dashboard');
+      break;
     case '7':
-      router.push('/review-management')
-      break
+      router.push('/review-management');
+      break;
   }
-}
+};
 
+// 处理用户操作命令的方法
 const handleCommand = (command: string) => {
   if (command === 'logout') {
-    logout()
+    logout(); // 注销
   } else if (command === 'profile') {
-    router.push('/profile')
+    router.push('/profile'); // 跳转到个人信息页面
   }
-}
+};
 
+// 注销的方法
 const logout = async () => {
-  // 注意：这里暂时不调用后端接口，直接执行前端登出逻辑
-  // TODO: 在后端实现登出接口后，取消下面的注释并实现实际的登出请求
-  // try {
-  //   await axios.post('/logout', null, {
-  //     params: {
-  //       t: localStorage.getItem('token'),
-  //       ID: localStorage.getItem('ID')
-  //     }
-  //   })
-  // } catch (error) {
-  //   console.error('退出登录失败:', error)
-  // }
+  // 使用 authService 的 logout 方法注销
+  authService.logout(); 
+  // 跳转到登录页面
+  router.push('/login'); 
+  // 显示注销成功的提示信息
+  ElMessage.success('已成功退出登录'); 
+};
 
-  localStorage.removeItem('token')
-  localStorage.removeItem('userRole')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('ID')
-  router.push('/login')
-  ElMessage.success('已成功退出登录')
-}
-
+// 监听路由变化
 watch(() => route.path, () => {
-  if (isMobile.value) {
-    mobileMenuVisible.value = false
+  // 如果是移动设备，则关闭移动端菜单
+  if (isMobile.value) { 
+    mobileMenuVisible.value = false; 
   }
-})
+});
 </script>
 
 <style scoped>

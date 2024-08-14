@@ -36,7 +36,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import axios from 'axios'
+import axios from '../../http-common'
+import authService from '../../services/authService'
 
 const loading = ref(false)
 const reportItems = ref([])
@@ -56,31 +57,43 @@ onMounted(() => {
 const fetchReportStatus = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/report/progress', {
+    // 获取当前用户信息
+    const user = authService.getCurrentUser() 
+    // 如果用户未登录
+    if (!user) { 
+      // 抛出错误
+      throw new Error('用户未登录'); 
+    }
+
+    // 获取申报进度
+    const response = await axios.get('/report/progress', { 
       params: {
-        t: localStorage.getItem('token'),
-        userID: localStorage.getItem('ID')
+        userID: user.ID // 使用当前用户的 ID
       }
-    })
-    if (response.data.statusID === 1) {
-      reportItems.value = response.data.data
+    });
+    // 如果请求成功
+    if (response.data.statusID === 1) { 
+      // 设置申报项目数据
+      reportItems.value = response.data.data; 
     } else {
-      throw new Error(response.data.msg)
+      // 如果请求失败，抛出错误
+      throw new Error(response.data.msg); 
     }
   } catch (error) {
-    console.error('获取申报状态失败:', error)
-    ElMessage.error('获取申报状态失败，请稍后重试')
+    // 处理获取申报状态失败的错误
+    console.error('获取申报状态失败:', error); 
+    ElMessage.error('获取申报状态失败，请稍后重试');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 const refreshStatus = () => {
-  fetchReportStatus()
+  fetchReportStatus(); // 刷新申报状态
 }
 
 const formatDate = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
+  return new Date(timestamp).toLocaleString('zh-CN');
 }
 
 const getStatusLabel = (status: string) => {
@@ -101,8 +114,8 @@ const getStatusType = (status: string) => {
     'cross_review': 'warning',
     'grade_review': 'warning',
     'confirmed': 'success'
-  }
-  return statusTypeMap[status] || 'info'
+  };
+  return statusTypeMap[status] || 'info';
 }
 
 const getProgressPercentage = (status: string) => {
@@ -112,16 +125,16 @@ const getProgressPercentage = (status: string) => {
     'cross_review': 60,
     'grade_review': 80,
     'confirmed': 100
-  }
-  return percentageMap[status] || 0
+  };
+  return percentageMap[status] || 0;
 }
 
 const getProgressStatus = (status: string) => {
-  return status === 'confirmed' ? 'success' : ''
+  return status === 'confirmed' ? 'success' : '';
 }
 
 const getCategoryItems = (category: string) => {
-  return reportItems.value.filter(item => item.categoryCode.startsWith(category))
+  return reportItems.value.filter(item => item.categoryCode.startsWith(category));
 }
 
 </script>

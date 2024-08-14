@@ -88,20 +88,24 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import axios from '../../http-common'
+import authService from '../../services/authService'
 
+// 类别接口定义
 interface Category {
   code: string;
   name: string;
   subCategories: SubCategory[];
 }
 
+// 子类别接口定义
 interface SubCategory {
   code: string;
   name: string;
   score: number;
 }
 
+// 材料接口定义
 interface Material {
   subCategory: string;
   description: string;
@@ -112,15 +116,23 @@ interface Material {
   };
 }
 
-const categories = ref<Category[]>([])
-const activeCategory = ref(0)
-const materialDialogVisible = ref(false)
-const uploadProgress = ref(0)
-const loading = ref(true)
-const submitting = ref(false)
+// 类别数据
+const categories = ref<Category[]>([]);
+// 当前激活的类别索引
+const activeCategory = ref(0);
+// 添加材料对话框可见性
+const materialDialogVisible = ref(false);
+// 上传进度
+const uploadProgress = ref(0);
+// 加载状态
+const loading = ref(true);
+// 提交状态
+const submitting = ref(false);
 
-const materials = reactive<{ [key: string]: Material[] }>({})
+// 材料数据
+const materials = reactive<{ [key: string]: Material[] }>({});
 
+// 新建材料数据
 const newMaterial = reactive<Material>({
   subCategory: '',
   description: '',
@@ -129,58 +141,70 @@ const newMaterial = reactive<Material>({
     name: '',
     url: ''
   }
-})
+});
 
+// 添加材料表单验证规则
 const materialRules = {
   subCategory: [{ required: true, message: '请选择子类别', trigger: 'change' }],
   description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
   file: [{ required: true, message: '请上传文件', trigger: 'change' }]
-}
+};
 
-const uploadUrl = '/report/upload'
-const uploadHeaders = {
-  t: localStorage.getItem('token'),
-  ID: localStorage.getItem('ID')
-}
+// 上传文件 URL
+const uploadUrl = '/report/upload';
 
+// 上传文件请求头
+const uploadHeaders = computed(() => {
+  const user = authService.getCurrentUser();
+  // 从 authService 获取 token 并设置到请求头
+  return { 
+    Authorization: `Bearer ${user?.access}` 
+  };
+});
+
+// 计算当前类别下的材料
 const currentCategoryMaterials = computed(() => {
-  const currentCategoryCode = categories.value[activeCategory.value]?.code
-  return materials[currentCategoryCode] || []
-})
+  const currentCategoryCode = categories.value[activeCategory.value]?.code;
+  return materials[currentCategoryCode] || [];
+});
 
+// 计算当前类别下的子类别
 const currentSubCategories = computed(() => {
-  return categories.value[activeCategory.value]?.subCategories || []
-})
+  return categories.value[activeCategory.value]?.subCategories || [];
+});
 
+// 组件挂载时执行
 onMounted(async () => {
-  await fetchCategories()
-  loadDraft()
-})
+  await fetchCategories(); // 获取类别数据
+  loadDraft(); // 加载草稿
+});
 
+// 获取类别数据的方法
 const fetchCategories = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const response = await axios.get('/case/findcase', {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
-    })
-    if (response.data.statusID === 0) {
-      categories.value = processCategories(response.data.data)
+    // 获取类别数据
+    const response = await axios.get('/case/findcase'); 
+    // 如果请求成功
+    if (response.data.statusID === 0) { 
+      // 处理类别数据
+      categories.value = processCategories(response.data.data); 
     } else {
-      throw new Error(response.data.msg)
+      // 如果请求失败，抛出错误
+      throw new Error(response.data.msg); 
     }
   } catch (error) {
-    console.error('获取类别数据失败:', error)
-    ElMessage.error('获取类别数据失败，请稍后重试')
+    // 处理获取类别数据失败的错误
+    console.error('获取类别数据失败:', error); 
+    ElMessage.error('获取类别数据失败，请稍后重试');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
+// 处理类别数据的方法
 const processCategories = (data) => {
-  // 处理后端返回的类别数据，将其转换为前端所需的格式
+  // 将后端返回的类别数据转换为前端所需的格式
   return data.map(category => ({
     code: category.caseID,
     name: category.mainCLs,
@@ -191,87 +215,133 @@ const processCategories = (data) => {
         score: category.point
       }
     ]
-  }))
-}
+  }));
+};
 
+// 设置激活的类别索引的方法
 const setActiveCategory = (index: number) => {
-  activeCategory.value = index
-}
+  activeCategory.value = index;
+};
 
+// 显示添加材料对话框的方法
 const showAddMaterialDialog = () => {
-  materialDialogVisible.value = true
-  newMaterial.subCategory = ''
-  newMaterial.description = ''
-  newMaterial.score = 0
-  newMaterial.file = { name: '', url: '' }
-  uploadProgress.value = 0
-}
+  // 显示对话框
+  materialDialogVisible.value = true; 
+  // 重置新建材料数据
+  newMaterial.subCategory = '';
+  newMaterial.description = '';
+  newMaterial.score = 0;
+  newMaterial.file = { name: '', url: '' };
+  // 重置上传进度
+  uploadProgress.value = 0; 
+};
 
+// 文件上传成功时的回调函数
 const handleUploadSuccess = (res: any, file: any) => {
-  newMaterial.file = { name: file.name, url: res.url }
-  uploadProgress.value = 100
-  ElMessage.success('上传成功')
-}
+  // 设置新建材料的文件信息
+  newMaterial.file = { name: file.name, url: res.url }; 
+  // 设置上传进度为 100%
+  uploadProgress.value = 100; 
+  // 显示上传成功的提示信息
+  ElMessage.success('上传成功'); 
+};
 
+// 文件上传失败时的回调函数
 const handleUploadError = () => {
-  ElMessage.error('上传失败，请重试')
-}
+  // 显示上传失败的提示信息
+  ElMessage.error('上传失败，请重试'); 
+};
 
+// 文件上传进度变化时的回调函数
 const handleUploadProgress = (event: any, file: any) => {
-  uploadProgress.value = Math.round(event.percent)
-}
+  // 设置上传进度
+  uploadProgress.value = Math.round(event.percent); 
+};
 
+// 文件上传前的回调函数
 const beforeUpload = (file: any) => {
-  const isLt10M = file.size / 1024 / 1024 < 10
-  if (!isLt10M) {
-    ElMessage.error('上传文件大小不能超过 10MB!')
+  // 检查文件大小是否小于 10MB
+  const isLt10M = file.size / 1024 / 1024 < 10; 
+  // 如果文件大小超过 10MB
+  if (!isLt10M) { 
+    // 显示文件大小超过限制的提示信息
+    ElMessage.error('上传文件大小不能超过 10MB!'); 
   }
-  return isLt10M
-}
+  // 返回文件大小是否符合要求
+  return isLt10M; 
+};
 
+// 添加材料的方法
 const addMaterial = async () => {
-  const materialFormRef = ref<any>(null)
-  if (!materialFormRef.value) return
+  // 获取添加材料表单引用
+  const materialFormRef = ref<any>(null); 
+  // 如果表单引用不存在，则返回
+  if (!materialFormRef.value) return; 
 
   try {
-    await materialFormRef.value.validate()
-    const currentCategoryCode = categories.value[activeCategory.value].code
-    if (!materials[currentCategoryCode]) {
-      materials[currentCategoryCode] = []
+    // 验证添加材料表单
+    await materialFormRef.value.validate(); 
+    // 获取当前类别的代码
+    const currentCategoryCode = categories.value[activeCategory.value].code; 
+    // 如果当前类别下还没有材料
+    if (!materials[currentCategoryCode]) { 
+      // 创建一个空数组来存储材料
+      materials[currentCategoryCode] = []; 
     }
-    const selectedSubCategory = currentSubCategories.value.find(sc => sc.code === newMaterial.subCategory)
+    // 查找选中的子类别
+    const selectedSubCategory = currentSubCategories.value.find(sc => sc.code === newMaterial.subCategory); 
+    // 添加材料到材料数据中
     materials[currentCategoryCode].push({
       ...newMaterial,
       score: selectedSubCategory ? selectedSubCategory.score : 0
-    })
-    materialDialogVisible.value = false
-    ElMessage.success('材料添加成功')
+    });
+    // 关闭添加材料对话框
+    materialDialogVisible.value = false; 
+    // 显示材料添加成功的提示信息
+    ElMessage.success('材料添加成功'); 
   } catch (error) {
-    console.error('添加材料失败:', error)
-    ElMessage.error('添加材料失败，请检查输入')
+    // 处理添加材料失败的错误
+    console.error('添加材料失败:', error); 
+    ElMessage.error('添加材料失败，请检查输入');
   }
-}
+};
 
+// 删除材料的方法
 const removeMaterial = (index: number) => {
-  const currentCategoryCode = categories.value[activeCategory.value].code
-  materials[currentCategoryCode].splice(index, 1)
-}
+  // 获取当前类别的代码
+  const currentCategoryCode = categories.value[activeCategory.value].code; 
+  // 从材料数据中删除指定索引的材料
+  materials[currentCategoryCode].splice(index, 1); 
+};
 
+// 上一步的方法
 const prevCategory = () => {
   if (activeCategory.value > 0) {
-    activeCategory.value--
+    activeCategory.value--;
   }
-}
+};
 
+// 下一步的方法
 const nextCategory = () => {
   if (activeCategory.value < categories.value.length - 1) {
-    activeCategory.value++
+    activeCategory.value++;
   }
-}
+};
 
+// 提交申报的方法
 const submitForm = async () => {
-  submitting.value = true
+  // 设置提交状态
+  submitting.value = true; 
   try {
+    // 使用 authService 获取当前用户信息
+    const user = authService.getCurrentUser(); 
+    // 如果用户未登录
+    if (!user) { 
+      // 抛出错误
+      throw new Error('用户未登录'); 
+    }
+
+    // 处理材料数据，将其转换为提交数据
     const submitData = Object.entries(materials).flatMap(([categoryCode, categoryMaterials]) =>
       categoryMaterials.map(material => ({
         caseID: categoryCode,
@@ -284,53 +354,68 @@ const submitForm = async () => {
         priority: '0',
         categorycode: categoryCode
       }))
-    )
+    );
 
-    const response = await axios.post('/record/newrecord', {
-      userID: localStorage.getItem('ID'),
-      records: submitData
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
-    })
+    // 提交申报
+    const response = await axios.post('/record/newrecord', { 
+      userID: user.ID, // 使用当前用户的 ID
+      records: submitData 
+    });
 
-    if (response.data.statusID === 1) {
-      ElMessage.success('申报提交成功')
-      localStorage.removeItem('reportDraft')
-      Object.keys(materials).forEach(key => materials[key] = [])
+    // 如果请求成功
+    if (response.data.statusID === 1) { 
+      // 显示申报提交成功的提示信息
+      ElMessage.success('申报提交成功'); 
+      // 从本地存储中移除草稿
+      localStorage.removeItem('reportDraft'); 
+      // 清空材料数据
+      Object.keys(materials).forEach(key => materials[key] = []); 
     } else {
-      throw new Error(response.data.msg)
+      // 如果请求失败，抛出错误
+      throw new Error(response.data.msg); 
     }
   } catch (error) {
-    console.error('提交失败:', error)
-    ElMessage.error('提交失败，请重试')
+    // 处理提交失败的错误
+    console.error('提交失败:', error); 
+    ElMessage.error('提交失败，请重试');
   } finally {
-    submitting.value = false
+    // 设置提交状态为 false
+    submitting.value = false; 
   }
-}
+};
 
+// 保存草稿的方法
 const saveDraft = () => {
-  localStorage.setItem('reportDraft', JSON.stringify(materials))
-  ElMessage.success('草稿已保存')
-}
+  // 将材料数据保存到本地存储
+  localStorage.setItem('reportDraft', JSON.stringify(materials)); 
+  // 显示草稿保存成功的提示信息
+  ElMessage.success('草稿已保存'); 
+};
 
+// 加载草稿的方法
 const loadDraft = () => {
-  const draft = localStorage.getItem('reportDraft')
-  if (draft) {
+  // 从本地存储中获取草稿
+  const draft = localStorage.getItem('reportDraft'); 
+  // 如果草稿存在
+  if (draft) { 
+    // 显示确认对话框
     ElMessageBox.confirm('发现未提交的草稿，是否加载？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
-    }).then(() => {
-      Object.assign(materials, JSON.parse(draft))
-      ElMessage.success('草稿已加载')
-    }).catch(() => {
-      ElMessage.info('已取消加载草稿')
-    })
+    // 如果用户确认加载草稿
+    }).then(() => { 
+      // 加载草稿到材料数据中
+      Object.assign(materials, JSON.parse(draft)); 
+      // 显示草稿加载成功的提示信息
+      ElMessage.success('草稿已加载'); 
+    // 如果用户取消加载草稿
+    }).catch(() => { 
+      // 显示取消加载草稿的提示信息
+      ElMessage.info('已取消加载草稿'); 
+    });
   }
-}
+};
 </script>
 
 <style scoped>

@@ -41,7 +41,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '../http-common'
+import authService from '../services/authService'
 
 const router = useRouter()
 
@@ -58,25 +59,37 @@ onMounted(async () => {
 const fetchReviewItems = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/admin/getReviewList', {
+    // 使用 authService 获取当前用户信息
+    const user = authService.getCurrentUser() 
+    // 如果用户未登录
+    if (!user) { 
+      // 抛出错误
+      throw new Error('用户未登录'); 
+    }
+
+    // 获取复审列表
+    const response = await axios.get('/admin/getReviewList', { 
       params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID'),
         page: currentPage.value,
         pageSize: pageSize.value
       }
-    })
-    if (response.data.statusID === 0) {
-      reviewItems.value = response.data.items
-      totalItems.value = response.data.total
+    });
+    // 如果请求成功
+    if (response.data.statusID === 0) { 
+      // 设置复审项目列表
+      reviewItems.value = response.data.items; 
+      // 设置总项目数
+      totalItems.value = response.data.total; 
     } else {
-      throw new Error(response.data.msg)
+      // 如果请求失败，抛出错误
+      throw new Error(response.data.msg); 
     }
   } catch (error) {
-    console.error('获取复审项目失败:', error)
-    ElMessage.error('获取复审项目失败，请稍后重试')
+    // 处理获取复审项目失败的错误
+    console.error('获取复审项目失败:', error); 
+    ElMessage.error('获取复审项目失败，请稍后重试');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 

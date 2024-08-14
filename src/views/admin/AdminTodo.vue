@@ -33,7 +33,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '../../http-common'
+import authService from '../../services/authService'
 
 const router = useRouter()
 
@@ -50,13 +51,13 @@ onMounted(async () => {
 const fetchTodoItems = async () => {
   loading.value = true
   try {
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
     const response = await axios.post('/admin/getTDList', {
-      userID: localStorage.getItem('ID')
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
+      userID: user.ID
     })
 
     if (response.data.statusID === 0) {

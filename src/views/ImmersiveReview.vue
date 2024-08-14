@@ -104,7 +104,8 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
-import axios from 'axios'
+import axios from '../http-common'
+import authService from '../services/authService'
 
 const router = useRouter()
 const route = useRoute()
@@ -158,8 +159,6 @@ const confirmSubmit = async () => {
       comment: reviewForm.value.comment
     }, {
       params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID'),
         targetID: currentTask.value.fileID,
         stepID: getNextStepID()
       }
@@ -180,13 +179,13 @@ const confirmSubmit = async () => {
 
 const getNextTask = async () => {
   try {
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
     const response = await axios.post('/admin/getCE', {
-      userID: localStorage.getItem('ID')
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
+      userID: user.ID
     })
     
     if (response.data.statusID === 0 && response.data.data.length > 0) {
@@ -222,15 +221,15 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
+// 获取下一个步骤ID，需要根据实际业务逻辑进行实现
 const getNextStepID = () => {
-  // This function should be implemented based on the current step and review result
-  // For now, we'll return a placeholder value
   return '1'
 }
 
 onMounted(async () => {
   document.addEventListener('keydown', handleKeyDown)
-  reviewerName.value = localStorage.getItem('userName') || '未知审核员'
+  const user = authService.getCurrentUser()
+  reviewerName.value = user?.Name || '未知审核员'
   await getNextTask()
 })
 

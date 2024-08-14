@@ -90,9 +90,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
 import Statistic from '../components/Statistic.vue'
-import axios from 'axios'
+import authService from '../services/authService'; // 引入 authService
+import axios from '../http-common'; // 引入 axios 实例
 
-const router = useRouter()
+// 定义路由实例
+const router = useRouter();
 
 // 定义用户信息接口
 interface UserInfo {
@@ -107,27 +109,29 @@ interface UserInfo {
 interface ReportStatus {
   progress: number;
   status: string;
-  lastUpdate: string;
+  lastUpdate: number; // 修改 lastUpdate 类型为 number
 }
 
 // 用户信息和申报状态的响应式引用
-const userInfo = ref<UserInfo | null>(null)
-const reportStatus = ref<ReportStatus | null>(null)
-const isReviewer = ref(false)
-const isAdmin = ref(false)
+const userInfo = ref<UserInfo | null>(null);
+const reportStatus = ref<ReportStatus | null>(null);
+// 定义是否为审核员
+const isReviewer = ref(false);
+// 定义是否为管理员
+const isAdmin = ref(false);
 
 // 加载状态和错误信息
 const loading = reactive({
   user: false,
   report: false,
   stats: false
-})
+});
 
 const error = reactive({
   user: '',
   report: '',
   stats: ''
-})
+});
 
 // 统计数据
 const stats = reactive({
@@ -135,121 +139,128 @@ const stats = reactive({
   completedReviews: 0,
   myReports: 0,
   announcements: 0
-})
+});
 
-// 获取仪表盘数据
+// 获取仪表盘数据的方法
 const fetchDashboardData = async () => {
-  loading.user = true
-  loading.report = true
-  loading.stats = true
-  error.user = ''
-  error.report = ''
-  error.stats = ''
+  // 设置加载状态
+  loading.user = true;
+  loading.report = true;
+  loading.stats = true;
+  // 清空错误信息
+  error.user = '';
+  error.report = '';
+  error.stats = '';
 
   try {
-    const token = localStorage.getItem('token')
-    const userID = localStorage.getItem('ID')
+    // 使用 authService 获取当前用户信息
+    const user = authService.getCurrentUser(); 
+    // 如果用户信息存在
+    if (user) { 
+      // 设置用户信息
+      userInfo.value = {
+        name: user.Name || '',
+        studentId: user.ID || '',
+        class: user.Class || '',
+        avatar: '',
+        role: user.Permission || '0'
+      };
 
-    // 获取用户信息
-    userInfo.value = {
-      name: localStorage.getItem('userName') || '',
-      studentId: userID || '',
-      class: localStorage.getItem('Class') || '',
-      avatar: '',
-      role: localStorage.getItem('Permission') || '0'
-    }
-
-    // 获取申报状态
-    const reportResponse = await axios.get('/report/progress', {
-      params: {
-        t: token,
-        userID: userID
+      // 获取申报状态
+      const reportResponse = await axios.get('/report/progress'); // 使用 axios 实例发送请求
+      // 如果请求成功
+      if (reportResponse.data.statusID === 1) { 
+        // 获取最新的申报记录
+        const latestReport = reportResponse.data.data[reportResponse.data.data.length - 1]; 
+        // 设置申报状态
+        reportStatus.value = {
+          progress: getProgressPercentage(latestReport.status),
+          status: getStatusLabel(latestReport.status),
+          lastUpdate: latestReport.submitTime 
+        };
       }
-    })
-    if (reportResponse.data.statusID === 1) {
-      const latestReport = reportResponse.data.data[reportResponse.data.data.length - 1]
-      reportStatus.value = {
-        progress: getProgressPercentage(latestReport.status),
-        status: getStatusLabel(latestReport.status),
-        lastUpdate: latestReport.submitTime
-      }
+
+      // 获取统计数据
+      // 注意：后端目前没有提供这个接口，这里使用模拟数据
+      stats.pendingReports = 0;
+      stats.completedReviews = 0;
+      stats.myReports = reportResponse.data.data.length;
+      stats.announcements = 0;
+
+    // 如果用户信息不存在，抛出错误
+    } else { 
+      throw new Error('未找到用户信息'); 
     }
-
-    // 获取统计数据
-    // 注意：后端目前没有提供这个接口，这里使用模拟数据
-    stats.pendingReports = 0
-    stats.completedReviews = 0
-    stats.myReports = reportResponse.data.data.length
-    stats.announcements = 0
-
   } catch (err) {
-    console.error('获取仪表盘数据失败:', err)
-    error.user = '加载用户信息失败'
-    error.report = '加载申报状态失败'
-    error.stats = '加载统计数据失败'
+    // 处理获取仪表盘数据失败的错误
+    console.error('获取仪表盘数据失败:', err); 
+    error.user = '加载用户信息失败';
+    error.report = '加载申报状态失败';
+    error.stats = '加载统计数据失败';
   } finally {
-    loading.user = false
-    loading.report = false
-    loading.stats = false
+    // 设置加载状态为 false
+    loading.user = false; 
+    loading.report = false;
+    loading.stats = false;
   }
-}
+};
 
-// 刷新申报状态
+// 刷新申报状态的方法
 const refreshReportStatus = () => {
-  fetchDashboardData()
-  ElMessage.success('正在刷新申报状态')
-}
+  fetchDashboardData();
+  ElMessage.success('正在刷新申报状态');
+};
 
-// 格式化进度条显示
+// 格式化进度条显示的方法
 const formatProgress = (percentage: number) => {
-  return percentage === 100 ? '完成' : `${percentage}%`
-}
+  return percentage === 100 ? '完成' : `${percentage}%`;
+};
 
-// 获取进度条状态
+// 获取进度条状态的方法
 const getProgressStatus = () => {
-  if (!reportStatus.value) return ''
-  if (reportStatus.value.progress === 100) return 'success'
-  if (reportStatus.value.progress > 50) return 'exception'
-  return 'warning'
-}
+  if (!reportStatus.value) return '';
+  if (reportStatus.value.progress === 100) return 'success';
+  if (reportStatus.value.progress > 50) return 'exception';
+  return 'warning';
+};
 
-// 格式化日期
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleString('zh-CN')
-}
+// 格式化日期的方法
+const formatDate = (timestamp: number) => { // 修改参数类型为 number
+  return new Date(timestamp).toLocaleString('zh-CN');
+};
 
-// 获取角色名称
+// 获取角色名称的方法
 const getRoleName = (role: string) => {
   switch (role) {
     case '3':
-      return '管理员'
+      return '管理员';
     case '2':
-      return '级委'
+      return '级委';
     case '1':
-      return '班委'
+      return '班委';
     default:
-      return '学生'
+      return '学生';
   }
-}
+};
 
 // 页面跳转函数
 const goToReportForm = () => {
-  router.push('/report')
-}
+  router.push('/report');
+};
 
 const goToReportState = () => {
-  router.push('/state')
-}
+  router.push('/state');
+};
 
 const goToReviewTasks = () => {
-  router.push('/admin/todo')
-}
+  router.push('/admin/todo');
+};
 
 const goToDataDashboard = () => {
-  router.push('/data-dashboard')
-}
+  router.push('/data-dashboard');
+};
 
-// 获取进度百分比
+// 获取进度百分比的方法
 const getProgressPercentage = (status: string) => {
   const percentageMap = {
     'pending': 20,
@@ -257,11 +268,11 @@ const getProgressPercentage = (status: string) => {
     'cross_review': 60,
     'grade_review': 80,
     'confirmed': 100
-  }
-  return percentageMap[status] || 0
-}
+  };
+  return percentageMap[status] || 0;
+};
 
-// 获取状态标签
+// 获取状态标签的方法
 const getStatusLabel = (status: string) => {
   const statusMap = {
     'pending': '待审核',
@@ -269,17 +280,23 @@ const getStatusLabel = (status: string) => {
     'cross_review': '交叉复审中',
     'grade_review': '级委审核中',
     'confirmed': '已确认'
-  }
-  return statusMap[status] || '未知状态'
-}
+  };
+  return statusMap[status] || '未知状态';
+};
 
 // 组件挂载时获取数据
 onMounted(() => {
-  fetchDashboardData()
-  const permission = localStorage.getItem('Permission')
-  isReviewer.value = permission === '1' || permission === '2'
-  isAdmin.value = permission === '3'
-})
+  fetchDashboardData(); 
+  // 获取当前用户信息
+  const user = authService.getCurrentUser(); 
+  // 如果用户信息存在
+  if (user) { 
+    // 设置是否为审核员
+    isReviewer.value = ['1', '2'].includes(user.Permission || ''); 
+    // 设置是否为管理员
+    isAdmin.value = user.Permission === '3'; 
+  }
+});
 </script>
 
 <style scoped>

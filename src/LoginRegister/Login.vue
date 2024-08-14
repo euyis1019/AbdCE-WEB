@@ -47,23 +47,24 @@
   </div>
 </template>
 
-<style src="./login-style.css"></style>
-
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import axios from "axios";
-import CryptoJS from 'crypto-js';
+import authService from "../services/authService"; // 引入 authService
 
+// 定义路由实例
 const router = useRouter();
 
+// 定义登录表单数据
 const loginForm = reactive({
   username: "",
   password: "",
 });
+// 定义登录表单引用
 const loginFormRef = ref();
 
+// 定义登录表单验证规则
 const loginRules = reactive({
   username: [
     {
@@ -81,52 +82,33 @@ const loginRules = reactive({
   ],
 });
 
+// 提交登录表单的方法
 const submitForm = () => {
+  // 验证表单
   loginFormRef.value.validate(async (valid: boolean) => {
+    // 如果表单验证通过
     if (valid) {
-      // 开始：测试登录逻辑
-      if (loginForm.username === "testuser" && loginForm.password === "testpassword") {
-        console.log("使用测试账号登录");
-        localStorage.setItem("token", "test-token");
-        localStorage.setItem("Permission", "3"); // 赋予最高权限以便测试所有功能
-        localStorage.setItem("Class", "TestClass");
-        localStorage.setItem("ID", "TestID");
-        localStorage.setItem("userName", "TestUser");
-        router.push("/");
-        return;
-      }
-      // 结束：测试登录逻辑
-
-      const hashedPassword = CryptoJS.SHA1(loginForm.password).toString();
-
       try {
-        const response = await axios.post('/login', null, {
-          params: {
-            ID: loginForm.username,
-            pass: hashedPassword
-          }
-        });
-
-        if (response.data.statusID === 0) {
-          localStorage.setItem("token", response.data.data.Token);
-          localStorage.setItem("Permission", response.data.data.Permission);
-          localStorage.setItem("Class", response.data.data.Cls);
-          localStorage.setItem("ID", loginForm.username);
-          localStorage.setItem("userName", response.data.data.Name);
-          router.push("/");
-        } else {
-          ElMessage.error(response.data.msg || "登录失败，请重试");
-        }
+        // 使用 authService 的 login 方法进行登录
+        const response = await authService.login(loginForm.username, loginForm.password); 
+        // 登录成功，显示提示信息
+        ElMessage.success("登录成功"); 
+        // 跳转到首页
+        router.push("/"); 
       } catch (error) {
-        console.error("登录失败:", error);
-        ElMessage.error("登录失败，请重试");
+        // 处理登录失败的错误
+        console.error("登录失败:", error); 
+        // 显示错误提示信息
+        ElMessage.error("登录失败，请重试"); 
       }
     }
   });
 };
 
+// 跳转到注册页面的方法
 const handleRegister = () => {
   router.push("/Register");
 }
 </script>
-```
+
+<style src="./login-style.css"></style>
