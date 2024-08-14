@@ -4,6 +4,7 @@
     <el-tabs v-model="activeTab">
       <el-tab-pane label="待审核项目" name="pending">
         <el-table :data="pendingItems" v-loading="loading.pending" style="width: 100%">
+          <!-- 表格列定义保持不变 -->
           <el-table-column prop="uuid" label="ID" width="220"></el-table-column>
           <el-table-column prop="name" label="学生姓名" width="120"></el-table-column>
           <el-table-column prop="class" label="班级" width="120"></el-table-column>
@@ -26,6 +27,7 @@
       </el-tab-pane>
       <el-tab-pane label="已审核项目" name="reviewed">
         <el-table :data="reviewedItems" v-loading="loading.reviewed" style="width: 100%">
+          <!-- 表格列定义保持不变 -->
           <el-table-column prop="uuid" label="ID" width="220"></el-table-column>
           <el-table-column prop="name" label="学生姓名" width="120"></el-table-column>
           <el-table-column prop="class" label="班级" width="120"></el-table-column>
@@ -48,6 +50,7 @@
       </el-tab-pane>
     </el-tabs>
 
+    <!-- 审核对话框 -->
     <el-dialog v-model="auditDialogVisible" title="审核项目" width="80%" :before-close="handleCloseAuditDialog">
       <div v-if="currentAuditItem" v-loading="loading.auditDetails">
         <h2>学生信息</h2>
@@ -100,6 +103,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios'
 
 const activeTab = ref('pending')
 const activeAuditTab = ref('morality')
@@ -133,32 +137,25 @@ onMounted(() => {
   fetchReviewedItems()
 })
 
+// 获取待审核项目
 const fetchPendingItems = async () => {
   loading.pending = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    pendingItems.value = Array(5).fill(null).map((_, index) => ({
-      uuid: `pending-${index + 1}`,
-      name: `学生${index + 1}`,
-      class: `软件工程${index % 2 + 1}班`,
-      userID: `2022380000${index + 1}`,
-      updateTime: Date.now() - Math.random() * 86400000,
-      stepID: Math.floor(Math.random() * 3)
-    }))
+    // 使用 /admin/getTDList 接口获取待审核项目
+    const response = await axios.post('/admin/getTDList', {
+      userID: localStorage.getItem('ID')
+    }, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
+      }
+    })
 
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/report/getTDList', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   pendingItems.value = response.data.data.toDoList
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
+    if (response.data.statusID === 0) {
+      pendingItems.value = response.data.data
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('获取待审核项目失败:', error)
     ElMessage.error('获取待审核项目失败，请稍后重试')
@@ -167,34 +164,24 @@ const fetchPendingItems = async () => {
   }
 }
 
-
-
+// 获取已审核项目
 const fetchReviewedItems = async () => {
   loading.reviewed = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    reviewedItems.value = Array(5).fill(null).map((_, index) => ({
-      uuid: `reviewed-${index + 1}`,
-      name: `学生${index + 6}`,
-      class: `软件工程${index % 2 + 1}班`,
-      userID: `2022380000${index + 6}`,
-      updateTime: Date.now() - Math.random() * 86400000,
-      stepID: Math.floor(Math.random() * 3) + 3
-    }))
+    // 使用 /admin/history 接口获取审核历史（已审核项目）
+    const response = await axios.get('/admin/history', {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
+      }
+    })
 
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/admin/history', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   reviewedItems.value = response.data.data
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
+    if (response.data.statusID === 0) {
+      // 可能需要对返回的数据进行转换以匹配表格结构
+      reviewedItems.value = transformHistoryData(response.data.data)
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('获取已审核项目失败:', error)
     ElMessage.error('获取已审核项目失败，请稍后重试')
@@ -203,35 +190,45 @@ const fetchReviewedItems = async () => {
   }
 }
 
+// 转换审核历史数据以匹配表格结构
+const transformHistoryData = (historyData) => {
+  return historyData.map(item => ({
+    uuid: item.uuid,
+    name: item.name,
+    class: item.class,
+    updateTime: item.updateTime,
+    stepID: item.stepID,
+    // 添加其他需要的字段
+  }))
+}
+
+// 处理审核
 const handleAudit = async (item) => {
   currentAuditItem.value = item
   auditDialogVisible.value = true
   loading.auditDetails = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    currentAuditItem.value = {
-      ...item,
-      morality: [{ description: '思想品德项目1', score: 85, materialUrl: '#' }],
-      academic: [{ description: '学业发展项目1', score: 90, materialUrl: '#' }],
-      physical: [{ description: '身心健康项目1', score: 80, materialUrl: '#' }],
-      art: [{ description: '艺术素养项目1', score: 75, materialUrl: '#' }],
-      social: [{ description: '社会实践项目1', score: 88, materialUrl: '#' }]
+    // 使用 /admin/getCE 接口获取审核详情
+    const response = await axios.post('/admin/getCE', {
+      userID: localStorage.getItem('ID')
+    }, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
+      }
+    })
+    
+    if (response.data.statusID === 0) {
+      // 找到对应的项目详情
+      const itemDetails = response.data.data.find(detail => detail.fileID === item.fileID)
+      if (itemDetails) {
+        currentAuditItem.value = { ...item, ...itemDetails }
+      } else {
+        throw new Error('未找到对应的项目详情')
+      }
+    } else {
+      throw new Error(response.data.msg)
     }
-
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/admin/getCE', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     targetID: item.uuid
-    //   }
-    // })
-    // if (response.data) {
-    //   currentAuditItem.value = { ...item, ...response.data }
-    // } else {
-    //   throw new Error('Failed to fetch audit details')
-    // }
   } catch (error) {
     console.error('获取审核详情失败:', error)
     ElMessage.error('获取审核详情失败，请稍后重试')
@@ -240,6 +237,7 @@ const handleAudit = async (item) => {
   }
 }
 
+// 提交审核
 const submitAudit = async () => {
   if (!auditForm.result) {
     ElMessage.warning('请选择审核结果')
@@ -247,33 +245,24 @@ const submitAudit = async () => {
   }
   loading.submitAudit = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('审核提交成功')
-    auditDialogVisible.value = false
-    fetchPendingItems()
-    fetchReviewedItems()
-
-    // 实际的API调用可能如下：
-    // const response = await axios.post('/report/audit', {
-    //   result: auditForm.result,
-    //   comment: auditForm.comment
-    // }, {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     targetID: currentAuditItem.value.uuid,
-    //     stepID: getNextStepID(currentAuditItem.value.stepID, auditForm.result)
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   ElMessage.success('审核提交成功')
-    //   auditDialogVisible.value = false
-    //   fetchPendingItems()
-    //   fetchReviewedItems()
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
+    // 使用 /report/audit 接口提交审核结果
+    const response = await axios.post('/report/audit', null, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID'),
+        targetID: currentAuditItem.value.fileID,
+        stepID: getNextStepID(currentAuditItem.value.stepID, auditForm.result)
+      }
+    })
+    
+    if (response.data.statusID === 0) {
+      ElMessage.success('审核提交成功')
+      auditDialogVisible.value = false
+      fetchPendingItems()
+      fetchReviewedItems()
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('提交审核失败:', error)
     ElMessage.error('提交审核失败，请稍后重试')
@@ -282,6 +271,26 @@ const submitAudit = async () => {
   }
 }
 
+// 根据当前状态和审核结果计算下一个状态
+const getNextStepID = (currentStepID, result) => {
+  const stepID = parseInt(currentStepID)
+  if (result === 'pass') {
+    switch (stepID) {
+      case 0: return '1'  // 班委初审成功
+      case 1: return '2'  // 交叉复审成功，返回本人确认
+      case 2: return '4'  // 本人确认后，进入级委审核
+      case 3: return '4'  // 有分歧的情况，级委审核
+      case 4: return '6'  // 级委审核完毕，本人确认
+      case 5: return '7'  // 超管审核完毕，本人确认
+      case 7: return '8'  // 本人最终确认
+      default: return String(stepID + 1)
+    }
+  } else {
+    return '-1'  // 审核不通过，打回修改
+  }
+}
+
+// 其他辅助函数保持不变
 const handleCloseAuditDialog = (done) => {
   ElMessageBox.confirm('确认关闭？未保存的更改将丢失')
     .then(() => {
@@ -306,25 +315,18 @@ const formatDate = (timestamp) => {
 
 const getStatusLabel = (stepID) => {
   const statusMap = {
-    0: '待班委初审',
-    1: '待交叉复审',
-    2: '待本人确认',
-    3: '待级委审核',
-    4: '待本人确认',
-    5: '待超管审核',
-    6: '已完成',
-    7: '待本人确认',
-    8: '已完成'
+    '-1': '审核不通过',
+    '0': '待班委初审',
+    '1': '待交叉复审',
+    '2': '待本人确认',
+    '3': '待级委审核',
+    '4': '待本人确认',
+    '5': '待超管审核',
+    '6': '已完成',
+    '7': '待本人确认',
+    '8': '已完成'
   }
   return statusMap[stepID] || '未知状态'
-}
-
-const getNextStepID = (currentStepID, result) => {
-  if (result === 'pass') {
-    return String(Number(currentStepID) + 1)
-  } else {
-    return '-1' // 假设 -1 表示驳回
-  }
 }
 </script>
 
