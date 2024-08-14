@@ -2,6 +2,7 @@
   <div class="home">
     <h1 class="welcome-title">欢迎使用综合评价信息申报系统</h1>
     <el-row :gutter="20">
+      <!-- 个人信息卡片 -->
       <el-col :xs="24" :sm="24" :md="6">
         <el-card class="info-card user-info" shadow="hover" v-loading="loading.user">
           <template #header>
@@ -21,6 +22,7 @@
       </el-col>
       <el-col :xs="24" :sm="24" :md="18">
         <el-row :gutter="20">
+          <!-- 申报状态卡片 -->
           <el-col :xs="24" :sm="12" :md="12">
             <el-card class="info-card report-status" shadow="hover" v-loading="loading.report">
               <template #header>
@@ -37,6 +39,7 @@
               <el-alert v-if="error.report" :title="error.report" type="error" :closable="false" />
             </el-card>
           </el-col>
+          <!-- 快速操作卡片 -->
           <el-col :xs="24" :sm="12" :md="12">
             <el-card class="info-card quick-actions" shadow="hover">
               <template #header>
@@ -53,6 +56,7 @@
             </el-card>
           </el-col>
         </el-row>
+        <!-- 统计数据卡片 -->
         <el-row :gutter="20" class="stats-row">
           <el-col :xs="24" :sm="12" :md="6">
             <el-card class="stats-card" shadow="hover">
@@ -77,27 +81,6 @@
         </el-row>
       </el-col>
     </el-row>
-    <el-row :gutter="20" class="announcement-row">
-      <el-col :span="24">
-        <el-card class="announcement-card" shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>系统公告</span>
-            </div>
-          </template>
-          <el-timeline>
-            <el-timeline-item
-              v-for="(activity, index) in activities"
-              :key="index"
-              :timestamp="activity.timestamp"
-              :type="activity.type"
-            >
-              {{ activity.content }}
-            </el-timeline-item>
-          </el-timeline>
-        </el-card>
-      </el-col>
-    </el-row>
   </div>
 </template>
 
@@ -107,9 +90,11 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
 import Statistic from '../components/Statistic.vue'
+import axios from 'axios'
 
 const router = useRouter()
 
+// 定义用户信息接口
 interface UserInfo {
   name: string;
   studentId: string;
@@ -118,17 +103,20 @@ interface UserInfo {
   role: string;
 }
 
+// 定义申报状态接口
 interface ReportStatus {
   progress: number;
   status: string;
   lastUpdate: string;
 }
 
+// 用户信息和申报状态的响应式引用
 const userInfo = ref<UserInfo | null>(null)
 const reportStatus = ref<ReportStatus | null>(null)
 const isReviewer = ref(false)
 const isAdmin = ref(false)
 
+// 加载状态和错误信息
 const loading = reactive({
   user: false,
   report: false,
@@ -141,6 +129,7 @@ const error = reactive({
   stats: ''
 })
 
+// 统计数据
 const stats = reactive({
   pendingReports: 0,
   completedReviews: 0,
@@ -148,12 +137,7 @@ const stats = reactive({
   announcements: 0
 })
 
-const activities = ref([
-  { content: '系统将于本周日进行维护升级', timestamp: '2023-05-10 20:46', type: 'warning' },
-  { content: '新版本功能上线公告', timestamp: '2023-05-09 09:30', type: 'success' },
-  { content: '请及时提交本学期综合评价申报', timestamp: '2023-05-08 14:20', type: 'info' },
-])
-
+// 获取仪表盘数据
 const fetchDashboardData = async () => {
   loading.user = true
   loading.report = true
@@ -163,51 +147,43 @@ const fetchDashboardData = async () => {
   error.stats = ''
 
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // User Info
+    const token = localStorage.getItem('token')
+    const userID = localStorage.getItem('ID')
+
+    // 获取用户信息
     userInfo.value = {
-      name: '张三',
-      studentId: '20223800001',
-      class: '软件工程2班',
+      name: localStorage.getItem('userName') || '',
+      studentId: userID || '',
+      class: localStorage.getItem('Class') || '',
       avatar: '',
-      role: localStorage.getItem('userRole') || 'user'
+      role: localStorage.getItem('Permission') || '0'
     }
 
-    // Report Status
-    reportStatus.value = {
-      progress: 60,
-      status: '班委初审中',
-      lastUpdate: new Date().toISOString()
+    // 获取申报状态
+    const reportResponse = await axios.get('/report/progress', {
+      params: {
+        t: token,
+        userID: userID
+      }
+    })
+    if (reportResponse.data.statusID === 1) {
+      const latestReport = reportResponse.data.data[reportResponse.data.data.length - 1]
+      reportStatus.value = {
+        progress: getProgressPercentage(latestReport.status),
+        status: getStatusLabel(latestReport.status),
+        lastUpdate: latestReport.submitTime
+      }
     }
 
-    // Stats
-    stats.pendingReports = Math.floor(Math.random() * 20)
-    stats.completedReviews = Math.floor(Math.random() * 50)
-    stats.myReports = Math.floor(Math.random() * 5)
-    stats.announcements = activities.value.length
+    // 获取统计数据
+    // 注意：后端目前没有提供这个接口，这里使用模拟数据
+    stats.pendingReports = 0
+    stats.completedReviews = 0
+    stats.myReports = reportResponse.data.data.length
+    stats.announcements = 0
 
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/api/dashboard', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   userInfo.value = response.data.userInfo
-    //   reportStatus.value = response.data.reportStatus
-    //   stats.pendingReports = response.data.stats.pendingReports
-    //   stats.completedReviews = response.data.stats.completedReviews
-    //   stats.myReports = response.data.stats.myReports
-    //   stats.announcements = response.data.stats.announcements
-    //   activities.value = response.data.activities
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
   } catch (err) {
-    console.error('Error fetching dashboard data:', err)
+    console.error('获取仪表盘数据失败:', err)
     error.user = '加载用户信息失败'
     error.report = '加载申报状态失败'
     error.stats = '加载统计数据失败'
@@ -218,15 +194,18 @@ const fetchDashboardData = async () => {
   }
 }
 
+// 刷新申报状态
 const refreshReportStatus = () => {
   fetchDashboardData()
   ElMessage.success('正在刷新申报状态')
 }
 
+// 格式化进度条显示
 const formatProgress = (percentage: number) => {
   return percentage === 100 ? '完成' : `${percentage}%`
 }
 
+// 获取进度条状态
 const getProgressStatus = () => {
   if (!reportStatus.value) return ''
   if (reportStatus.value.progress === 100) return 'success'
@@ -234,21 +213,26 @@ const getProgressStatus = () => {
   return 'warning'
 }
 
+// 格式化日期
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
+// 获取角色名称
 const getRoleName = (role: string) => {
   switch (role) {
-    case 'admin':
+    case '3':
       return '管理员'
-    case 'reviewer':
-      return '审核员'
+    case '2':
+      return '级委'
+    case '1':
+      return '班委'
     default:
       return '学生'
   }
 }
 
+// 页面跳转函数
 const goToReportForm = () => {
   router.push('/report')
 }
@@ -265,10 +249,36 @@ const goToDataDashboard = () => {
   router.push('/data-dashboard')
 }
 
+// 获取进度百分比
+const getProgressPercentage = (status: string) => {
+  const percentageMap = {
+    'pending': 20,
+    'reviewing': 40,
+    'cross_review': 60,
+    'grade_review': 80,
+    'confirmed': 100
+  }
+  return percentageMap[status] || 0
+}
+
+// 获取状态标签
+const getStatusLabel = (status: string) => {
+  const statusMap = {
+    'pending': '待审核',
+    'reviewing': '班委初审中',
+    'cross_review': '交叉复审中',
+    'grade_review': '级委审核中',
+    'confirmed': '已确认'
+  }
+  return statusMap[status] || '未知状态'
+}
+
+// 组件挂载时获取数据
 onMounted(() => {
   fetchDashboardData()
-  isReviewer.value = localStorage.getItem('userRole') === 'reviewer'
-  isAdmin.value = localStorage.getItem('userRole') === 'admin'
+  const permission = localStorage.getItem('Permission')
+  isReviewer.value = permission === '1' || permission === '2'
+  isAdmin.value = permission === '3'
 })
 </script>
 
@@ -315,14 +325,6 @@ onMounted(() => {
 
 .stats-card {
   text-align: center;
-}
-
-.announcement-row {
-  margin-top: 20px;
-}
-
-.announcement-card {
-  margin-bottom: 20px;
 }
 
 @media (max-width: 768px) {

@@ -36,8 +36,7 @@
                   in</el-button>
               </el-form-item>
               <div class="uniform-margin">
-                <el-button type="info" plain @click="handleRegister"> 注册</el-button>
-                <el-button type="info" plain @click="handleLogin">按我获得跳转到子界面的权限</el-button>
+                <el-button type="info" plain @click="handleRegister">注册</el-button>
               </div>
             </el-form>
           </div>
@@ -48,51 +47,32 @@
   </div>
 </template>
 
-
 <style src="./login-style.css"></style>
 
-
-
-
-
-<script setup>
-import { inject, reactive, ref } from "vue";
+<script setup lang="ts">
+import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-//import axios from 'axios'// 引入axios
-import { ElMessage } from "element-plus"; //消息提醒框
-import { useStore } from "vuex"; // 引入全局store
-import axios from "axios"
+import { ElMessage } from "element-plus";
+import axios from "axios";
 import CryptoJS from 'crypto-js';
 
-const store = useStore();
-const handleLogin = () => {
-  localStorage.setItem("token", "d8ebd2a9-3b6f-46be-a873-868da52b60ac");
-  router.push("/Report");
-};
-const handleRegister = () =>{
-  router.push("/Register")
-}
+const router = useRouter();
 
-// 表单绑定的响应式对象
 const loginForm = reactive({
   username: "",
   password: "",
 });
-const loginFormRef = ref(); //表单的引用对象
+const loginFormRef = ref();
 
-// 配置表单的验证规则
 const loginRules = reactive({
   username: [
-    // 用户名
     {
-      // 必须填入,表单提示,触发方式:失去焦点(判断是否通过表单验证)
       required: true,
       message: "请输入用户名",
       trigger: "blur",
     },
   ],
   password: [
-    // 密码
     {
       required: true,
       message: "请输入密码",
@@ -100,60 +80,53 @@ const loginRules = reactive({
     },
   ],
 });
-const url = inject('baseURL') + "/login";
-// 引入路由
-const router = useRouter();
-//提交表单函数
+
 const submitForm = () => {
-  //1. 校验表单(获取输入的表单数据)[validate为elementPlus中表单验证内置方法]
-  loginFormRef.value.validate((valid) => {
-    console.log("判断输入的数据是否通过表单校验:", valid); // 手动校验表单是否有值
-
-    // 额外的验证
-    const usernameValid = loginForm.username.length === 11;
-    const passwordPattern = /^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{7,}$/;
-    const passwordValid = passwordPattern.test(loginForm.password);
-
-    if (!usernameValid) {
-      ElMessage.error("用户名应该是11位");
-      return;
-    }
-
-    if (!passwordValid) {
-      ElMessage.error("密码应该大于6位，并且同时包含数字、小写字母和大写字母");
-      return;
-    }
-    const hashedPassword = CryptoJS.SHA1(loginForm.password).toString();
-
-    const params = {
-      ID: loginForm.username,
-      pass: hashedPassword
-    };
+  loginFormRef.value.validate(async (valid: boolean) => {
     if (valid) {
-      console.log("成功获取到表单内容:", { params: params });
-      axios.post(url, null, { params: params }).then((res) => {
-        console.log("Thisis", res.data);
-        // 登录校验
-        if (res.data.msg === "登录成功") {
-          localStorage.setItem("token", res.data.data.Token);
-          //store.commit("changeUserInfo",res.data.data)// 将用户信息保存到vuex中
-          //store.commit("changeGetterRouter",false)
-          localStorage.setItem("Permission", res.data.data.Permission)
-          localStorage.setItem("Class", res.data.data.Cls)
-          localStorage.setItem("ID",params.ID)
-          router.push("/Report"); //路由跳转
-          console.log()
+      // 开始：测试登录逻辑
+      if (loginForm.username === "testuser" && loginForm.password === "testpassword") {
+        console.log("使用测试账号登录");
+        localStorage.setItem("token", "test-token");
+        localStorage.setItem("Permission", "3"); // 赋予最高权限以便测试所有功能
+        localStorage.setItem("Class", "TestClass");
+        localStorage.setItem("ID", "TestID");
+        localStorage.setItem("userName", "TestUser");
+        router.push("/");
+        return;
+      }
+      // 结束：测试登录逻辑
+
+      const hashedPassword = CryptoJS.SHA1(loginForm.password).toString();
+
+      try {
+        const response = await axios.post('/login', null, {
+          params: {
+            ID: loginForm.username,
+            pass: hashedPassword
+          }
+        });
+
+        if (response.data.statusID === 0) {
+          localStorage.setItem("token", response.data.data.Token);
+          localStorage.setItem("Permission", response.data.data.Permission);
+          localStorage.setItem("Class", response.data.data.Cls);
+          localStorage.setItem("ID", loginForm.username);
+          localStorage.setItem("userName", response.data.data.Name);
+          router.push("/");
         } else {
-          console.log(res.data.msg);
-          ElMessage.error("用户名和密码不匹配");
+          ElMessage.error(response.data.msg || "登录失败，请重试");
         }
-      });
+      } catch (error) {
+        console.error("登录失败:", error);
+        ElMessage.error("登录失败，请重试");
+      }
     }
   });
-
-  //2. 拿到表单内容,提交后台
-
-  //3. 设置token
-  /*localStorage.setItem("token", "lam");*/
 };
+
+const handleRegister = () => {
+  router.push("/Register");
+}
 </script>
+```

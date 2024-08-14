@@ -1,6 +1,6 @@
 <template>
     <div class="profile">
-      <h1>个人信息</h1>
+      <h1>个人信息（未完成）</h1>
       <el-card class="profile-card" :style="{ backgroundImage: `url(${backgroundImage})` }" shadow="hover" v-loading="loading">
         <template #header>
           <div class="card-header">

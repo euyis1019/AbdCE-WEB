@@ -67,6 +67,7 @@
             :on-error="handleUploadError"
             :before-upload="beforeUpload"
             :on-progress="handleUploadProgress"
+            :headers="uploadHeaders"
           >
             <el-button size="small" type="primary">点击上传</el-button>
           </el-upload>
@@ -136,7 +137,11 @@ const materialRules = {
   file: [{ required: true, message: '请上传文件', trigger: 'change' }]
 }
 
-const uploadUrl = 'http://example.com/upload' // 替换为实际的上传 URL
+const uploadUrl = '/report/upload'
+const uploadHeaders = {
+  t: localStorage.getItem('token'),
+  ID: localStorage.getItem('ID')
+}
 
 const currentCategoryMaterials = computed(() => {
   const currentCategoryCode = categories.value[activeCategory.value]?.code
@@ -155,69 +160,38 @@ onMounted(async () => {
 const fetchCategories = async () => {
   loading.value = true
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    categories.value = [
-      {
-        code: "01",
-        name: "思想品德",
-        subCategories: [
-          { code: "0101", name: "思想政治表现", score: 10 },
-          { code: "0102", name: "道德修养", score: 10 }
-        ]
-      },
-      {
-        code: "02",
-        name: "学业发展",
-        subCategories: [
-          { code: "0201", name: "学习成绩", score: 20 },
-          { code: "0202", name: "学习能力", score: 10 }
-        ]
-      },
-      {
-        code: "03",
-        name: "身心健康",
-        subCategories: [
-          { code: "0301", name: "身体素质", score: 10 },
-          { code: "0302", name: "心理健康", score: 10 }
-        ]
-      },
-      {
-        code: "04",
-        name: "艺术素养",
-        subCategories: [
-          { code: "0401", name: "艺术鉴赏", score: 5 },
-          { code: "0402", name: "艺术实践", score: 5 }
-        ]
-      },
-      {
-        code: "05",
-        name: "社会实践",
-        subCategories: [
-          { code: "0501", name: "志愿服务", score: 10 },
-          { code: "0502", name: "社会工作", score: 10 }
-        ]
+    const response = await axios.get('/case/findcase', {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
       }
-    ]
-
-    // 实际的 API 调用可能如下：
-    // const response = await axios.get('/api/categories', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   categories.value = response.data.categories
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
+    })
+    if (response.data.statusID === 0) {
+      categories.value = processCategories(response.data.data)
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('获取类别数据失败:', error)
     ElMessage.error('获取类别数据失败，请稍后重试')
   } finally {
     loading.value = false
   }
+}
+
+const processCategories = (data) => {
+  // 处理后端返回的类别数据，将其转换为前端所需的格式
+  return data.map(category => ({
+    code: category.caseID,
+    name: category.mainCLs,
+    subCategories: [
+      {
+        code: category.cls1,
+        name: category.cls2,
+        score: category.point
+      }
+    ]
+  }))
 }
 
 const setActiveCategory = (index: number) => {
@@ -256,7 +230,7 @@ const beforeUpload = (file: any) => {
 }
 
 const addMaterial = async () => {
-  const materialFormRef = ref<any>(null) // 需要在模板中添加 ref="materialFormRef"
+  const materialFormRef = ref<any>(null)
   if (!materialFormRef.value) return
 
   try {
@@ -300,38 +274,35 @@ const submitForm = async () => {
   try {
     const submitData = Object.entries(materials).flatMap(([categoryCode, categoryMaterials]) =>
       categoryMaterials.map(material => ({
-        categoryCode,
-        subCategoryCode: material.subCategory,
-        description: material.description,
-        score: material.score,
-        fileUrl: material.file.url
+        caseID: categoryCode,
+        maxcls: categories.value.find(c => c.code === categoryCode)?.name,
+        midcls: material.subCategory,
+        mincls: '',
+        point: material.score.toString(),
+        page: '',
+        file: material.file.url,
+        priority: '0',
+        categorycode: categoryCode
       }))
     )
 
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    const response = await axios.post('/record/newrecord', {
+      userID: localStorage.getItem('ID'),
+      records: submitData
+    }, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
+      }
+    })
 
-    // 实际的 API 调用可能如下：
-    // const response = await axios.post('/report/new', {
-    //   userID: localStorage.getItem('ID'),
-    //   items: submitData
-    // }, {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     class: localStorage.getItem('Class')
-    //   }
-    // })
-    // if (response.data.statusID === 1) {
-    //   ElMessage.success('申报提交成功')
-    //   localStorage.removeItem('reportDraft')
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
-
-    ElMessage.success('申报提交成功')
-    localStorage.removeItem('reportDraft')
-    Object.keys(materials).forEach(key => materials[key] = [])
+    if (response.data.statusID === 1) {
+      ElMessage.success('申报提交成功')
+      localStorage.removeItem('reportDraft')
+      Object.keys(materials).forEach(key => materials[key] = [])
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('提交失败:', error)
     ElMessage.error('提交失败，请重试')

@@ -2,7 +2,7 @@
   <div class="immersive-review">
     <header class="review-header">
       <el-button @click="exitReview" type="text" icon="ArrowLeft">退出审核</el-button>
-      <h2>{{ currentTask.categoryName }} - {{ currentTask.studentName }}</h2>
+      <h2>{{ currentTask.caseID }} - {{ currentTask.studentID }}</h2>
       <span>审核员：{{ reviewerName }}</span>
     </header>
 
@@ -19,24 +19,12 @@
           <template #header>
             <h3>申请材料</h3>
           </template>
-          <el-image v-if="currentTask.materialType === 'image'" :src="currentTask.materialUrl" fit="contain" />
-          <iframe v-else-if="currentTask.materialType === 'pdf'" :src="currentTask.materialUrl" width="100%" height="600px"></iframe>
+          <el-image v-if="currentTask.file" :src="currentTask.file" fit="contain" />
+          <p v-else>无可预览材料</p>
         </el-card>
       </section>
       
       <section class="review-right">
-        <el-card v-if="isConflictResolution || isReReview" class="previous-reviews">
-          <template #header>
-            <h3>先前审核结果</h3>
-          </template>
-          <div v-for="(review, index) in previousReviews" :key="index" class="previous-review">
-            <p><strong>审核员{{ index + 1 }}：</strong>{{ review.reviewerName }}</p>
-            <p><strong>结果：</strong>{{ review.result === 'pass' ? '通过' : '拒绝' }}</p>
-            <p><strong>评分：</strong>{{ review.score }}</p>
-            <p><strong>意见：</strong>{{ review.comment }}</p>
-          </div>
-        </el-card>
-
         <div class="review-actions">
           <el-button 
             type="success" 
@@ -116,6 +104,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
@@ -124,12 +113,21 @@ const confirmDialogVisible = ref(false)
 const guideVisible = ref(true)
 
 const currentTask = ref({
-  id: '',
-  categoryName: '',
-  studentName: '',
-  rules: '',
-  materialType: '',
-  materialUrl: '',
+  fileID: '',
+  caseID: '',
+  studentID: '',
+  mainCLs: '',
+  cls1: '',
+  cls2: '',
+  point: '',
+  page: '',
+  file: '',
+  reviewercode: '',
+  categorycode: '',
+  isActive: true,
+  isDone: false,
+  priority: 0,
+  applicationTime: '',
 })
 
 const reviewerName = ref('')
@@ -139,11 +137,6 @@ const reviewForm = ref({
   score: 0,
   comment: '',
 })
-
-const previousReviews = ref([])
-
-const isConflictResolution = computed(() => route.query.mode === 'conflict')
-const isReReview = computed(() => route.query.mode === 'rereview')
 
 const exitReview = () => {
   if (route.query.returnTo === 'queue') {
@@ -160,31 +153,25 @@ const submitReview = (result: 'pass' | 'reject') => {
 
 const confirmSubmit = async () => {
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    const response = await axios.post('/report/audit', {
+      result: reviewForm.value.result,
+      comment: reviewForm.value.comment
+    }, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID'),
+        targetID: currentTask.value.fileID,
+        stepID: getNextStepID()
+      }
+    })
     
-    // 实际的API调用可能如下：
-    // const response = await axios.post('/report/audit', {
-    //   targetID: currentTask.value.id,
-    //   result: reviewForm.value.result,
-    //   score: reviewForm.value.score,
-    //   comment: reviewForm.value.comment,
-    //   mode: isConflictResolution.value ? 'conflict' : (isReReview.value ? 'rereview' : 'normal')
-    // }, {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     stepID: getNextStepID()
-    //   }
-    // })
-    // if (response.data.statusID !== 0) {
-    //   throw new Error(response.data.msg)
-    // }
-    
-    ElMessage.success('审核结果已提交')
-    confirmDialogVisible.value = false
-    
-    await getNextTask()
+    if (response.data.statusID === 0) {
+      ElMessage.success('审核结果已提交')
+      confirmDialogVisible.value = false
+      await getNextTask()
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('提交审核结果失败:', error)
     ElMessage.error('提交审核结果失败，请重试')
@@ -193,56 +180,23 @@ const confirmSubmit = async () => {
 
 const getNextTask = async () => {
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    currentTask.value = {
-      id: Math.random().toString(36).substr(2, 9),
-      categoryName: '学习成绩',
-      studentName: '张三',
-      rules: '根据学生提供的成绩单和获奖证书进行评分。',
-      materialType: 'pdf',
-      materialUrl: 'https://box.ygxz.xyz/?explorer/share/file&hash=4022sldCx_Y86ueANYd4QeGjK_xGcVVaLhEy5wuwu_8MRROEEK33dF7P0lHTiWtDEpA',
-    }
-
-    if (isConflictResolution.value || isReReview.value) {
-      previousReviews.value = [
-        { reviewerName: '李四', result: 'pass', score: 85, comment: '表现良好，建议通过。' },
-        { reviewerName: '王五', result: 'reject', score: 65, comment: '资料不完整，建议补充。' }
-      ]
+    const response = await axios.post('/admin/getCE', {
+      userID: localStorage.getItem('ID')
+    }, {
+      params: {
+        t: localStorage.getItem('token'),
+        ID: localStorage.getItem('ID')
+      }
+    })
+    
+    if (response.data.statusID === 0 && response.data.data.length > 0) {
+      currentTask.value = response.data.data[0]
+      reviewForm.value = {
+        result: '',
+        score: 0,
+        comment: '',
+      }
     } else {
-      previousReviews.value = []
-    }
-  
-    // 实际的API调用可能如下：
-    // const response = await axios.get('/report/getTDList', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID'),
-    //     mode: isConflictResolution.value ? 'conflict' : (isReReview.value ? 'rereview' : 'normal')
-    //   }
-    // })
-    // if (response.data.statusID === 0 && response.data.data.toDoList.length > 0) {
-    //   const nextTask = response.data.data.toDoList[0]
-    //   currentTask.value = {
-    //     id: nextTask.uuid,
-    //     categoryName: nextTask.categoryName,
-    //     studentName: nextTask.name,
-    //     rules: '根据学生提供的材料进行评分。',
-    //     materialType: nextTask.materialType,
-    //     materialUrl: nextTask.materialUrl
-    //   }
-    //   previousReviews.value = nextTask.previousReviews || []
-    // } else {
-    //   throw new Error('No more tasks')
-    // }
-
-    reviewForm.value = {
-      result: '',
-      score: 0,
-      comment: '',
-    }
-
-    if (!currentTask.value.id) {
       ElMessage.info('所有任务已审核完毕')
       exitReview()
     }
@@ -268,33 +222,16 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
+const getNextStepID = () => {
+  // This function should be implemented based on the current step and review result
+  // For now, we'll return a placeholder value
+  return '1'
+}
+
 onMounted(async () => {
   document.addEventListener('keydown', handleKeyDown)
-
   reviewerName.value = localStorage.getItem('userName') || '未知审核员'
-
-  const taskId = route.params.taskId as string
-  if (taskId) {
-    // 根据 taskId 获取任务详情
-    // 这里应该调用 API 获取任务详情
-    // 暂时使用模拟数据
-    currentTask.value = {
-      id: taskId,
-      categoryName: '学习成绩',
-      studentName: '张三',
-      rules: '根据学生提供的成绩单和获奖证书进行评分。',
-      materialType: 'image',
-      materialUrl: 'https://example.com/sample-transcript.jpg',
-    }
-    if (isConflictResolution.value || isReReview.value) {
-      previousReviews.value = [
-        { reviewerName: '李四', result: 'pass', score: 85, comment: '表现良好，建议通过。' },
-        { reviewerName: '王五', result: 'reject', score: 65, comment: '资料不完整，建议补充。' }
-      ]
-    }
-  } else {
-    await getNextTask()
-  }
+  await getNextTask()
 })
 
 onUnmounted(() => {
@@ -303,7 +240,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 保留原有样式 */
 .immersive-review {
   position: fixed;
   top: 0;
@@ -392,23 +328,6 @@ iframe {
 
 .guide-content ol {
   padding-left: 20px;
-}
-
-/* 新增样式 */
-.previous-reviews {
-  margin-bottom: 20px;
-}
-
-.previous-review {
-  border-bottom: 1px solid #ebeef5;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-}
-
-.previous-review:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
 }
 
 @media (max-width: 768px) {

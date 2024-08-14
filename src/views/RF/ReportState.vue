@@ -13,7 +13,7 @@
           <h3>{{ category.label }}</h3>
           <div v-for="(item, itemIndex) in getCategoryItems(category.value)" :key="`${category.value}-${itemIndex}`" class="report-item">
             <div class="item-header">
-              <span class="item-title">{{ item.title }}</span>
+              <span class="item-title">{{ item.categoryCode }}</span>
               <el-tag :type="getStatusType(item.status)">{{ getStatusLabel(item.status) }}</el-tag>
             </div>
             <el-progress 
@@ -22,25 +22,13 @@
               :stroke-width="10"
               class="item-progress"
             ></el-progress>
-            <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.lastUpdate) }}</p>
+            <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
             <el-divider v-if="itemIndex < getCategoryItems(category.value).length - 1"></el-divider>
           </div>
         </div>
       </div>
       <el-empty v-else description="暂无申报记录"></el-empty>
     </el-card>
-
-    <el-dialog v-model="confirmDialogVisible" title="确认结果" width="30%">
-      <p>您确定要确认当前的评价结果吗？</p>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="confirmDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmResult">确认</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-
   </div>
 </template>
 
@@ -48,16 +36,10 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 const loading = ref(false)
-const confirmDialogVisible = ref(false)
-const objectionDialogVisible = ref(false)
 const reportItems = ref([])
-
-const objectionForm = ref({
-  category: '',
-  content: ''
-})
 
 const categories = [
   { label: '思想品德', value: 'morality' },
@@ -74,31 +56,17 @@ onMounted(() => {
 const fetchReportStatus = async () => {
   loading.value = true
   try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    reportItems.value = [
-      { category: 'morality', title: '思想政治表现', status: 'pending', lastUpdate: Date.now() },
-      { category: 'morality', title: '道德修养', status: 'reviewing', lastUpdate: Date.now() - 86400000 },
-      { category: 'academic', title: '学习成绩', status: 'cross_review', lastUpdate: Date.now() - 172800000 },
-      { category: 'academic', title: '学习能力', status: 'grade_review', lastUpdate: Date.now() - 259200000 },
-      { category: 'physical', title: '体育锻炼', status: 'confirmed', lastUpdate: Date.now() - 345600000 },
-      { category: 'art', title: '艺术活动参与', status: 'pending', lastUpdate: Date.now() - 432000000 },
-      { category: 'social', title: '志愿服务', status: 'reviewing', lastUpdate: Date.now() - 518400000 },
-      { category: 'social', title: '社会实践活动', status: 'cross_review', lastUpdate: Date.now() - 604800000 },
-    ]
-
-    // 实际的 API 调用可能如下：
-    // const response = await axios.get('/api/report-status', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   reportItems.value = response.data.items
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
+    const response = await axios.get('/report/progress', {
+      params: {
+        t: localStorage.getItem('token'),
+        userID: localStorage.getItem('ID')
+      }
+    })
+    if (response.data.statusID === 1) {
+      reportItems.value = response.data.data
+    } else {
+      throw new Error(response.data.msg)
+    }
   } catch (error) {
     console.error('获取申报状态失败:', error)
     ElMessage.error('获取申报状态失败，请稍后重试')
@@ -153,37 +121,8 @@ const getProgressStatus = (status: string) => {
 }
 
 const getCategoryItems = (category: string) => {
-  return reportItems.value.filter(item => item.category === category)
+  return reportItems.value.filter(item => item.categoryCode.startsWith(category))
 }
-
-const confirmResult = async () => {
-  try {
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success('已确认评价结果')
-    confirmDialogVisible.value = false
-    await fetchReportStatus()
-
-    // 实际的 API 调用可能如下：
-    // const response = await axios.post('/api/confirm-result', null, {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   ElMessage.success('已确认评价结果')
-    //   confirmDialogVisible.value = false
-    //   await fetchReportStatus()
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
-  } catch (error) {
-    console.error('确认失败:', error)
-    ElMessage.error('确认失败，请稍后重试')
-  }
-}
-
 
 </script>
 

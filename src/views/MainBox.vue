@@ -54,25 +54,6 @@
           <h2>{{ currentPageTitle }}</h2>
         </div>
         <div class="header-right">
-          <!-- 开发阶段使用的角色切换按钮 -->
-          <!-- 在生产环境中请删除以下注释块 -->
-
-          <el-dropdown @command="handleRoleChange" class="role-dropdown">
-            <el-button type="primary" icon="SwitchButton">
-              切换权限 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="admin">超级管理员</el-dropdown-item>
-                <el-dropdown-item command="reviewer">审核员</el-dropdown-item>
-                <el-dropdown-item command="user">普通用户</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-
-          <el-badge :value="notificationCount" class="notification-badge">
-            <el-button icon="Bell" @click="showNotifications">通知</el-button>
-          </el-badge>
           <el-dropdown @command="handleCommand" class="user-dropdown">
             <el-button type="primary" icon="User">
               {{ userName }}
@@ -137,14 +118,6 @@
       </el-menu-item>
     </el-menu>
   </el-drawer>
-
-  <el-dialog v-model="notificationDialogVisible" title="通知" width="50%">
-    <el-table :data="notifications" style="width: 100%">
-      <el-table-column prop="title" label="标题" width="180"></el-table-column>
-      <el-table-column prop="content" label="内容"></el-table-column>
-      <el-table-column prop="date" label="日期" width="180"></el-table-column>
-    </el-table>
-  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -162,24 +135,19 @@ import {
   Fold, 
   Menu,
   User,
-  Bell,
-  SwitchButton,
   DataLine,
   Files
 } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
 
 const isCollapse = ref(false)
-const userRole = ref('user')
 const isAdmin = ref(false)
 const isReviewer = ref(false)
 const userName = ref('')
 const mobileMenuVisible = ref(false)
-const notificationDialogVisible = ref(false)
-const notificationCount = ref(0)
-const notifications = ref([])
 
 const isMobile = ref(false)
 const checkMobile = () => {
@@ -189,8 +157,47 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
-  fetchNotifications()
+  checkAuth()
 })
+
+const checkAuth = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    router.push('/login')
+    return
+  }
+
+  // 开始：测试登录逻辑处理
+  if (token === 'test-token') {
+    console.log('使用测试账号，跳过后端验证')
+    userName.value = localStorage.getItem('userName') || 'TestUser'
+    isAdmin.value = localStorage.getItem('Permission') === '3'
+    isReviewer.value = ['1', '2', '3'].includes(localStorage.getItem('Permission') || '')
+    return
+  }
+  // 结束：测试登录逻辑处理
+
+  try {
+    // 验证 token 有效性
+    const response = await axios.get('/user/info', {
+      params: {
+        t: token,
+        ID: localStorage.getItem('ID')
+      }
+    })
+    if (response.data.statusID === 0) {
+      userName.value = response.data.data.name
+      isAdmin.value = response.data.data.role === '3'
+      isReviewer.value = ['1', '2', '3'].includes(response.data.data.role)
+    } else {
+      throw new Error('Token 无效')
+    }
+  } catch (error) {
+    console.error('验证失败:', error)
+    localStorage.removeItem('token')
+    router.push('/login')
+  }
+}
 
 const activeMenu = computed(() => route.path)
 
@@ -251,76 +258,32 @@ const handleCommand = (command: string) => {
   }
 }
 
-const logout = () => {
+const logout = async () => {
+  // 注意：这里暂时不调用后端接口，直接执行前端登出逻辑
+  // TODO: 在后端实现登出接口后，取消下面的注释并实现实际的登出请求
+  // try {
+  //   await axios.post('/logout', null, {
+  //     params: {
+  //       t: localStorage.getItem('token'),
+  //       ID: localStorage.getItem('ID')
+  //     }
+  //   })
+  // } catch (error) {
+  //   console.error('退出登录失败:', error)
+  // }
+
   localStorage.removeItem('token')
   localStorage.removeItem('userRole')
   localStorage.removeItem('userName')
+  localStorage.removeItem('ID')
   router.push('/login')
   ElMessage.success('已成功退出登录')
 }
-
-const showNotifications = () => {
-  notificationDialogVisible.value = true
-}
-
-const fetchNotifications = async () => {
-  try {
-    // 通知功能是一个示例，后端暂无相关实现
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    notifications.value = [
-      { title: '系统公告', content: '系统将于本周日进行维护升级', date: '2023-05-10' },
-      { title: '审核提醒', content: '您有新的待审核项目', date: '2023-05-09' }
-    ]
-    notificationCount.value = notifications.value.length
-
-    // 实际的 API 调用可能如下：
-    // const response = await axios.get('/api/notifications', {
-    //   params: {
-    //     t: localStorage.getItem('token'),
-    //     ID: localStorage.getItem('ID')
-    //   }
-    // })
-    // if (response.data.statusID === 0) {
-    //   notifications.value = response.data.notifications
-    //   notificationCount.value = notifications.value.length
-    // } else {
-    //   throw new Error(response.data.msg)
-    // }
-  } catch (error) {
-    console.error('获取通知失败:', error)
-    ElMessage.error('获取通知失败，请稍后重试')
-  }
-}
-
-// 开发阶段使用的角色切换函数
-// 在生产环境中请删除以下注释块
-
-const handleRoleChange = (role: string) => {
-  userRole.value = role
-  localStorage.setItem('userRole', role)
-  isAdmin.value = role === 'admin'
-  isReviewer.value = role === 'reviewer'
-  ElMessage.success(`已切换到${role === 'admin' ? '超级管理员' : role === 'reviewer' ? '审核员' : '普通用户'}权限`)
-  router.push('/')
-}
-
-watch(userRole, (newRole) => {
-  isAdmin.value = newRole === 'admin'
-  isReviewer.value = newRole === 'reviewer'
-})
 
 watch(() => route.path, () => {
   if (isMobile.value) {
     mobileMenuVisible.value = false
   }
-})
-
-onMounted(() => {
-  const storedRole = localStorage.getItem('userRole')
-  userRole.value = storedRole || 'user'
-  isAdmin.value = userRole.value === 'admin'
-  isReviewer.value = userRole.value === 'reviewer'
-  userName.value = localStorage.getItem('userName') || '未知用户'
 })
 </script>
 
@@ -385,10 +348,6 @@ onMounted(() => {
   align-items: center;
 }
 
-.notification-badge {
-  margin-right: 15px;
-}
-
 .user-dropdown .el-dropdown-link {
   cursor: pointer;
   color: #409EFF;
@@ -432,7 +391,6 @@ onMounted(() => {
     justify-content: flex-end;
   }
   
-  .notification-badge,
   .user-dropdown {
     margin-left: 10px;
   }

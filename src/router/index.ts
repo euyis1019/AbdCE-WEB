@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import MainBox from '../views/MainBox.vue'
 import HomeView from '../views/HomeView.vue'
 import ReportForm from '../views/RF/ReportForm.vue'
@@ -10,17 +10,19 @@ import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
 import DataDashboard from '../views/DataDashboard.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
+import Login from '../LoginRegister/Login.vue'
+import Register from '../LoginRegister/Register.vue'
 
-const routes = [
+const routes: Array<RouteRecordRaw> = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('../LoginRegister/Login.vue')
+    component: Login
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../LoginRegister/Register.vue')
+    component: Register
   },
   {
     path: '/',
@@ -92,13 +94,13 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const isAuthenticated = localStorage.getItem('token')
-  const userRole = localStorage.getItem('userRole')
+  const userRole = localStorage.getItem('Permission')
 
   if (to.name !== 'Login' && to.name !== 'Register' && !isAuthenticated) {
     next({ name: 'Login' })
-  } else if (to.meta.requiresAdmin && userRole !== 'admin') {
+  } else if (to.meta.requiresAdmin && userRole !== '3') {
     next({ name: 'Home' })
-  } else if (to.meta.requiresReviewer && userRole !== 'admin' && userRole !== 'reviewer') {
+  } else if (to.meta.requiresReviewer && !['1', '2', '3'].includes(userRole || '')) {
     next({ name: 'Home' })
   } else {
     next()
