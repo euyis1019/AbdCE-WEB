@@ -1,9 +1,10 @@
 import axios from "axios";
 import authService from './services/authService'; // 引入 authService
+import router from './router'; // 引入 router
 
 // 创建 axios 实例
 const instance = axios.create({
-  baseURL: "127.0.0.1:6443", // 设置 API 的基础 URL
+  baseURL: process.env.VUE_APP_API_URL, // 设置 API 的基础 URL
   headers: {
     "Content-type": "application/json" // 设置默认请求头
   }
@@ -59,6 +60,10 @@ instance.interceptors.response.use(
           // 使用新的访问令牌重新发送请求
           return instance(originalConfig); 
         } catch (_error) {
+          // 用户登出
+          authService.logout();
+          // 跳转到登陆页面
+          router.push('/login');
           // 处理刷新令牌失败的错误
           return Promise.reject(_error); 
         }

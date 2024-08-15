@@ -4,7 +4,7 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://your-api-url.com',  // 替换为你的后端 API 地址
+        target: process.env.VUE_APP_API_URL,
         changeOrigin: true,
         pathRewrite: {
           '^/api': ''

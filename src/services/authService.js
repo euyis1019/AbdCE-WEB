@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // 设置 API 的基础 URL
-const API_URL = 'http://your-api-url.com/api/'; 
+const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:8000/api/'; 
 
 // 定义 authService 对象，包含所有与 JWT 相关的操作
 const authService = {
@@ -34,16 +34,21 @@ const authService = {
     const user = authService.getCurrentUser(); 
     // 如果用户信息存在并且包含刷新令牌
     if (user && user.refresh) {
-      // 发送 POST 请求到 /api/token_refresh/ 端点，使用刷新令牌获取新的访问令牌
-      const response = await axios.post(API_URL + 'token_refresh/', { refresh: user.refresh });
-      // 如果获取到新的访问令牌
-      if (response.data.access) {
-        // 更新本地存储中的访问令牌
-        user.access = response.data.access; 
-        localStorage.setItem('user', JSON.stringify(user)); 
+      try {
+        // 发送 POST 请求到 /api/token_refresh/ 端点，使用刷新令牌获取新的访问令牌
+        const response = await axios.post(API_URL + 'token_refresh/', { refresh: user.refresh });
+        // 如果获取到新的访问令牌
+        if (response.data.access) {
+          // 更新本地存储中的访问令牌
+          user.access = response.data.access; 
+          localStorage.setItem('user', JSON.stringify(user)); 
+        }
+        // 返回响应数据
+        return response.data; 
+      } catch (error) {
+        authService.logout();
+        throw error;
       }
-      // 返回响应数据
-      return response.data; 
     }
     // 如果没有刷新令牌，返回 null
     return null; 
