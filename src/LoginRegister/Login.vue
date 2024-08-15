@@ -51,20 +51,16 @@
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import authService from "../services/authService"; // 引入 authService
+import authService from "../services/authService"; 
 
-// 定义路由实例
 const router = useRouter();
 
-// 定义登录表单数据
 const loginForm = reactive({
   username: "",
   password: "",
 });
-// 定义登录表单引用
 const loginFormRef = ref();
 
-// 定义登录表单验证规则
 const loginRules = reactive({
   username: [
     {
@@ -82,30 +78,21 @@ const loginRules = reactive({
   ],
 });
 
-// 提交登录表单的方法
 const submitForm = () => {
-  // 验证表单
   loginFormRef.value.validate(async (valid: boolean) => {
-    // 如果表单验证通过
     if (valid) {
       try {
-        // 使用 authService 的 login 方法进行登录
-        const response = await authService.login(loginForm.username, loginForm.password); 
-        // 登录成功，显示提示信息
-        ElMessage.success("登录成功"); 
-        // 跳转到首页
-        router.push("/"); 
+        await authService.login(loginForm.username, loginForm.password);
+        ElMessage.success("登录成功");
+        router.push("/");
       } catch (error) {
-        // 处理登录失败的错误
-        console.error("登录失败:", error); 
-        // 显示错误提示信息
-        ElMessage.error("登录失败，请重试"); 
+        console.error("登录失败:", error);
+        ElMessage.error("登录失败，请重试");
       }
     }
   });
 };
 
-// 跳转到注册页面的方法
 const handleRegister = () => {
   router.push("/Register");
 }

@@ -39,8 +39,10 @@ import type { FormInstance, FormRules } from 'element-plus'
 import axios from "axios"
 import CryptoJS from 'crypto-js';
 import { ElMessage } from "element-plus";
+import { useRouter } from "vue-router"; // 引入 vue-router
 
 const ruleFormRef = ref<FormInstance>()
+const router = useRouter(); // 使用 vue-router
 
 const validatePhone = (rule, value, callback) => {
   const phoneRegex = /^\d{11}$/;
@@ -106,6 +108,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
         const response = await axios.post('/register', null, { params: data });
         if (response.data.statusID === 0) {
           ElMessage.success(response.data.msg || "注册成功");
+          router.push('/login'); // 注册成功后重定向到登录页面
         } else {
           ElMessage.error(response.data.msg || "注册失败，请重试");
         }

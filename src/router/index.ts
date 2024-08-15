@@ -100,32 +100,24 @@ const router = createRouter({
 
 // 添加路由守卫
 router.beforeEach(async (to, from, next) => {
-  // 获取当前用户信息
-  const user = authService.getCurrentUser(); 
-  // 检查路由是否需要身份验证
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth); 
-  // 检查路由是否需要管理员权限
-  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin); 
-  // 检查路由是否需要审核员权限
-  const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer); 
+  const user = authService.getCurrentUser();
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
+  const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
 
-  // 如果路由需要身份验证且用户未登录
-  if (requiresAuth && !user) { 
-    // 重定向到登录页面
-    next({ name: 'Login' }); 
-  // 如果路由需要管理员权限且用户不是管理员
-  } else if (requiresAdmin && user?.Permission !== '3') { 
-    // 重定向到首页
-    next({ name: 'Home' }); 
-  // 如果路由需要审核员权限且用户不是审核员
-  } else if (requiresReviewer && !['1', '2', '3'].includes(user?.Permission || '')) { 
-    // 重定向到首页
-    next({ name: 'Home' }); 
+  if (requiresAuth && !user) {
+    next({ name: 'Login' });
+  } else if (requiresAdmin && user?.Permission !== '3') {
+    next({ name: 'Home' });
+  } else if (requiresReviewer && !['1', '2', '3'].includes(user?.Permission || '')) {
+    next({ name: 'Home' });
   } else {
-    // 允许访问路由
-    next(); 
+    if (user && to.path === '/login') {
+      next({ name: 'Home' });
+    } else {
+      next();
+    }
   }
 })
 
-// 导出路由实例
-export default router 
+export default router
