@@ -4,7 +4,10 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import authService from './services/authService'; // 引入 authService
+
+const router = useRouter();
 
 // 定时刷新令牌的方法
 const refreshTokenPeriodically = async () => {
@@ -22,9 +25,19 @@ const refreshTokenPeriodically = async () => {
   setTimeout(refreshTokenPeriodically, 4 * 60 * 1000);
 };
 
-// 组件挂载时启动定时刷新令牌
+// 组件挂载时启动定时刷新令牌和自动登录逻辑
 onMounted(() => {
   refreshTokenPeriodically();
+
+  const user = authService.getCurrentUser();
+  if (user) {
+    authService.verifyToken(user.access).then(isValid => {
+      if (!isValid) {
+        authService.logout();
+        router.push('/login');
+      }
+    });
+  }
 });
 </script>
 

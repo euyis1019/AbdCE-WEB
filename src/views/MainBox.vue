@@ -255,13 +255,9 @@ const handleCommand = (command: string) => {
 };
 
 // 注销的方法
-const logout = async () => {
-  // 使用 authService 的 logout 方法注销
+const logout = () => {
   authService.logout(); 
-  // 跳转到登录页面
   router.push('/login'); 
-  // 显示注销成功的提示信息
-  ElMessage.success('已成功退出登录'); 
 };
 
 // 监听路由变化
