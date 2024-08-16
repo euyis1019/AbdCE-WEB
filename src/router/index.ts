@@ -17,16 +17,6 @@ import authService from '../services/authService'; // 引入 authService
 // 定义路由规则
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/login',
-    name: 'Login',
-    component: Login // 登录组件
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: Register // 注册组件
-  },
-  {
     path: '/',
     component: MainBox, // 主布局组件
     children: [

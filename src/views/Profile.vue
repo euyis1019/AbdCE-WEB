@@ -29,7 +29,7 @@
         </div>
       </template>
       <div class="action-buttons">
-        <el-button type="primary" @click="changePassword">修改密码</el-button>
+        <el-button type="primary" @click="goToSSOProfile">修改个人信息</el-button>
         <el-button type="danger" @click="logout">退出登录</el-button>
       </div>
     </el-card>
@@ -57,12 +57,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import authService from '../services/authService'; // 引入 authService
 
-// 定义路由实例
-const router = useRouter();
 // 定义加载状态
 const loading = ref(false);
 // 定义修改密码对话框可见性
@@ -240,21 +237,20 @@ const submitPasswordChange = async () => {
   }
 };
 
+// 修改个人信息的方法
+const goToSSOProfile = () => {
+  window.location.href = process.env.VUE_APP_SSO_URL + 'profile';
+};
+
 // 注销的方法
 const logout = () => {
-  // 显示确认对话框
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  // 如果用户确认退出登录
   }).then(() => {
-    // 使用 authService 的 logout 方法注销
-    authService.logout(); 
-    // 跳转到登录页面
-    router.push('/login'); 
-    // 显示注销成功的提示信息
-    ElMessage.success('已成功退出登录'); 
+    authService.logout();
+    ElMessage.success('已成功退出登录');
   }).catch(() => {
     // 用户取消退出登录
   });

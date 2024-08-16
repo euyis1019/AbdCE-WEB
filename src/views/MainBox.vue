@@ -256,9 +256,8 @@ const handleCommand = (command: string) => {
 
 // 注销的方法
 const logout = () => {
-  authService.logout(); 
-  router.push('/login'); 
-};
+  authService.logout();
+}; // 注销
 
 // 监听路由变化
 watch(() => route.path, () => {
