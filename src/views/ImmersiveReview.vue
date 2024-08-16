@@ -155,14 +155,10 @@ const confirmSubmit = async () => {
   try {
     const response = await axios.post('/report/audit', {
       result: reviewForm.value.result,
-      comment: reviewForm.value.comment
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID'),
-        targetID: currentTask.value.fileID,
-        stepID: getNextStepID()
-      }
+      comment: reviewForm.value.comment,
+      targetID: currentTask.value.fileID,
+      stepID: getNextStepID(),
+      ID: localStorage.getItem('ID')
     })
     
     if (response.data.statusID === 0) {

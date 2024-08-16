@@ -138,15 +138,14 @@ import {
   DataLine,
   Files
 } from '@element-plus/icons-vue'
-import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
 
 const isCollapse = ref(false)
-const isAdmin = ref(false)
-const isReviewer = ref(false)
-const userName = ref('')
+const isAdmin = ref(true)  // 暂时设置为 true，以便访问所有功能
+const isReviewer = ref(true)  // 暂时设置为 true，以便访问所有功能
+const userName = ref('Test User')
 const mobileMenuVisible = ref(false)
 
 const isMobile = ref(false)
@@ -157,47 +156,7 @@ const checkMobile = () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
-  checkAuth()
 })
-
-const checkAuth = async () => {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    router.push('/login')
-    return
-  }
-
-  // 开始：测试登录逻辑处理
-  if (token === 'test-token') {
-    console.log('使用测试账号，跳过后端验证')
-    userName.value = localStorage.getItem('userName') || 'TestUser'
-    isAdmin.value = localStorage.getItem('Permission') === '3'
-    isReviewer.value = ['1', '2', '3'].includes(localStorage.getItem('Permission') || '')
-    return
-  }
-  // 结束：测试登录逻辑处理
-
-  try {
-    // 验证 token 有效性
-    const response = await axios.get('/user/info', {
-      params: {
-        t: token,
-        ID: localStorage.getItem('ID')
-      }
-    })
-    if (response.data.statusID === 0) {
-      userName.value = response.data.data.name
-      isAdmin.value = response.data.data.role === '3'
-      isReviewer.value = ['1', '2', '3'].includes(response.data.data.role)
-    } else {
-      throw new Error('Token 无效')
-    }
-  } catch (error) {
-    console.error('验证失败:', error)
-    localStorage.removeItem('token')
-    router.push('/login')
-  }
-}
 
 const activeMenu = computed(() => route.path)
 
@@ -251,33 +210,9 @@ const handleSelect = (key: string) => {
 }
 
 const handleCommand = (command: string) => {
-  if (command === 'logout') {
-    logout()
-  } else if (command === 'profile') {
+  if (command === 'profile') {
     router.push('/profile')
   }
-}
-
-const logout = async () => {
-  // 注意：这里暂时不调用后端接口，直接执行前端登出逻辑
-  // TODO: 在后端实现登出接口后，取消下面的注释并实现实际的登出请求
-  // try {
-  //   await axios.post('/logout', null, {
-  //     params: {
-  //       t: localStorage.getItem('token'),
-  //       ID: localStorage.getItem('ID')
-  //     }
-  //   })
-  // } catch (error) {
-  //   console.error('退出登录失败:', error)
-  // }
-
-  localStorage.removeItem('token')
-  localStorage.removeItem('userRole')
-  localStorage.removeItem('userName')
-  localStorage.removeItem('ID')
-  router.push('/login')
-  ElMessage.success('已成功退出登录')
 }
 
 watch(() => route.path, () => {

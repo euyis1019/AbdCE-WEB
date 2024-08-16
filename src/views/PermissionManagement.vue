@@ -82,12 +82,7 @@ const isAllAssigned = computed(() => {
 
 const refreshAssignments = async () => {
   try {
-    const response = await axios.get('/admin/getAssignedReviewers', {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
-    })
+    const response = await axios.get('/admin/getAssignedReviewers')
     if (response.data.statusID === 0) {
       assignmentData.value = Object.entries(response.data.data).map(([categoryCode, reviewers]) => ({
         categoryCode,
@@ -104,12 +99,7 @@ const refreshAssignments = async () => {
 
 const fetchReviewers = async () => {
   try {
-    const response = await axios.get('/admin/getReviewers', {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
-    })
+    const response = await axios.get('/admin/getReviewers')
     if (response.data.statusID === 0) {
       reviewers.value = response.data.reviewer
     } else {
@@ -133,11 +123,6 @@ const submitAssignment = async () => {
       adminID: localStorage.getItem('ID'),
       reviewerID: assignForm.value.reviewerId,
       categoryCodes: [assignForm.value.categoryCode]
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
     })
     if (response.data.statusID === 0) {
       ElMessage.success('分配成功')

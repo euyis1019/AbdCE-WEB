@@ -1,3 +1,4 @@
+<!-- Start of Selection -->
 <template>
   <div class="admin-todo">
     <h1>待办事项</h1>
@@ -50,18 +51,13 @@ onMounted(async () => {
 const fetchTodoItems = async () => {
   loading.value = true
   try {
-    const response = await axios.post('/admin/getTDList', {
-      userID: localStorage.getItem('ID')
-    }, {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
+    const response = await axios.post('/admin/getCE', {
+      userID: 'testuser123'  // 使用固定的测试用户 ID，实际使用时应该是登录用户的 ID
     })
 
     if (response.data.statusID === 0) {
-      todoItems.value = response.data.data
-      totalItems.value = response.data.data.length
+      todoItems.value = response.data.data || []
+      totalItems.value = todoItems.value.length
     } else {
       throw new Error(response.data.msg)
     }
@@ -106,3 +102,4 @@ const startReview = (item: any) => {
   text-align: right;
 }
 </style>
+<!-- End of Selection -->

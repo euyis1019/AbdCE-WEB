@@ -8,7 +8,7 @@
           <el-button type="primary" @click="saveDraft" :disabled="submitting">保存草稿</el-button>
         </div>
       </template>
-      
+
       <div class="progress-bar">
         <div
           v-for="(category, index) in categories"
@@ -160,11 +160,8 @@ onMounted(async () => {
 const fetchCategories = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/case/findcase', {
-      params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID')
-      }
+    const response = await axios.post('/case/findcase', {
+      caseID: 'all' // 假设我们需要获取所有案例
     })
     if (response.data.statusID === 0) {
       categories.value = processCategories(response.data.data)
@@ -179,8 +176,7 @@ const fetchCategories = async () => {
   }
 }
 
-const processCategories = (data) => {
-  // 处理后端返回的类别数据，将其转换为前端所需的格式
+const processCategories = (data: any[]) => {
   return data.map(category => ({
     code: category.caseID,
     name: category.mainCLs,

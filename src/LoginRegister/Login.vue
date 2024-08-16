@@ -87,7 +87,6 @@ const submitForm = () => {
       // 开始：测试登录逻辑
       if (loginForm.username === "testuser" && loginForm.password === "testpassword") {
         console.log("使用测试账号登录");
-        localStorage.setItem("token", "test-token");
         localStorage.setItem("Permission", "3"); // 赋予最高权限以便测试所有功能
         localStorage.setItem("Class", "TestClass");
         localStorage.setItem("ID", "TestID");
@@ -108,7 +107,6 @@ const submitForm = () => {
         });
 
         if (response.data.statusID === 0) {
-          localStorage.setItem("token", response.data.data.Token);
           localStorage.setItem("Permission", response.data.data.Permission);
           localStorage.setItem("Class", response.data.data.Cls);
           localStorage.setItem("ID", loginForm.username);
@@ -129,4 +127,3 @@ const handleRegister = () => {
   router.push("/Register");
 }
 </script>
-```

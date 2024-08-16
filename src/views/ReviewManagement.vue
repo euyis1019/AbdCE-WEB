@@ -58,10 +58,10 @@ onMounted(async () => {
 const fetchReviewItems = async () => {
   loading.value = true
   try {
+    // 修改 API 路径，移除 t 参数
     const response = await axios.get('/admin/getReviewList', {
       params: {
-        t: localStorage.getItem('token'),
-        ID: localStorage.getItem('ID'),
+        ID: 'testuser123',  // 使用固定的测试用户 ID
         page: currentPage.value,
         pageSize: pageSize.value
       }

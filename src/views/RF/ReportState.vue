@@ -58,8 +58,7 @@ const fetchReportStatus = async () => {
   try {
     const response = await axios.get('/report/progress', {
       params: {
-        t: localStorage.getItem('token'),
-        userID: localStorage.getItem('ID')
+        userID: 'testuser123'  // 使用固定的测试用户 ID
       }
     })
     if (response.data.statusID === 1) {

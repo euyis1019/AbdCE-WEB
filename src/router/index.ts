@@ -10,20 +10,9 @@ import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
 import DataDashboard from '../views/DataDashboard.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
-import Login from '../LoginRegister/Login.vue'
-import Register from '../LoginRegister/Register.vue'
+import APITestComponent from '../views/APITestComponent.vue'
 
 const routes: Array<RouteRecordRaw> = [
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: Register
-  },
   {
     path: '/',
     component: MainBox,
@@ -46,14 +35,12 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'admin/todo',
         name: 'AdminTodo',
-        component: AdminTodo,
-        meta: { requiresReviewer: true }
+        component: AdminTodo
       },
       {
         path: 'permission-management',
         name: 'PermissionManagement',
-        component: PermissionManagement,
-        meta: { requiresAdmin: true }
+        component: PermissionManagement
       },
       {
         path: 'profile',
@@ -63,20 +50,22 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'immersive-review',
         name: 'ImmersiveReview',
-        component: ImmersiveReview,
-        meta: { requiresReviewer: true }
+        component: ImmersiveReview
       },
       {
         path: 'data-dashboard',
         name: 'DataDashboard',
-        component: DataDashboard,
-        meta: { requiresAdmin: true }
+        component: DataDashboard
       },
       {
         path: 'review-management',
         name: 'ReviewManagement',
-        component: ReviewManagement,
-        meta: { requiresAdmin: true }
+        component: ReviewManagement
+      },
+      {
+        path: 'api-test',
+        name: 'APITest',
+        component: APITestComponent
       }
     ]
   },
@@ -90,21 +79,6 @@ const routes: Array<RouteRecordRaw> = [
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
-
-router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('token')
-  const userRole = localStorage.getItem('Permission')
-
-  if (to.name !== 'Login' && to.name !== 'Register' && !isAuthenticated) {
-    next({ name: 'Login' })
-  } else if (to.meta.requiresAdmin && userRole !== '3') {
-    next({ name: 'Home' })
-  } else if (to.meta.requiresReviewer && !['1', '2', '3'].includes(userRole || '')) {
-    next({ name: 'Home' })
-  } else {
-    next()
-  }
 })
 
 export default router

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export default axios.create({
-  baseURL: "127.0.0.1:6443",
+  baseURL: "http://ce-backend.abdn.kirisame.cc",
   headers: {
     "Content-type": "application/json"
   }
