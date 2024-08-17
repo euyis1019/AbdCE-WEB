@@ -9,22 +9,23 @@
         </div>
       </template>
       <div v-if="reportItems.length > 0">
-        <div v-for="(category, categoryIndex) in categories" :key="category.value" class="category-progress">
-          <h3>{{ category.label }}</h3>
-          <div v-for="(item, itemIndex) in getCategoryItems(category.value)" :key="`${category.value}-${itemIndex}`" class="report-item">
-            <div class="item-header">
-              <span class="item-title">{{ item.categoryCode }}</span>
-              <el-tag :type="getStatusType(item.status)">{{ getStatusLabel(item.status) }}</el-tag>
-            </div>
-            <el-progress 
-              :percentage="getProgressPercentage(item.status)" 
-              :status="getProgressStatus(item.status)"
-              :stroke-width="10"
-              class="item-progress"
-            ></el-progress>
-            <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
-            <el-divider v-if="itemIndex < getCategoryItems(category.value).length - 1"></el-divider>
+        <div v-for="(item, index) in reportItems" :key="`${item.FileID}-${index}`" class="report-item">
+          <div class="item-header">
+            <CategoryInfo :categoryCode="item.categoryCode">
+              <template #default="{ categoryData }">
+                <span class="item-title">{{ categoryData ? categoryData.title : item.categoryCode }}</span>
+              </template>
+            </CategoryInfo>
+            <el-tag :type="getStatusType(item.status)">{{ item.status }}</el-tag>
           </div>
+          <el-progress 
+            :percentage="getProgressPercentage(item.status)" 
+            :status="getProgressStatus(item.status)"
+            :stroke-width="10"
+            class="item-progress"
+          ></el-progress>
+          <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
+          <el-divider v-if="index < reportItems.length - 1"></el-divider>
         </div>
       </div>
       <el-empty v-else description="暂无申报记录"></el-empty>
@@ -35,20 +36,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
 import axios from '../../http-common'
 import authService from '../../services/authService'
+import CategoryInfo from '../../components/CategoryInfo.vue'
 
 const loading = ref(false)
 const reportItems = ref([])
-
-const categories = [
-  { label: '思想品德', value: 'morality' },
-  { label: '学业发展', value: 'academic' },
-  { label: '身心健康', value: 'physical' },
-  { label: '艺术素养', value: 'art' },
-  { label: '社会实践', value: 'social' }
-]
 
 onMounted(() => {
   fetchReportStatus()
@@ -57,87 +50,76 @@ onMounted(() => {
 const fetchReportStatus = async () => {
   loading.value = true
   try {
-    // 获取当前用户信息
-    const user = authService.getCurrentUser() 
-    // 如果用户未登录
-    if (!user) { 
-      // 抛出错误
-      throw new Error('用户未登录'); 
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
     }
 
-    // 获取申报进度
-    const response = await axios.get('/report/progress', { 
-      params: {
-        userID: user.ID // 使用当前用户的 ID
-      }
-    });
-    // 如果请求成功
-    if (response.data.statusID === 1) { 
-      // 设置申报项目数据
-      reportItems.value = response.data.data; 
+    const response = await axios.post('/admin/filestatus', {
+      userID: user.ID
+    })
+    if (response.data.statusID === 1) {
+      reportItems.value = response.data.files.map(file => ({
+        ...file,
+        status: getStatusLabel(file)
+      }))
     } else {
-      // 如果请求失败，抛出错误
-      throw new Error(response.data.msg); 
+      throw new Error(response.data.msg)
     }
   } catch (error) {
-    // 处理获取申报状态失败的错误
-    console.error('获取申报状态失败:', error); 
-    ElMessage.error('获取申报状态失败，请稍后重试');
+    console.error('获取申报状态失败:', error)
+    ElMessage.error('获取申报状态失败，请稍后重试')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 const refreshStatus = () => {
-  fetchReportStatus(); // 刷新申报状态
+  fetchReportStatus()
 }
 
 const formatDate = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN');
+  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
-const getStatusLabel = (status: string) => {
-  const statusMap = {
-    'pending': '待审核',
-    'reviewing': '班委初审中',
-    'cross_review': '交叉复审中',
-    'grade_review': '级委审核中',
-    'confirmed': '已确认'
-  }
-  return statusMap[status] || '未知状态'
+const getStatusLabel = (file: any) => {
+  if (!file.isDone && !file.finalDone) return '待初审'
+  if (file.isDone && !file.finalDone) return '初审通过'
+  if (file.isDone && file.finalDone) return '终审通过'
+  return '未知状态'
 }
 
 const getStatusType = (status: string) => {
-  const statusTypeMap = {
-    'pending': 'info',
-    'reviewing': 'warning',
-    'cross_review': 'warning',
-    'grade_review': 'warning',
-    'confirmed': 'success'
-  };
-  return statusTypeMap[status] || 'info';
+  switch (status) {
+    case '待初审':
+      return 'warning'
+    case '初审通过':
+      return 'success'
+    case '终审通过':
+      return 'info'
+    default:
+      return 'info'
+  }
 }
 
 const getProgressPercentage = (status: string) => {
-  const percentageMap = {
-    'pending': 20,
-    'reviewing': 40,
-    'cross_review': 60,
-    'grade_review': 80,
-    'confirmed': 100
-  };
-  return percentageMap[status] || 0;
+  switch (status) {
+    case '待初审':
+      return 33
+    case '初审通过':
+      return 66
+    case '终审通过':
+      return 100
+    default:
+      return 0
+  }
 }
 
 const getProgressStatus = (status: string) => {
-  return status === 'confirmed' ? 'success' : '';
+  return status === '终审通过' ? 'success' : ''
 }
-
-const getCategoryItems = (category: string) => {
-  return reportItems.value.filter(item => item.categoryCode.startsWith(category));
-}
-
 </script>
+
 
 <style scoped>
 .report-state {

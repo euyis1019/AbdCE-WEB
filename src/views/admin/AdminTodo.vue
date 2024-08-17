@@ -2,11 +2,25 @@
   <div class="admin-todo">
     <h1>待办事项</h1>
     <el-table :data="todoItems" style="width: 100%" v-loading="loading">
-      <el-table-column prop="fileID" label="ID" width="180"></el-table-column>
-      <el-table-column prop="studentID" label="学生学号" width="120"></el-table-column>
+      <el-table-column prop="FileID" label="ID" width="180"></el-table-column>
+      <el-table-column prop="userID" label="学生学号" width="120"></el-table-column>
       <el-table-column prop="applicationTime" label="提交时间" width="180">
         <template #default="scope">
           {{ formatDate(scope.row.applicationTime) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="类别" width="120">
+        <template #default="scope">
+          <CategoryInfo :categoryCode="scope.row.categorycode">
+            <template #default="{ categoryData }">
+              {{ categoryData ? categoryData.title : scope.row.categorycode }}
+            </template>
+          </CategoryInfo>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="120">
+        <template #default="scope">
+          <el-tag :type="getStatusType(scope.row)">{{ getStatusLabel(scope.row) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120">
@@ -35,6 +49,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import axios from '../../http-common'
 import authService from '../../services/authService'
+import CategoryInfo from '../../components/CategoryInfo.vue'
 
 const router = useRouter()
 
@@ -56,13 +71,19 @@ const fetchTodoItems = async () => {
       throw new Error('用户未登录')
     }
 
-    const response = await axios.post('/admin/getTDList', {
+    const response = await axios.post('/admin/getCE', {
       userID: user.ID
     })
 
     if (response.data.statusID === 0) {
-      todoItems.value = response.data.data
-      totalItems.value = response.data.data.length
+      const allItems = [
+        ...response.data.data.reviewTodoList.files,
+        ...response.data.data.reviewDoneList.files,
+        ...response.data.data.finalTodoList.files,
+        ...response.data.data.finalDoneList.files
+      ]
+      todoItems.value = allItems
+      totalItems.value = allItems.length
     } else {
       throw new Error(response.data.msg)
     }
@@ -88,10 +109,24 @@ const formatDate = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
+const getStatusType = (row: any) => {
+  if (!row.isDone && !row.finalDone) return 'warning'
+  if (row.isDone && !row.finalDone) return 'success'
+  if (row.isDone && row.finalDone) return 'info'
+  return 'danger'
+}
+
+const getStatusLabel = (row: any) => {
+  if (!row.isDone && !row.finalDone) return '待初审'
+  if (row.isDone && !row.finalDone) return '待复审'
+  if (row.isDone && row.finalDone) return '已完成'
+  return '未知状态'
+}
+
 const startReview = (item: any) => {
   router.push({
     name: 'ImmersiveReview',
-    params: { taskId: item.fileID },
+    params: { taskId: item.FileID },
     query: { returnTo: 'todo' }
   })
 }
@@ -105,5 +140,16 @@ const startReview = (item: any) => {
 .el-pagination {
   margin-top: 20px;
   text-align: right;
+}
+
+@media (max-width: 768px) {
+  .admin-todo {
+    padding: 10px;
+  }
+
+  .el-button {
+    margin-bottom: 10px;
+    width: 100%;
+  }
 }
 </style>

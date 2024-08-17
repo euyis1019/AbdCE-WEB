@@ -17,16 +17,34 @@
           :class="{ 'active': index === activeCategory, 'completed': index < activeCategory }"
           @click="setActiveCategory(index)"
         >
-          {{ category.name }}
+          <CategoryInfo :categoryCode="category.code">
+            <template #default="{ categoryData }">
+              {{ categoryData ? categoryData.title : category.code }}
+            </template>
+          </CategoryInfo>
         </div>
       </div>
 
       <div class="category-content" v-if="categories.length > 0">
-        <h2>{{ categories[activeCategory].name }}</h2>
+        <h2>
+          <CategoryInfo :categoryCode="categories[activeCategory].code">
+            <template #default="{ categoryData }">
+              {{ categoryData ? categoryData.title : categories[activeCategory].code }}
+            </template>
+          </CategoryInfo>
+        </h2>
         <el-button type="primary" @click="showAddMaterialDialog" :disabled="submitting">添加材料</el-button>
 
         <el-table :data="currentCategoryMaterials" style="width: 100%; margin-top: 20px;">
-          <el-table-column prop="subCategory" label="子类别" width="180"></el-table-column>
+          <el-table-column label="子类别" width="180">
+            <template #default="scope">
+              <CategoryInfo :categoryCode="scope.row.subCategory">
+                <template #default="{ categoryData }">
+                  {{ categoryData ? categoryData.title : scope.row.subCategory }}
+                </template>
+              </CategoryInfo>
+            </template>
+          </el-table-column>
           <el-table-column prop="description" label="描述"></el-table-column>
           <el-table-column prop="score" label="分数" width="100"></el-table-column>
           <el-table-column label="操作" width="120">
@@ -51,7 +69,7 @@
             <el-option
               v-for="subCategory in currentSubCategories"
               :key="subCategory.code"
-              :label="subCategory.name"
+              :label="subCategory.title"
               :value="subCategory.code"
             ></el-option>
           </el-select>
@@ -90,6 +108,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from '../../http-common'
 import authService from '../../services/authService'
+import CategoryInfo from '../../components/CategoryInfo.vue'
 
 // 类别接口定义
 interface Category {
