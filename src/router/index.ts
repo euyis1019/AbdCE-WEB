@@ -14,7 +14,6 @@ import Login from '../LoginRegister/Login.vue'
 import Register from '../LoginRegister/Register.vue'
 import authService from '../services/authService'; // 引入 authService
 
-// 定义路由规则
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
@@ -82,30 +81,28 @@ const routes: Array<RouteRecordRaw> = [
   }
 ]
 
-// 创建路由实例
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-// 添加路由守卫
 router.beforeEach(async (to, from, next) => {
-  const user = authService.getCurrentUser();
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
-  const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
+  const user = authService.getCurrentUser(); // 获取当前用户信息
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth); // 是否需要认证
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin); // 是否需要管理员权限
+  const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer); // 是否需要审核员权限
 
   if (requiresAuth && !user) {
-    next({ name: 'Login' });
+    next({ name: 'Login' }); // 如果路由需要认证且用户未登录，则跳转至登录页
   } else if (requiresAdmin && user?.Permission !== '3') {
-    next({ name: 'Home' });
+    next({ name: 'Home' }); // 如果需要管理员权限且用户不是管理员，则跳转至首页
   } else if (requiresReviewer && !['1', '2', '3'].includes(user?.Permission || '')) {
-    next({ name: 'Home' });
+    next({ name: 'Home' }); // 如果需要审核员权限且用户不是审核员，则跳转至首页
   } else {
     if (user && to.path === '/login') {
-      next({ name: 'Home' });
+      next({ name: 'Home' }); // 如果用户已登录且目标路径是登录页，则跳转至首页
     } else {
-      next();
+      next(); // 否则，允许通过
     }
   }
 })

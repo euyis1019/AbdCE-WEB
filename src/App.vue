@@ -19,6 +19,7 @@ const refreshTokenPeriodically = async () => {
     } catch (error) {
       // 处理刷新令牌失败的错误
       console.error('Failed to refresh token:', error);
+      authService.logout(); // 登出用户
     }
   }
   // 每 4 分钟刷新一次令牌
@@ -34,9 +35,10 @@ onMounted(() => {
     authService.verifyToken(user.access).then(isValid => {
       if (!isValid) {
         authService.logout();
-        router.push('/login');
       }
     });
+  } else {
+    router.push('/login'); // 如果没有用户信息，跳转到登录页面
   }
 });
 </script>
