@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const SSO_URL = process.env.VUE_APP_SSO_URL || 'http://sso.example.com/api/';
+const SSO_URL = process.env.VUE_APP_SSO_URL || 'http://sso.abdn.kirisame.cc/ce/';
 
 const authService = {
   getCurrentUser: () => {
@@ -9,7 +9,7 @@ const authService = {
 
   logout: () => {
     localStorage.removeItem('user');
-    window.location.href = `${SSO_URL}logout`; // 重定向到 SSO 登出页面
+    window.location.href = `${SSO_URL}login.html`; // 重定向到 SSO 登出页面
   },
 
   refreshToken: async () => {
