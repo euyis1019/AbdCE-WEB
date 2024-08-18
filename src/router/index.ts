@@ -78,7 +78,7 @@ router.beforeEach(async (to, from, next) => {
 
   if (requiresAuth && !token) {
     // 重定向到SSO登录页面
-    window.location.href = process.env.VUE_APP_SSO_URL + 'index/login.html'
+    window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
     return
   }
 
@@ -86,7 +86,7 @@ router.beforeEach(async (to, from, next) => {
     const isValid = await authService.verifyToken(token)
     if (!isValid) {
       // 令牌无效,重定向到SSO登录页面
-      window.location.href = process.env.VUE_APP_SSO_URL + 'index/login.html'
+      window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
       return
     }
 

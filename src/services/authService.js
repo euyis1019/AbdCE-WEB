@@ -79,7 +79,7 @@ const authService = {
   logout: () => {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('refresh_token');
-    window.location.href = `${SSO_URL}index/login.html`;
+    window.location.href = `${SSO_URL}/login.html`;
   },
 
   getCurrentUser: () => {
