@@ -39,7 +39,6 @@ AbdCE-WEB/
 - `HomeView.vue`: 首页dashboard,显示用户基本信息和快速操作入口
 - `ReportForm.vue`: 申报表单,用于填写和提交申报信息
 - `ReportState.vue`: 申报状态查询,显示用户申报的进度和状态
-- `Profile.vue`: 个人信息页面,显示用户详细信息
 
 #### 审核员和管理员可访问
 - `AdminTodo.vue`: 审核员待办事项,显示待审核的申报列表
