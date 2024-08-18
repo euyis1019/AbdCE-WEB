@@ -8,7 +8,7 @@
           <el-button type="primary" @click="saveDraft" :disabled="submitting">保存草稿</el-button>
         </div>
       </template>
-      
+
       <div class="progress-bar">
         <div
           v-for="(category, index) in categories"
@@ -224,6 +224,7 @@ const fetchCategories = async () => {
 // 处理类别数据的方法
 const processCategories = (data) => {
   // 将后端返回的类别数据转换为前端所需的格式
+const processCategories = (data: any[]) => {
   return data.map(category => ({
     code: category.caseID,
     name: category.mainCLs,

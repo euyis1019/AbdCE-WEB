@@ -73,6 +73,7 @@ const fetchReviewItems = async () => {
       throw new Error('用户未登录')
     }
 
+    // 修改 API 路径，移除 t 参数
     const response = await axios.get('/admin/getReviewList', {
       params: {
         page: currentPage.value,
