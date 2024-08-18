@@ -22,6 +22,7 @@
           ></el-progress>
           <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
           <el-button type="primary" size="small" @click="goToEdit(item)">修改申报</el-button>
+          <el-button type="danger" size="small" @click="confirmDelete(item)">删除申报</el-button>
           <el-divider v-if="index < reportItems.length - 1"></el-divider>
         </div>
       </div>
@@ -32,7 +33,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import axios from '../../http-common'
 import authService from '../../services/authService'
@@ -129,6 +130,54 @@ const goToEdit = (item: any) => {
     name: 'ReportForm',
     params: { mode: 'edit', fileID: item.FileID }
   })
+}
+
+// 确认删除申报
+const confirmDelete = (item: any) => {
+  ElMessageBox.confirm(
+    '确定要删除这条申报记录吗？此操作不可逆。',
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  )
+    .then(() => {
+      deleteReport(item)
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '已取消删除',
+      })
+    })
+}
+
+// 删除申报
+const deleteReport = async (item: any) => {
+  try {
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
+    const response = await axios.post('/record/deleterecord', {
+      FileID: item.FileID,
+      userID: user.ID
+    })
+
+    if (response.data.statusID === 1) {
+      ElMessage.success('申报记录已成功删除')
+      // 从列表中移除已删除的项
+      reportItems.value = reportItems.value.filter(report => report.FileID !== item.FileID)
+    } else {
+      throw new Error(response.data.msg)
+    }
+  } catch (error) {
+    console.error('删除申报记录失败:', error)
+    ElMessage.error('删除申报记录失败，请稍后重试')
+  }
 }
 </script>
 

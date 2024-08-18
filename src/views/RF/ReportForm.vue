@@ -148,7 +148,7 @@ const materialRules = {
   subCategory: [{ required: true, message: '请选择子类别', trigger: 'change' }],
   description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
   file: [{ required: true, message: '请上传文件', trigger: 'change' }]
-};
+  };
 // TODO: 后端 API 还没写
 const uploadUrl = '/case/upload';
 
