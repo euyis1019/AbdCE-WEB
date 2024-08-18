@@ -34,10 +34,6 @@
           <el-icon><Setting /></el-icon>
           <template #title>权限管理</template>
         </el-menu-item>
-        <el-menu-item index="6" v-if="isAdmin">
-          <el-icon><DataLine /></el-icon>
-          <template #title>数据看板</template>
-        </el-menu-item>
         <el-menu-item index="7" v-if="isAdmin">
           <el-icon><Files /></el-icon>
           <template #title>复审管理</template>
@@ -108,10 +104,6 @@
         <el-icon><Setting /></el-icon>
         <span>权限管理</span>
       </el-menu-item>
-      <el-menu-item index="6" v-if="isAdmin">
-        <el-icon><DataLine /></el-icon>
-        <span>数据看板</span>
-      </el-menu-item>
       <el-menu-item index="7" v-if="isAdmin">
         <el-icon><Files /></el-icon>
         <span>复审管理</span>
@@ -135,64 +127,44 @@ import {
   Fold, 
   Menu,
   User,
-  DataLine,
   Files
 } from '@element-plus/icons-vue'
-import authService from '../services/authService'; // 引入 authService
+import authService from '../services/authService';
 
-// 定义路由实例
 const router = useRouter();
-// 定义路由信息
 const route = useRoute();
 
-// 定义侧边栏折叠状态
 const isCollapse = ref(false);
-// 定义管理员权限
 const isAdmin = ref(false);
-// 定义审核员权限
 const isReviewer = ref(false);
-// 定义用户名
 const userName = ref('');
-// 定义移动端菜单可见性
 const mobileMenuVisible = ref(false);
 
-// 定义是否为移动设备
 const isMobile = ref(false);
-// 检查是否为移动设备的方法
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768;
 };
 
-// 组件挂载时执行
 onMounted(() => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
-  checkAuth(); // 检查用户权限
+  checkAuth();
 });
 
-// 检查用户权限的方法
 const checkAuth = async () => {
-  // 使用 authService 获取当前用户信息
   const user = authService.getCurrentUser(); 
-  // 如果用户未登录
   if (!user) { 
-    // 跳转到登录页面
     router.push('/login'); 
     return;
   }
 
-  // 设置用户名
   userName.value = user.Name || 'User'; 
-  // 设置管理员权限
   isAdmin.value = user.Permission === '3'; 
-  // 设置审核员权限
   isReviewer.value = ['1', '2', '3'].includes(user.Permission || ''); 
 };
 
-// 计算当前激活菜单项的方法
 const activeMenu = computed(() => route.path);
 
-// 计算当前页面标题的方法
 const currentPageTitle = computed(() => {
   const routeTitles = {
     '/': '首页',
@@ -200,24 +172,19 @@ const currentPageTitle = computed(() => {
     '/state': '进度查询',
     '/admin/todo': '待办事项',
     '/permission-management': '权限管理',
-    '/profile': '个人信息',
-    '/data-dashboard': '数据看板',
     '/review-management': '复审管理'
   };
   return routeTitles[route.path] || '综合评价信息申报系统';
 });
 
-// 切换侧边栏折叠状态的方法
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
 };
 
-// 切换移动端菜单可见性的方法
 const toggleMobileMenu = () => {
   mobileMenuVisible.value = !mobileMenuVisible.value;
 };
 
-// 处理菜单项选择的方法
 const handleSelect = (key: string) => {
   mobileMenuVisible.value = false;
   switch (key) {
@@ -236,32 +203,29 @@ const handleSelect = (key: string) => {
     case '5':
       router.push('/permission-management');
       break;
-    case '6':
-      router.push('/data-dashboard');
-      break;
     case '7':
       router.push('/review-management');
       break;
   }
 };
 
-// 处理用户操作命令的方法
 const handleCommand = (command: string) => {
   if (command === 'logout') {
-    logout(); // 注销
+    logout();
   } else if (command === 'profile') {
-    router.push('/profile'); // 跳转到个人信息页面
+    goToSSOProfile();
   }
 };
 
-// 注销的方法
 const logout = () => {
   authService.logout();
-}; // 注销
+};
 
-// 监听路由变化
+const goToSSOProfile = () => {
+  window.location.href = process.env.VUE_APP_SSO_URL + 'profile'; //TODO 待实现, 不知道 SSO 的 profile 页面路径是什么样子
+};
+
 watch(() => route.path, () => {
-  // 如果是移动设备，则关闭移动端菜单
   if (isMobile.value) { 
     mobileMenuVisible.value = false; 
   }

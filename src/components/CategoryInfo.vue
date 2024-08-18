@@ -19,7 +19,7 @@
   
   const fetchCategoryData = async () => {
     try {
-      // TODO: Replace with actual API endpoint when available
+      // TODO: 后端 API 还没写
       const response = await axios.get('/api/categories');
       categoryData.value = response.data;
     } catch (error) {

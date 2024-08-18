@@ -1,4 +1,3 @@
-<!-- Start of Selection -->
 <template>
   <div class="admin-todo">
     <h1>待办事项</h1>
@@ -12,11 +11,7 @@
       </el-table-column>
       <el-table-column label="类别" width="120">
         <template #default="scope">
-          <CategoryInfo :categoryCode="scope.row.categorycode">
-            <template #default="{ categoryData }">
-              {{ categoryData ? categoryData.title : scope.row.categorycode }}
-            </template>
-          </CategoryInfo>
+          <CategoryInfo :categoryCode="scope.row.categorycode" />
         </template>
       </el-table-column>
       <el-table-column label="状态" width="120">
@@ -45,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import axios from '../../http-common'
@@ -59,6 +54,11 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const totalItems = ref(0)
 const loading = ref(false)
+
+const isAdmin = computed(() => {
+  const user = authService.getCurrentUser()
+  return user && user.Permission === '3'
+})
 
 onMounted(async () => {
   await fetchTodoItems()
@@ -77,14 +77,14 @@ const fetchTodoItems = async () => {
     })
 
     if (response.data.statusID === 0) {
-      const allItems = [
-        ...response.data.data.reviewTodoList.files,
-        ...response.data.data.reviewDoneList.files,
-        ...response.data.data.finalTodoList.files,
-        ...response.data.data.finalDoneList.files
-      ]
-      todoItems.value = allItems
-      totalItems.value = allItems.length
+      if (isAdmin.value) {
+        // 管理员获取待复审的案件
+        todoItems.value = response.data.data.finalTodoList.files
+      } else {
+        // 普通审核员获取待初审的案件
+        todoItems.value = response.data.data.reviewTodoList.files
+      }
+      totalItems.value = todoItems.value.length
     } else {
       throw new Error(response.data.msg)
     }
@@ -111,17 +111,19 @@ const formatDate = (timestamp: string) => {
 }
 
 const getStatusType = (row: any) => {
-  if (!row.isDone && !row.finalDone) return 'warning'
-  if (row.isDone && !row.finalDone) return 'success'
-  if (row.isDone && row.finalDone) return 'info'
-  return 'danger'
+  if (isAdmin.value) {
+    return 'warning' // 管理员的待复审项目
+  } else {
+    return row.isDone ? 'success' : 'warning' // 普通审核员的待初审项目
+  }
 }
 
 const getStatusLabel = (row: any) => {
-  if (!row.isDone && !row.finalDone) return '待初审'
-  if (row.isDone && !row.finalDone) return '待复审'
-  if (row.isDone && row.finalDone) return '已完成'
-  return '未知状态'
+  if (isAdmin.value) {
+    return '待复审'
+  } else {
+    return row.isDone ? '已初审' : '待初审'
+  }
 }
 
 const startReview = (item: any) => {
@@ -154,4 +156,3 @@ const startReview = (item: any) => {
   }
 }
 </style>
-<!-- End of Selection -->

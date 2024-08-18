@@ -2,7 +2,7 @@
   <div class="immersive-review">
     <header class="review-header">
       <el-button @click="exitReview" type="text" icon="ArrowLeft">退出审核</el-button>
-      <h2>{{ currentTask.caseID }} - {{ currentTask.studentID }}</h2>
+      <h2>{{ currentTask.caseID }} - {{ currentTask.userID }}</h2>
       <span>审核员：{{ reviewerName }}</span>
     </header>
 
@@ -114,9 +114,9 @@ const confirmDialogVisible = ref(false)
 const guideVisible = ref(true)
 
 const currentTask = ref({
-  fileID: '',
+  FileID: '',
   caseID: '',
-  studentID: '',
+  userID: '',
   mainCLs: '',
   cls1: '',
   cls2: '',
@@ -129,6 +129,7 @@ const currentTask = ref({
   isDone: false,
   priority: 0,
   applicationTime: '',
+  rules: ''
 })
 
 const reviewerName = ref('')
@@ -137,6 +138,11 @@ const reviewForm = ref({
   result: '',
   score: 0,
   comment: '',
+})
+
+const isAdmin = computed(() => {
+  const user = authService.getCurrentUser()
+  return user && user.Permission === '3'
 })
 
 const exitReview = () => {
@@ -154,26 +160,38 @@ const submitReview = (result: 'pass' | 'reject') => {
 
 const confirmSubmit = async () => {
   try {
-    const response = await axios.post('/report/audit', {
-      result: reviewForm.value.result,
-      comment: reviewForm.value.comment
-    }, {
-      params: {
-        targetID: currentTask.value.fileID,
-        stepID: getNextStepID()
-      }
-    })
-    
-    if (response.data.statusID === 0) {
-      ElMessage.success('审核结果已提交')
-      confirmDialogVisible.value = false
-      await getNextTask()
+    const user = authService.getCurrentUser();
+    if (!user) {
+      throw new Error('用户未登录');
+    }
+
+    const endpoint = isAdmin.value ? '/admin/finalDone' : '/admin/isdone';
+    const payload = {
+      userID: user.ID,
+      FileID: currentTask.value.FileID,
+      reviewerID: user.ID,
+      comment: reviewForm.value.comment,
+      score: reviewForm.value.score
+    };
+
+    if (isAdmin.value) {
+      payload.finalDone = reviewForm.value.result === 'pass';
     } else {
-      throw new Error(response.data.msg)
+      payload.isDone = reviewForm.value.result === 'pass';
+    }
+
+    const response = await axios.post(endpoint, payload);
+    
+    if (response.data.statusID === 1) {
+      ElMessage.success('审核结果已提交');
+      confirmDialogVisible.value = false;
+      await getNextTask();
+    } else {
+      throw new Error(response.data.msg);
     }
   } catch (error) {
-    console.error('提交审核结果失败:', error)
-    ElMessage.error('提交审核结果失败，请重试')
+    console.error('提交审核结果失败:', error);
+    ElMessage.error('提交审核结果失败，请重试');
   }
 }
 
@@ -188,16 +206,21 @@ const getNextTask = async () => {
       userID: user.ID
     })
     
-    if (response.data.statusID === 0 && response.data.data.length > 0) {
-      currentTask.value = response.data.data[0]
-      reviewForm.value = {
-        result: '',
-        score: 0,
-        comment: '',
+    if (response.data.statusID === 0) {
+      const taskList = isAdmin.value ? response.data.data.finalTodoList.files : response.data.data.reviewTodoList.files;
+      if (taskList.length > 0) {
+        currentTask.value = taskList[0]
+        reviewForm.value = {
+          result: '',
+          score: 0,
+          comment: '',
+        }
+      } else {
+        ElMessage.info('所有任务已审核完毕')
+        exitReview()
       }
     } else {
-      ElMessage.info('所有任务已审核完毕')
-      exitReview()
+      throw new Error(response.data.msg)
     }
   } catch (error) {
     console.error('获取下一个任务失败:', error)
@@ -219,11 +242,6 @@ const handleKeyDown = (event: KeyboardEvent) => {
   } else if (event.key === 'Escape') {
     exitReview()
   }
-}
-
-// TODO：获取下一个步骤ID，需要根据实际业务逻辑进行实现（接口为 admin/getCE 取下一个任务）
-const getNextStepID = () => {
-  return '1'
 }
 
 onMounted(async () => {

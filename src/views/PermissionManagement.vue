@@ -18,11 +18,7 @@
           <el-table :data="assignmentData" style="width: 100%">
             <el-table-column label="类别" prop="categoryCode">
               <template #default="scope">
-                <CategoryInfo :categoryCode="scope.row.categoryCode">
-                  <template #default="{ categoryData }">
-                    {{ categoryData ? categoryData.title : scope.row.categoryCode }}
-                  </template>
-                </CategoryInfo>
+                <CategoryInfo :categoryCode="scope.row.categoryCode" />
               </template>
             </el-table-column>
             <el-table-column prop="reviewers" label="审核员">
@@ -43,11 +39,7 @@
     <el-dialog v-model="assignDialogVisible" title="分配审核员" width="30%">
       <el-form :model="assignForm" label-width="100px">
         <el-form-item label="类别">
-          <CategoryInfo :categoryCode="assignForm.categoryCode">
-            <template #default="{ categoryData }">
-              {{ categoryData ? categoryData.title : assignForm.categoryCode }}
-            </template>
-          </CategoryInfo>
+          <CategoryInfo :categoryCode="assignForm.categoryCode" />
         </el-form-item>
         <el-form-item label="审核员">
           <el-select v-model="assignForm.reviewerId" placeholder="请选择审核员" style="width: 100%;">
@@ -77,13 +69,11 @@ import axios from '../http-common'
 import authService from '../services/authService'
 import CategoryInfo from '../components/CategoryInfo.vue'
 
-// 定义分配情况接口
 interface Assignment {
   categoryCode: string;
   reviewers: string[];
 }
 
-// 分配数据
 const assignmentData = ref<Assignment[]>([]);
 const reviewers = ref([]);
 const assignDialogVisible = ref(false);
@@ -140,17 +130,36 @@ const submitAssignment = async () => {
       throw new Error('用户未登录');
     }
 
-    const response = await axios.post('/admin/assignTask', {
-      adminID: user.ID,
-      reviewerID: assignForm.value.reviewerId,
-      categoryCodes: [assignForm.value.categoryCode]
-    });
-    if (response.data.statusID === 0) {
-      ElMessage.success('分配成功');
-      assignDialogVisible.value = false;
-      refreshAssignments();
+    const existingReviewers = assignmentData.value.find(item => item.categoryCode === assignForm.value.categoryCode)?.reviewers || [];
+
+    // 如果该类别已有审核员，使用updateReviewerStatus接口
+    if (existingReviewers.length > 0) {
+      const response = await axios.post('/admin/updateReviewerStatus', {
+        userID: assignForm.value.reviewerId,
+        reviewer: true,
+        categoryCode: assignForm.value.categoryCode
+      });
+      if (response.data.statusID === 0) {
+        ElMessage.success('审核员状态更新成功');
+        assignDialogVisible.value = false;
+        refreshAssignments();
+      } else {
+        throw new Error(response.data.msg);
+      }
     } else {
-      throw new Error(response.data.msg);
+      // 如果该类别还没有审核员，使用assignTask接口
+      const response = await axios.post('/admin/assignTask', {
+        adminID: user.ID,
+        reviewerID: assignForm.value.reviewerId,
+        categoryCodes: [assignForm.value.categoryCode]
+      });
+      if (response.data.statusID === 0) {
+        ElMessage.success('分配成功');
+        assignDialogVisible.value = false;
+        refreshAssignments();
+      } else {
+        throw new Error(response.data.msg);
+      }
     }
   } catch (error) {
     console.error('分配审核员失败:', error);

@@ -85,18 +85,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
 import Statistic from '../components/Statistic.vue'
-import authService from '../services/authService'; // 引入 authService
-import axios from '../http-common'; // 引入 axios 实例
+import authService from '../services/authService'
+import axios from '../http-common'
 
-// 定义路由实例
 const router = useRouter();
 
-// 定义用户信息接口
 interface UserInfo {
   name: string;
   studentId: string;
@@ -105,22 +103,17 @@ interface UserInfo {
   role: string;
 }
 
-// 定义申报状态接口
 interface ReportStatus {
   progress: number;
   status: string;
-  lastUpdate: number; // 修改 lastUpdate 类型为 number
+  lastUpdate: number;
 }
 
-// 用户信息和申报状态的响应式引用
 const userInfo = ref<UserInfo | null>(null);
 const reportStatus = ref<ReportStatus | null>(null);
-// 定义是否为审核员
 const isReviewer = ref(false);
-// 定义是否为管理员
 const isAdmin = ref(false);
 
-// 加载状态和错误信息
 const loading = reactive({
   user: false,
   report: false,
@@ -133,7 +126,6 @@ const error = reactive({
   stats: ''
 });
 
-// 统计数据
 const stats = reactive({
   pendingReports: 0,
   completedReviews: 0,
@@ -141,23 +133,17 @@ const stats = reactive({
   announcements: 0
 });
 
-// 获取仪表盘数据的方法
 const fetchDashboardData = async () => {
-  // 设置加载状态
   loading.user = true;
   loading.report = true;
   loading.stats = true;
-  // 清空错误信息
   error.user = '';
   error.report = '';
   error.stats = '';
 
   try {
-    // 使用 authService 获取当前用户信息
-    const user = authService.getCurrentUser(); 
-    // 如果用户信息存在
-    if (user) { 
-      // 设置用户信息
+    const user = authService.getCurrentUser();
+    if (user) {
       userInfo.value = {
         name: user.Name || '',
         studentId: user.ID || '',
@@ -166,57 +152,55 @@ const fetchDashboardData = async () => {
         role: user.Permission || '0'
       };
 
-      // 获取申报状态
-      const reportResponse = await axios.get('/report/progress'); // 使用 axios 实例发送请求
-      // 如果请求成功
-      if (reportResponse.data.statusID === 1) { 
-        // 获取最新的申报记录
-        const latestReport = reportResponse.data.data[reportResponse.data.data.length - 1]; 
-        // 设置申报状态
-        reportStatus.value = {
-          progress: getProgressPercentage(latestReport.status),
-          status: getStatusLabel(latestReport.status),
-          lastUpdate: latestReport.submitTime 
-        };
+      // 使用 /record/userstatus 接口获取用户统计数据
+      const statusResponse = await axios.post('/record/userstatus', { userID: user.ID });
+      if (statusResponse.data.statusID === 1) {
+        stats.pendingReports = statusResponse.data.reviewTodoCount;
+        stats.completedReviews = statusResponse.data.finalDoneCount;
+        stats.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
+                          statusResponse.data.finalTodoCount + statusResponse.data.finalDoneCount;
+      } else {
+        throw new Error(statusResponse.data.msg);
       }
 
-      // 获取统计数据
-      // 注意：后端目前没有提供这个接口，这里使用模拟数据
-      stats.pendingReports = 0;
-      stats.completedReviews = 0;
-      stats.myReports = reportResponse.data.data.length;
-      stats.announcements = 0;
+      // 获取申报状态
+      const fileStatusResponse = await axios.post('/admin/filestatus', { FileID: user.ID });
+      if (fileStatusResponse.data.statusID === 1) {
+        reportStatus.value = {
+          progress: getProgressPercentage(fileStatusResponse.data.status),
+          status: getStatusLabel(fileStatusResponse.data.status),
+          lastUpdate: new Date().getTime() // 使用当前时间作为最后更新时间
+        };
+      } else {
+        throw new Error(fileStatusResponse.data.msg);
+      }
 
-    // 如果用户信息不存在，抛出错误
-    } else { 
-      throw new Error('未找到用户信息'); 
+      // 系统公告数量（这里假设没有专门的接口，暂时设置为0）
+      stats.announcements = 0;
+    } else {
+      throw new Error('未找到用户信息');
     }
   } catch (err) {
-    // 处理获取仪表盘数据失败的错误
-    console.error('获取仪表盘数据失败:', err); 
+    console.error('获取仪表盘数据失败:', err);
     error.user = '加载用户信息失败';
     error.report = '加载申报状态失败';
     error.stats = '加载统计数据失败';
   } finally {
-    // 设置加载状态为 false
-    loading.user = false; 
+    loading.user = false;
     loading.report = false;
     loading.stats = false;
   }
 };
 
-// 刷新申报状态的方法
 const refreshReportStatus = () => {
   fetchDashboardData();
   ElMessage.success('正在刷新申报状态');
 };
 
-// 格式化进度条显示的方法
 const formatProgress = (percentage: number) => {
   return percentage === 100 ? '完成' : `${percentage}%`;
 };
 
-// 获取进度条状态的方法
 const getProgressStatus = () => {
   if (!reportStatus.value) return '';
   if (reportStatus.value.progress === 100) return 'success';
@@ -224,12 +208,10 @@ const getProgressStatus = () => {
   return 'warning';
 };
 
-// 格式化日期的方法
-const formatDate = (timestamp: number) => { // 修改参数类型为 number
+const formatDate = (timestamp: number) => {
   return new Date(timestamp).toLocaleString('zh-CN');
 };
 
-// 获取角色名称的方法
 const getRoleName = (role: string) => {
   switch (role) {
     case '3':
@@ -239,11 +221,10 @@ const getRoleName = (role: string) => {
     case '1':
       return '班委';
     default:
-      return '学生';
+      return '普通用户';
   }
 };
 
-// 页面跳转函数
 const goToReportForm = () => {
   router.push('/report');
 };
@@ -260,41 +241,46 @@ const goToDataDashboard = () => {
   router.push('/data-dashboard');
 };
 
-// 获取进度百分比的方法
 const getProgressPercentage = (status: string) => {
-  const percentageMap = {
-    'pending': 20,
-    'reviewing': 40,
-    'cross_review': 60,
-    'grade_review': 80,
-    'confirmed': 100
-  };
-  return percentageMap[status] || 0;
+  switch (status) {
+    case 'pending':
+      return 20;
+    case 'reviewing':
+      return 40;
+    case 'cross_review':
+      return 60;
+    case 'grade_review':
+      return 80;
+    case 'confirmed':
+      return 100;
+    default:
+      return 0;
+  }
 };
 
-// 获取状态标签的方法
 const getStatusLabel = (status: string) => {
-  const statusMap = {
-    'pending': '待审核',
-    'reviewing': '班委初审中',
-    'cross_review': '交叉复审中',
-    'grade_review': '级委审核中',
-    'confirmed': '已确认'
-  };
-  return statusMap[status] || '未知状态';
+  switch (status) {
+    case 'pending':
+      return '待审核';
+    case 'reviewing':
+      return '班委初审中';
+    case 'cross_review':
+      return '交叉复审中';
+    case 'grade_review':
+      return '级委审核中';
+    case 'confirmed':
+      return '已确认';
+    default:
+      return '未知状态';
+  }
 };
 
-// 组件挂载时获取数据
 onMounted(() => {
-  fetchDashboardData(); 
-  // 获取当前用户信息
-  const user = authService.getCurrentUser(); 
-  // 如果用户信息存在
-  if (user) { 
-    // 设置是否为审核员
-    isReviewer.value = ['1', '2'].includes(user.Permission || ''); 
-    // 设置是否为管理员
-    isAdmin.value = user.Permission === '3'; 
+  fetchDashboardData();
+  const user = authService.getCurrentUser();
+  if (user) {
+    isReviewer.value = ['1', '2'].includes(user.Permission || '');
+    isAdmin.value = user.Permission === '3';
   }
 });
 </script>

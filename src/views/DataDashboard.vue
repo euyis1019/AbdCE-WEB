@@ -27,33 +27,45 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import axios from '../http-common'; // 引入 axios 实例
+import axios from '../http-common';
+import authService from '../services/authService';
 
 // 审核进度数据
 const reviewProgress = ref([]);
 
 // 组件挂载时执行
 onMounted(async () => {
-  await fetchReviewProgress(); // 获取审核进度
+  await fetchReviewProgress();
 });
 
 // 获取审核进度的方法
 const fetchReviewProgress = async () => {
   try {
-    // 这里应该替换为实际的API调用
-    const response = await axios.get('/api/review-progress'); // 使用 axios 实例发送请求
-    // 如果请求成功
-    if (response.data.statusID === 0) { 
-      // 设置审核进度数据
-      reviewProgress.value = response.data.progress; 
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
+    const response = await axios.post('/record/userstatus', {
+      userID: user.ID
+    })
+
+    if (response.data.statusID === 1) {
+      const total = response.data.reviewTodoCount + response.data.reviewDoneCount + 
+                    response.data.finalTodoCount + response.data.finalDoneCount;
+      const completed = response.data.finalDoneCount;
+      
+      reviewProgress.value = [{
+        name: user.Name,
+        class: user.Class,
+        progress: Math.round((completed / total) * 100)
+      }];
     } else {
-      // 如果请求失败，抛出错误
-      throw new Error(response.data.msg); 
+      throw new Error(response.data.msg)
     }
   } catch (error) {
-    // 处理获取审核进度失败的错误
-    console.error('获取审核进度失败:', error); 
-    ElMessage.error('获取审核进度失败，请稍后重试');
+    console.error('获取审核进度失败:', error)
+    ElMessage.error('获取审核进度失败，请稍后重试')
   }
 };
 </script>

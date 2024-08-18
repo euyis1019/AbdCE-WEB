@@ -11,11 +11,7 @@
       <div v-if="reportItems.length > 0">
         <div v-for="(item, index) in reportItems" :key="`${item.FileID}-${index}`" class="report-item">
           <div class="item-header">
-            <CategoryInfo :categoryCode="item.categoryCode">
-              <template #default="{ categoryData }">
-                <span class="item-title">{{ categoryData ? categoryData.title : item.categoryCode }}</span>
-              </template>
-            </CategoryInfo>
+            <CategoryInfo :categoryCode="item.categoryCode" />
             <el-tag :type="getStatusType(item.status)">{{ item.status }}</el-tag>
           </div>
           <el-progress 
@@ -25,6 +21,7 @@
             class="item-progress"
           ></el-progress>
           <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
+          <el-button type="primary" size="small" @click="goToEdit(item)">修改申报</el-button>
           <el-divider v-if="index < reportItems.length - 1"></el-divider>
         </div>
       </div>
@@ -36,10 +33,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import axios from '../../http-common'
 import authService from '../../services/authService'
 import CategoryInfo from '../../components/CategoryInfo.vue'
 
+const router = useRouter()
 const loading = ref(false)
 const reportItems = ref([])
 
@@ -55,13 +54,14 @@ const fetchReportStatus = async () => {
       throw new Error('用户未登录')
     }
 
-    const response = await axios.post('/admin/filestatus', {
+    // 使用todolist/findcase接口获取用户所有已提交的条目
+    const response = await axios.post('/todolist/findcase', {
       userID: user.ID
     })
-    if (response.data.statusID === 1) {
-      reportItems.value = response.data.files.map(file => ({
-        ...file,
-        status: getStatusLabel(file)
+    if (response.data.statusID === 0) {
+      reportItems.value = response.data.data.map(item => ({
+        ...item,
+        status: getStatusLabel(item)
       }))
     } else {
       throw new Error(response.data.msg)
@@ -82,6 +82,7 @@ const formatDate = (timestamp: number) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
+// 根据文件状态返回对应的标签
 const getStatusLabel = (file: any) => {
   if (!file.isDone && !file.finalDone) return '待初审'
   if (file.isDone && !file.finalDone) return '初审通过'
@@ -89,6 +90,7 @@ const getStatusLabel = (file: any) => {
   return '未知状态'
 }
 
+// 根据状态返回对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
     case '待初审':
@@ -102,6 +104,7 @@ const getStatusType = (status: string) => {
   }
 }
 
+// 根据状态返回进度百分比
 const getProgressPercentage = (status: string) => {
   switch (status) {
     case '待初审':
@@ -115,11 +118,19 @@ const getProgressPercentage = (status: string) => {
   }
 }
 
+// 根据状态返回进度条状态
 const getProgressStatus = (status: string) => {
   return status === '终审通过' ? 'success' : ''
 }
-</script>
 
+// 跳转到编辑页面
+const goToEdit = (item: any) => {
+  router.push({
+    name: 'ReportForm',
+    params: { mode: 'edit', fileID: item.FileID }
+  })
+}
+</script>
 
 <style scoped>
 .report-state {

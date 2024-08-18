@@ -3,44 +3,36 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import authService from './services/authService'; // 引入 authService
+import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import authService from './services/authService'
 
-const router = useRouter();
+const router = useRouter()
 
-// 定时刷新令牌的方法
-const refreshTokenPeriodically = async () => {
-  const user = authService.getCurrentUser(); // 获取当前用户信息
-  if (user) {
-    try {
-      // 使用 authService 的 refreshToken 方法刷新令牌
-      await authService.refreshToken();
-    } catch (error) {
-      // 处理刷新令牌失败的错误
-      console.error('Failed to refresh token:', error);
-      authService.logout(); // 登出用户
-    }
-  }
-  // 每 4 分钟刷新一次令牌
-  setTimeout(refreshTokenPeriodically, 4 * 60 * 1000);
-};
+let cleanupRefresh;
 
-// 组件挂载时启动定时刷新令牌和自动登录逻辑
 onMounted(() => {
-  refreshTokenPeriodically();
+  cleanupRefresh = authService.setupTokenRefresh();
 
-  const user = authService.getCurrentUser();
-  if (user) {
-    authService.verifyToken(user.access).then(isValid => {
+  const token = localStorage.getItem('jwt_token')
+  if (token) {
+    authService.verifyToken(token).then(isValid => {
       if (!isValid) {
-        authService.logout();
+        // 令牌无效,重定向到SSO登录页面
+        window.location.href = process.env.VUE_APP_SSO_URL + 'index/login.html'
       }
-    });
+    })
   } else {
-    router.push('/login'); // 如果没有用户信息，跳转到登录页面
+    // 没有令牌,重定向到SSO登录页面
+    window.location.href = process.env.VUE_APP_SSO_URL + 'index/login.html'
   }
-});
+})
+
+onUnmounted(() => {
+  if (cleanupRefresh) {
+    cleanupRefresh();
+  }
+})
 </script>
 
 <style lang="scss">
