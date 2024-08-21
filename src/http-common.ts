@@ -1,6 +1,6 @@
 import axios from "axios";
+import Cookies from 'js-cookie';
 import authService from './services/authService';
-import router from './router';
 
 const instance = axios.create({
   baseURL: process.env.VUE_APP_API_URL,
@@ -11,9 +11,9 @@ const instance = axios.create({
 
 instance.interceptors.request.use(
   (config) => {
-    const user = authService.getCurrentUser();
-    if (user && user.access) {
-      config.headers["Authorization"] = 'Bearer ' + user.access;
+    const token = Cookies.get('jwt_token');
+    if (token) {
+      config.headers["Authorization"] = 'Bearer ' + token;
     }
     return config;
   },
@@ -23,28 +23,24 @@ instance.interceptors.request.use(
 );
 
 instance.interceptors.response.use(
-  (res) => {
-    return res;
+  (response) => {
+    return response;
   },
-  async (err) => {
-    const originalConfig = err.config;
-    if (err.response) {
-      if (err.response.status === 401 && !originalConfig._retry) {
-        originalConfig._retry = true;
-        try {
-          const rs = await authService.refreshToken();
-          const { access } = rs;
-          authService.updateLocalAccessToken(access);
-          instance.defaults.headers.common["Authorization"] = "Bearer " + access;
-          return instance(originalConfig);
-        } catch (_error) {
-          authService.logout();
-          router.push('/login');
-          return Promise.reject(_error);
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const newToken = await authService.refreshToken();
+        if (newToken) {
+          axios.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
+          return instance(originalRequest);
         }
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
       }
     }
-    return Promise.reject(err);
+    return Promise.reject(error);
   }
 );
 

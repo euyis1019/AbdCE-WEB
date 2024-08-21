@@ -149,8 +149,8 @@ const materialRules = {
   description: [{ required: true, message: '请输入描述', trigger: 'blur' }],
   file: [{ required: true, message: '请上传文件', trigger: 'change' }]
   };
-// TODO: 后端 API 还没写
-const uploadUrl = '/case/upload';
+
+const uploadUrl = '/admin/upload';
 
 const uploadHeaders = computed(() => {
   const user = authService.getCurrentUser();
@@ -218,7 +218,7 @@ const loadExistingData = async () => {
     if (!user) throw new Error('用户未登录');
 
     const response = await axios.post('/case/findcase', {
-      FileID: route.params.fileID
+      caseID: route.params.fileID
     });
 
     if (response.data.statusID === 0) {
@@ -230,8 +230,8 @@ const loadExistingData = async () => {
         }
         materials[item.caseID].push({
           subCategory: item.cls1,
-          description: item.description,
-          score: item.point,
+          description: item.cls2,
+          score: parseFloat(item.point),
           file: {
             name: item.file,
             url: item.file
@@ -261,14 +261,19 @@ const showAddMaterialDialog = () => {
   uploadProgress.value = 0;
 };
 
-const handleUploadSuccess = (res: any, file: any) => {
-  newMaterial.file = { name: file.name, url: res.url };
-  uploadProgress.value = 100;
-  ElMessage.success('上传成功');
+const handleUploadSuccess = (res: any) => {
+  if (res.statusID === 1) {
+    newMaterial.file = { name: res.fileName, url: res.fileURL };
+    uploadProgress.value = 100;
+    ElMessage.success('上传成功');
+  } else {
+    ElMessage.error(res.msg || '上传失败');
+  }
 };
 
-const handleUploadError = () => {
-  ElMessage.error('上传失败，请重试');
+const handleUploadError = (error: any) => {
+  console.error('文件上传失败:', error);
+  ElMessage.error('文件上传失败，请重试');
 };
 
 const handleUploadProgress = (event: any, file: any) => {
@@ -362,15 +367,14 @@ const submitForm = async () => {
     const submitPromises = Object.entries(materials).flatMap(([categoryCode, categoryMaterials]) =>
       categoryMaterials.map(material => {
         const payload = {
-          userID: user.ID,
           caseID: categoryCode,
+          userID: user.ID,
           mainCLs: categories.value.find(c => c.code === categoryCode)?.title,
           cls1: material.subCategory,
-          cls2: '',
+          cls2: material.description,
           cls3: '',
-          cls4: '',
           point: material.score.toString(),
-          judgment: material.description,
+          judgement: material.description,
           file: material.file.url
         };
         
@@ -389,7 +393,7 @@ const submitForm = async () => {
     const responses = await Promise.all(submitPromises);
 
     // 检查所有响应是否都成功
-    if (responses.every(response => response.data.statusID === 1)) {
+    if (responses.every(response => response.data.statusID === 0)) {
       ElMessage.success(isEditMode.value ? '申报更新成功' : '申报提交成功');
       localStorage.removeItem('reportDraft');
       router.push('/state');

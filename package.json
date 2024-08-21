@@ -29,6 +29,7 @@
     "webpack-env": "^0.8.0"
   },
   "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
     "@vue/cli-plugin-babel": "~5.0.8",
     "@vue/cli-plugin-router": "~5.0.8",
     "@vue/cli-plugin-typescript": "~5.0.8",

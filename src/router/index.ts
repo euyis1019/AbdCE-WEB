@@ -9,6 +9,15 @@ import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
 import authService from '../services/authService'
+import Cookies from 'js-cookie'
+
+interface User {
+  ID: any;
+  Name: any;
+  TokenType: any;
+  ExpirationTime: any;
+  Permission: string;
+}
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -71,36 +80,44 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const token = localStorage.getItem('jwt_token')
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
-  const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer)
+  const token = Cookies.get('jwt_token');
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
   if (requiresAuth && !token) {
-    // 重定向到SSO登录页面
-    window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
-    return
+    window.location.href = process.env.VUE_APP_SSO_URL + 'login.html';
+    return;
   }
 
   if (token) {
-    const isValid = await authService.verifyToken(token)
-    if (!isValid) {
-      // 令牌无效,重定向到SSO登录页面
-      window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
-      return
-    }
+    try {
+      const isValid = await authService.verifyToken(token);
+      if (!isValid) {
+        throw new Error('Token is invalid or expired');
+      }
 
-    const user = authService.getCurrentUser()
-    if (requiresAdmin && user?.Permission !== '3') {
-      next({ name: 'Home' })
-    } else if (requiresReviewer && !['1', '2', '3'].includes(user?.Permission || '')) {
-      next({ name: 'Home' })
-    } else {
-      next()
+      const user = authService.getCurrentUser() as User;  // 添加类型断言
+      if (!user || !user.ID) {
+        throw new Error('User information not available');
+      }
+
+      const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
+      const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
+
+      if (requiresAdmin && user.Permission !== '3') {
+        next({ name: 'Home' });
+      } else if (requiresReviewer && !['1', '2', '3'].includes(user.Permission)) {
+        next({ name: 'Home' });
+      } else {
+        next();
+      }
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      Cookies.remove('jwt_token');
+      window.location.href = process.env.VUE_APP_SSO_URL + 'login.html';
     }
   } else {
-    next()
+    next();
   }
-})
+});
 
 export default router

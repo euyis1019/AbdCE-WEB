@@ -3,41 +3,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import authService from './services/authService'
+import Cookies from 'js-cookie'
 
 const router = useRouter()
 
-let cleanupRefresh;
-
-onMounted(() => {
-  cleanupRefresh = authService.setupTokenRefresh();
-
-  const token = localStorage.getItem('jwt_token')
+onMounted(async () => {
+  const token = Cookies.get('jwt_token')
   if (token) {
-    authService.verifyToken(token).then(isValid => {
+    try {
+      const isValid = await authService.verifyToken(token)
       if (!isValid) {
-        // 令牌无效,重定向到SSO登录页面
-        window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
+        throw new Error('Token is invalid or expired')
       }
-    })
-  } else {
-    // 没有令牌,重定向到SSO登录页面
-    window.location.href = process.env.VUE_APP_SSO_URL + '/login.html'
-  }
-})
-
-onUnmounted(() => {
-  if (cleanupRefresh) {
-    cleanupRefresh();
+      // Token is valid, do nothing
+    } catch (error) {
+      console.error('Authentication failed:', error)
+      Cookies.remove('jwt_token')
+      window.location.href = process.env.VUE_APP_SSO_URL + 'login.html'
+    }
   }
 })
 </script>
-
-<style lang="scss">
-* {
-  margin: 0;
-  padding: 0;
-}
-</style>

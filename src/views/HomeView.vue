@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <h1 class="welcome-title">欢迎使用综合评价信息申报系统</h1>
+    <h1 class="welcome-title">{{ currentUser ? currentUser.Name : '陌生人' }}，欢迎使用综合信息评价填报系统</h1>
     <el-row :gutter="20">
       <!-- 个人信息卡片 -->
       <el-col :xs="24" :sm="24" :md="6">
@@ -94,6 +94,8 @@ import authService from '../services/authService'
 import axios from '../http-common'
 
 const router = useRouter();
+const currentUser = ref(null)
+const userStatus = ref(null)
 
 interface UserInfo {
   name: string;
@@ -155,6 +157,7 @@ const fetchDashboardData = async () => {
       // 使用 /record/userstatus 接口获取用户统计数据
       const statusResponse = await axios.post('/record/userstatus', { userID: user.ID });
       if (statusResponse.data.statusID === 1) {
+        userStatus.value = statusResponse.data;
         stats.pendingReports = statusResponse.data.reviewTodoCount;
         stats.completedReviews = statusResponse.data.finalDoneCount;
         stats.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
@@ -277,10 +280,25 @@ const getStatusLabel = (status: string) => {
 
 onMounted(() => {
   fetchDashboardData();
-  const user = authService.getCurrentUser();
-  if (user) {
-    isReviewer.value = ['1', '2'].includes(user.Permission || '');
-    isAdmin.value = user.Permission === '3';
+  currentUser.value = authService.getCurrentUser();
+  if (currentUser.value && currentUser.value.ID) {
+    isReviewer.value = ['1', '2'].includes(currentUser.value.Permission || '');
+    isAdmin.value = currentUser.value.Permission === '3';
+
+    (async () => {
+      try {
+        const response = await axios.post('/record/userstatus', {
+          userID: currentUser.value.ID
+        });
+        if (response.data.statusID === 1) {
+          userStatus.value = response.data;
+        } else {
+          throw new Error(response.data.msg);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user status:', error);
+      }
+    })();
   }
 });
 </script>
