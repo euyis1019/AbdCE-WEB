@@ -9,9 +9,9 @@
         </div>
       </template>
       <div v-if="reportItems.length > 0">
-        <div v-for="(item, index) in reportItems" :key="`${item.FileID}-${index}`" class="report-item">
+        <div v-for="(item, index) in reportItems" :key="item.FileID" class="report-item">
           <div class="item-header">
-            <CategoryInfo :categoryCode="item.categoryCode" />
+            <CategoryInfo :categoryCode="item.categorycode" />
             <el-tag :type="getStatusType(item.status)">{{ item.status }}</el-tag>
           </div>
           <el-progress 
@@ -20,7 +20,7 @@
             :stroke-width="10"
             class="item-progress"
           ></el-progress>
-          <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.submitTime) }}</p>
+          <p class="item-update"><strong>最后更新：</strong>{{ formatDate(item.updatedAt) }}</p>
           <el-button type="primary" size="small" @click="goToEdit(item)">修改申报</el-button>
           <el-button type="danger" size="small" @click="confirmDelete(item)">删除申报</el-button>
           <el-divider v-if="index < reportItems.length - 1"></el-divider>
@@ -55,17 +55,32 @@ const fetchReportStatus = async () => {
       throw new Error('用户未登录')
     }
 
-    // 使用todolist/findcase接口获取用户所有已提交的条目
-    const response = await axios.post('/todolist/findcase', {
+    // 获取用户提交的所有案件信息
+    const recordResponse = await axios.post('/record/findrecord', {
       userID: user.ID
     })
-    if (response.data.statusID === 0) {
-      reportItems.value = response.data.data.map(item => ({
-        ...item,
-        status: getStatusLabel(item)
-      }))
+    if (recordResponse.data.statusID === 0) {
+      const records = recordResponse.data.data
+
+      // 获取每个案件的审核状态
+      const statusPromises = records.map(record => 
+        axios.post('/admin/filestatus', { FileID: record.FileID })
+      )
+
+      const statusResponses = await Promise.all(statusPromises)
+
+      reportItems.value = records.map((record, index) => {
+        const statusResponse = statusResponses[index]
+        const status = statusResponse.data.statusID === 1 ? statusResponse.data : { status: '未知' }
+        return {
+          ...record,
+          status: getStatusLabel(status.status),
+          isDone: status.isDone,
+          finalDone: status.finalDone
+        }
+      })
     } else {
-      throw new Error(response.data.msg)
+      throw new Error(recordResponse.data.msg)
     }
   } catch (error) {
     console.error('获取申报状态失败:', error)
@@ -79,52 +94,44 @@ const refreshStatus = () => {
   fetchReportStatus()
 }
 
-const formatDate = (timestamp: number) => {
+const formatDate = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
 }
 
-// 根据文件状态返回对应的标签
-const getStatusLabel = (file: any) => {
-  if (!file.isDone && !file.finalDone) return '待初审'
-  if (file.isDone && !file.finalDone) return '初审通过'
-  if (file.isDone && file.finalDone) return '终审通过'
-  return '未知状态'
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'pending': return '待审核'
+    case 'reviewing': return '审核中'
+    case 'approved': return '已通过'
+    case 'rejected': return '已拒绝'
+    default: return '未知状态'
+  }
 }
 
-// 根据状态返回对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
-    case '待初审':
-      return 'warning'
-    case '初审通过':
-      return 'success'
-    case '终审通过':
-      return 'info'
-    default:
-      return 'info'
+    case '待审核': return 'warning'
+    case '审核中': return 'primary'
+    case '已通过': return 'success'
+    case '已拒绝': return 'danger'
+    default: return 'info'
   }
 }
 
-// 根据状态返回进度百分比
 const getProgressPercentage = (status: string) => {
   switch (status) {
-    case '待初审':
-      return 33
-    case '初审通过':
-      return 66
-    case '终审通过':
-      return 100
-    default:
-      return 0
+    case '待审核': return 0
+    case '审核中': return 50
+    case '已通过': return 100
+    case '已拒绝': return 100
+    default: return 0
   }
 }
 
-// 根据状态返回进度条状态
 const getProgressStatus = (status: string) => {
-  return status === '终审通过' ? 'success' : ''
+  return status === '已通过' ? 'success' : (status === '已拒绝' ? 'exception' : '')
 }
 
-// 跳转到编辑页面
 const goToEdit = (item: any) => {
   router.push({
     name: 'ReportForm',
@@ -132,7 +139,6 @@ const goToEdit = (item: any) => {
   })
 }
 
-// 确认删除申报
 const confirmDelete = (item: any) => {
   ElMessageBox.confirm(
     '确定要删除这条申报记录吗？此操作不可逆。',
@@ -154,7 +160,6 @@ const confirmDelete = (item: any) => {
     })
 }
 
-// 删除申报
 const deleteReport = async (item: any) => {
   try {
     const user = authService.getCurrentUser()
@@ -192,10 +197,6 @@ const deleteReport = async (item: any) => {
   align-items: center;
 }
 
-.category-progress {
-  margin-bottom: 30px;
-}
-
 .report-item {
   margin-bottom: 20px;
 }
@@ -205,10 +206,6 @@ const deleteReport = async (item: any) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
-}
-
-.item-title {
-  font-weight: bold;
 }
 
 .item-progress {
@@ -228,10 +225,6 @@ const deleteReport = async (item: any) => {
   .item-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .item-title {
-    margin-bottom: 5px;
   }
 }
 </style>

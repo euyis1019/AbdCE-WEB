@@ -19,7 +19,7 @@ const categoryData = ref<any>(null);
 
 const fetchCategoryData = async () => {
   try {
-    const response = await axios.get('/casecategorytree');
+    const response = await axios.get('/case/categorytree');
     if (response.data.statusID === 0) {
       categoryData.value = response.data.data;
     } else {
