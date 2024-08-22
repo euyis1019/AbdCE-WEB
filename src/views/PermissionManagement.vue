@@ -132,7 +132,6 @@ const submitAssignment = async () => {
 
     const existingReviewers = assignmentData.value.find(item => item.categoryCode === assignForm.value.categoryCode)?.reviewers || [];
 
-    // 如果该类别已有审核员，使用updateReviewerStatus接口
     if (existingReviewers.length > 0) {
       const response = await axios.post('/admin/updateReviewerStatus', {
         userID: assignForm.value.reviewerId,
@@ -147,7 +146,6 @@ const submitAssignment = async () => {
         throw new Error(response.data.msg);
       }
     } else {
-      // 如果该类别还没有审核员，使用assignTask接口
       const response = await axios.post('/admin/assignTask', {
         adminID: user.ID,
         reviewerID: assignForm.value.reviewerId,
@@ -183,10 +181,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-}
-
-.page-title .el-tag {
-  margin-left: 10px;
 }
 
 .box-card {

@@ -95,7 +95,7 @@ router.beforeEach(async (to, from, next) => {
         throw new Error('Token is invalid or expired');
       }
 
-      const user = authService.getCurrentUser() as User;  // 添加类型断言
+      const user = authService.getCurrentUser() as User;
       if (!user || !user.ID) {
         throw new Error('User information not available');
       }

@@ -154,7 +154,7 @@ onMounted(() => {
 const checkAuth = async () => {
   const user = authService.getCurrentUser(); 
   if (!user) { 
-    router.push('/login'); 
+    window.location.href = `${SSO_URL}login.html`; 
     return;
   }
 

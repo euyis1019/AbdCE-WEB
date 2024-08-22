@@ -1,14 +1,13 @@
 <template>
   <div class="category-info">
-    <slot :categoryData="categoryData">
-      <!-- Default slot content -->
-      <span>{{ getCategoryTitle(props.categoryCode) }}</span>
-    </slot>
+    <el-tooltip :content="fullCategoryPath" placement="top" effect="light">
+      <span>{{ displayCategory }}</span>
+    </el-tooltip>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from '../http-common';
 
 const props = defineProps<{
@@ -16,12 +15,18 @@ const props = defineProps<{
 }>();
 
 const categoryData = ref<any>(null);
+const fullCategoryPath = ref('');
+const displayCategory = computed(() => {
+  const parts = fullCategoryPath.value.split(' > ');
+  return parts.length > 2 ? `${parts[0]} > ... > ${parts[parts.length - 1]}` : fullCategoryPath.value;
+});
 
 const fetchCategoryData = async () => {
   try {
     const response = await axios.get('/case/categorytree');
     if (response.data.statusID === 0) {
       categoryData.value = response.data.data;
+      fullCategoryPath.value = getCategoryPath(props.categoryCode);
     } else {
       throw new Error(response.data.msg);
     }
@@ -30,22 +35,36 @@ const fetchCategoryData = async () => {
   }
 };
 
-const getCategoryTitle = (code: string) => {
+const getCategoryPath = (code: string): string => {
   if (!categoryData.value) return code;
-  const findCategory = (categories: any[]): string => {
-    for (const category of categories) {
-      if (category.caseid === code) {
-        return category.name;
+  const result = findCategoryByCode(categoryData.value, code);
+  if (result) {
+    return result[0].join(' > ');
+  }
+  return code;
+};
+
+const findCategoryByCode = (tree: any, code: string): [string[], any] | null => {
+  for (const [key, value] of Object.entries(tree)) {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value && value.caseID === parseInt(code)) {
+        return [[key], value];
       }
-      if (category.children) {
-        const result = findCategory(category.children);
-        if (result) return result;
+      const result = findCategoryByCode(value, code);
+      if (result) {
+        return [[key, ...result[0]], result[1]];
       }
     }
-    return '';
-  };
-  return findCategory(categoryData.value) || code;
+  }
+  return null;
 };
 
 onMounted(fetchCategoryData);
 </script>
+
+<style scoped>
+.category-info {
+  max-width: 400px;
+  overflow: hidden;
+}
+</style>
