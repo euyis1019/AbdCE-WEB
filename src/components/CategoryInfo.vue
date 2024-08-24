@@ -1,70 +1,78 @@
 <template>
-  <div class="category-info">
-    <el-tooltip :content="fullCategoryPath" placement="top" effect="light">
-      <span>{{ displayCategory }}</span>
-    </el-tooltip>
-  </div>
+  <span>{{ getFullCategoryPath() }}</span>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import axios from '../http-common';
+<script setup>
+import { ref, onMounted } from 'vue'
+import axios from '@/http-common'
 
-const props = defineProps<{
-  categoryCode: string;
-}>();
+const props = defineProps({
+  categoryCode: String
+})
 
-const categoryData = ref<any>(null);
-const fullCategoryPath = ref('');
-const displayCategory = computed(() => {
-  const parts = fullCategoryPath.value.split(' > ');
-  return parts.length > 2 ? `${parts[0]} > ... > ${parts[parts.length - 1]}` : fullCategoryPath.value;
-});
+const categoryTree = ref(null)
+const categoryPath = ref([])
+const score = ref(0)
 
-const fetchCategoryData = async () => {
+onMounted(async () => {
+  await fetchCategoryTree()
+  findCategoryPath(categoryTree.value, props.categoryCode)
+  score.value = findScore(categoryTree.value, props.categoryCode)
+})
+
+const fetchCategoryTree = async () => {
   try {
-    const response = await axios.get('/case/categorytree');
+    const response = await axios.get('/case/categorytree')
     if (response.data.statusID === 0) {
-      categoryData.value = response.data.data;
-      fullCategoryPath.value = getCategoryPath(props.categoryCode);
+      categoryTree.value = response.data.data
     } else {
-      throw new Error(response.data.msg);
+      console.error('Failed to fetch category tree:', response.data.msg)
     }
   } catch (error) {
-    console.error('获取类别数据失败:', error);
+    console.error('Error fetching category tree:', error)
   }
-};
+}
 
-const getCategoryPath = (code: string): string => {
-  if (!categoryData.value) return code;
-  const result = findCategoryByCode(categoryData.value, code);
-  if (result) {
-    return result[0].join(' > ');
-  }
-  return code;
-};
-
-const findCategoryByCode = (tree: any, code: string): [string[], any] | null => {
+const findCategoryPath = (tree, targetCode, currentPath = []) => {
   for (const [key, value] of Object.entries(tree)) {
     if (typeof value === 'object' && value !== null) {
-      if ('caseID' in value && value.caseID === parseInt(code)) {
-        return [[key], value];
+      if ('caseID' in value && value.caseID.toString() === targetCode) {
+        categoryPath.value = [...currentPath, key]
+        return true
       }
-      const result = findCategoryByCode(value, code);
-      if (result) {
-        return [[key, ...result[0]], result[1]];
+      if (findCategoryPath(value, targetCode, [...currentPath, key])) {
+        return true
       }
     }
   }
-  return null;
-};
-
-onMounted(fetchCategoryData);
-</script>
-
-<style scoped>
-.category-info {
-  max-width: 400px;
-  overflow: hidden;
+  return false
 }
-</style>
+
+const getFullCategoryPath = () => {
+  return categoryPath.value.join(' > ')
+}
+
+const findScore = (tree, code) => {
+  for (const [key, value] of Object.entries(tree)) {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value && value.caseID.toString() === code) {
+        return parseFloat(value.topPoint) || 0
+      }
+      const result = findScore(value, code)
+      if (result !== null) {
+        return result
+      }
+    }
+  }
+  return null
+}
+
+const getScore = () => {
+  return score.value
+}
+
+defineExpose({
+  getScore
+})
+</script>
+```

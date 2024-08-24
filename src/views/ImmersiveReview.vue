@@ -2,7 +2,10 @@
   <div class="immersive-review">
     <header class="review-header">
       <el-button @click="exitReview" type="text" icon="ArrowLeft">退出审核</el-button>
-      <h2>{{ currentTask.caseID }} - {{ currentTask.userID }}</h2>
+      <h2>
+        <CategoryInfo :categoryCode="currentTask.categorycode" />
+        - {{ currentTask.userID }}
+      </h2>
       <span>审核员：{{ reviewerName }}</span>
     </header>
 
@@ -106,6 +109,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
 import axios from '../http-common'
 import authService from '../services/authService'
+import CategoryInfo from '../components/CategoryInfo.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -166,7 +170,7 @@ const confirmSubmit = async () => {
     }
 
     const endpoint = isAdmin.value ? '/admin/finalDone' : '/admin/isdone';
-    const payload = {
+    const payload: { [key: string]: any } = {
       userID: user.ID,
       FileID: currentTask.value.FileID,
       reviewerID: user.ID,
