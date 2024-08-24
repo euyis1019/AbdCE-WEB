@@ -162,20 +162,29 @@ const fetchDashboardData = async () => {
         stats.completedReviews = statusResponse.data.finalDoneCount;
         stats.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
                           statusResponse.data.finalTodoCount + statusResponse.data.finalDoneCount;
+        
+        // 获取第一个 fileID 的状态（如果存在）
+        const allFiles = [
+          ...statusResponse.data.reviewTodoFiles,
+          ...statusResponse.data.reviewDoneFiles,
+          ...statusResponse.data.finalTodoFiles,
+          ...statusResponse.data.finalDoneFiles
+        ];
+        
+        if (allFiles.length > 0) {
+          const fileStatusResponse = await axios.post('/record/filestatus', { FileID: allFiles[0] });
+          if (fileStatusResponse.data.statusID === 1) {
+            reportStatus.value = {
+              progress: getProgressPercentage(fileStatusResponse.data.status),
+              status: getStatusLabel(fileStatusResponse.data.status),
+              lastUpdate: new Date().getTime() // 使用当前时间作为最后更新时间
+            };
+          }
+        } else {
+          reportStatus.value = null; // 没有申报记录
+        }
       } else {
         throw new Error(statusResponse.data.msg);
-      }
-
-      // 获取申报状态
-      const fileStatusResponse = await axios.post('/admin/filestatus', { FileID: user.ID });
-      if (fileStatusResponse.data.statusID === 1) {
-        reportStatus.value = {
-          progress: getProgressPercentage(fileStatusResponse.data.status),
-          status: getStatusLabel(fileStatusResponse.data.status),
-          lastUpdate: new Date().getTime() // 使用当前时间作为最后更新时间
-        };
-      } else {
-        throw new Error(fileStatusResponse.data.msg);
       }
 
       // 系统公告数量（这里假设没有专门的接口，暂时设置为0）
@@ -246,15 +255,11 @@ const goToDataDashboard = () => {
 
 const getProgressPercentage = (status: string) => {
   switch (status) {
-    case 'pending':
+    case '待初审':
       return 20;
-    case 'reviewing':
-      return 40;
-    case 'cross_review':
+    case '初审通过':
       return 60;
-    case 'grade_review':
-      return 80;
-    case 'confirmed':
+    case '终审通过':
       return 100;
     default:
       return 0;
@@ -263,16 +268,12 @@ const getProgressPercentage = (status: string) => {
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'pending':
-      return '待审核';
-    case 'reviewing':
-      return '班委初审中';
-    case 'cross_review':
-      return '交叉复审中';
-    case 'grade_review':
-      return '级委审核中';
-    case 'confirmed':
-      return '已确认';
+    case '待初审':
+      return '待初审';
+    case '初审通过':
+      return '初审通过';
+    case '终审通过':
+      return '终审通过';
     default:
       return '未知状态';
   }
@@ -284,21 +285,6 @@ onMounted(() => {
   if (currentUser.value && currentUser.value.ID) {
     isReviewer.value = ['1', '2'].includes(currentUser.value.Permission || '');
     isAdmin.value = currentUser.value.Permission === '3';
-
-    (async () => {
-      try {
-        const response = await axios.post('/record/userstatus', {
-          userID: currentUser.value.ID
-        });
-        if (response.data.statusID === 1) {
-          userStatus.value = response.data;
-        } else {
-          throw new Error(response.data.msg);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user status:', error);
-      }
-    })();
   }
 });
 </script>

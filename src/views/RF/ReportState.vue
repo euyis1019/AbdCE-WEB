@@ -126,15 +126,33 @@ const fetchReportStatus = async () => {
       throw new Error('用户未登录')
     }
 
-    const response = await axios.post('/record/findrecord', {
+    const response = await axios.post('/record/userstatus', {
       userID: user.ID
     })
-    if (response.data.statusID === 0) {
-      const records = response.data.data
-
-      reportItems.value = records.map(record => ({
-        ...record,
-        status: getStatusLabel(record.status),
+    if (response.data.statusID === 1) {
+      const allFiles = [
+        ...response.data.reviewTodoFiles,
+        ...response.data.reviewDoneFiles,
+        ...response.data.finalTodoFiles,
+        ...response.data.finalDoneFiles
+      ]
+      
+      reportItems.value = await Promise.all(allFiles.map(async (fileID) => {
+        const fileStatusResponse = await axios.post('/record/filestatus', { FileID: fileID })
+        if (fileStatusResponse.data.statusID === 1) {
+          return {
+            FileID: fileID,
+            status: fileStatusResponse.data.status,
+            isDone: fileStatusResponse.data.isDone,
+            finalDone: fileStatusResponse.data.finalDone,
+            updatedAt: new Date().toISOString(), // 使用当前时间作为更新时间
+            description: '', // 这个字段可能需要从其他接口获取
+            file: '', // 这个字段可能需要从其他接口获取
+            categorycode: '' // 这个字段可能需要从其他接口获取
+          }
+        } else {
+          throw new Error(fileStatusResponse.data.msg)
+        }
       }))
     } else {
       throw new Error(response.data.msg)
@@ -148,12 +166,29 @@ const fetchReportStatus = async () => {
   }
 }
 
-const getStatusLabel = status => {
+const getStatusType = (status: string) => {
   switch (status) {
     case '待初审': return 'warning'
     case '初审通过': return 'primary'
     case '终审通过': return 'success'
     default: return 'info'
+  }
+}
+
+const getProgressPercentage = (status: string) => {
+  switch (status) {
+    case '待初审': return 20
+    case '初审通过': return 60
+    case '终审通过': return 100
+    default: return 0
+  }
+}
+
+const getProgressStatus = (status: string) => {
+  switch (status) {
+    case '终审通过': return 'success'
+    case '初审通过': return 'exception'
+    default: return 'warning'
   }
 }
 
@@ -229,6 +264,14 @@ const deleteReport = async (item: any) => {
   }
 }
 
+const showEditDialog = (item: any) => {
+  editingItem.FileID = item.FileID
+  editingItem.categorycode = item.categorycode
+  editingItem.description = item.description
+  editingItem.file = item.file
+  editDialogVisible.value = true
+}
+
 const updateReport = async () => {
   try {
     const user = authService.getCurrentUser()
@@ -255,6 +298,14 @@ const updateReport = async () => {
     console.error('更新申报失败:', error)
     ElMessage.error('更新申报失败，请稍后重试')
   }
+}
+
+const formatDate = (timestamp: string) => {
+  return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const refreshStatus = () => {
+  fetchReportStatus()
 }
 </script>
 
