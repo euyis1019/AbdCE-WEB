@@ -1,9 +1,10 @@
 const { defineConfig } = require('@vue/cli-service');
 module.exports = defineConfig({
   transpileDependencies: true,
+  runtimeCompiler: true, 
   devServer: {
-    host: 'localhost', // 或者使用 '0.0.0.0'
-    port: 80, // 使用更高的端口号，比如 8080
+    host: 'localhost',
+    port: 80,
     https: false,
     proxy: {
       '/api': {

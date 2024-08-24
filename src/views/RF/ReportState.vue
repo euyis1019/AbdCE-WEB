@@ -5,64 +5,86 @@
       <template #header>
         <div class="card-header">
           <span>申报进度</span>
-          <el-button type="primary" @click="refreshStatus" icon="Refresh">刷新</el-button>
+          <el-button type="primary" @click="refreshStatus" :loading="loading" icon="Refresh">
+            刷新
+          </el-button>
         </div>
       </template>
+      <el-alert
+        v-if="error"
+        :title="error"
+        type="error"
+        show-icon
+        @close="error = ''"
+      />
       <div v-if="reportItems.length > 0">
-        <el-table :data="reportItems">
-          <el-table-column label="类别" width="300">
+        <el-table 
+          :data="paginatedReportItems" 
+          style="width: 100%"
+          v-loading="tableLoading"
+          @sort-change="handleSortChange"
+        >
+          <el-table-column prop="categoryTitle" label="类别" min-width="180" sortable="custom">
             <template #default="scope">
-              <CategoryInfo :categoryCode="scope.row.categorycode" />
+              <el-tooltip :content="scope.row.fileID" placement="top" effect="light">
+                {{ scope.row.categoryTitle }}
+              </el-tooltip>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="150">
+          <el-table-column prop="status" label="状态" width="100" sortable="custom">
             <template #default="scope">
               <el-tag :type="getStatusType(scope.row.status)">{{ scope.row.status }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="进度" width="300">
+          <el-table-column prop="score" label="分数" width="80" sortable="custom" />
+          <el-table-column label="进度" min-width="300">
             <template #default="scope">
-              <el-progress 
-                :percentage="getProgressPercentage(scope.row.status)" 
-                :status="getProgressStatus(scope.row.status)"
-                :stroke-width="10"
-              ></el-progress>
+              <div class="progress-wrapper">
+                <el-progress
+                  :percentage="getProgressPercentage(scope.row.status)"
+                  :status="getProgressStatus(scope.row.status)"
+                  :stroke-width="10"
+                  :format="(percentage) => `${percentage}%`"
+                >
+                  <template #default="{ percentage, status }">
+                    <span class="progress-label">{{ getProgressLabel(scope.row.status) }}</span>
+                  </template>
+                </el-progress>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="最后更新" width="180">
-            <template #default="scope">
-              <p>{{ formatDate(scope.row.updatedAt) }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column label="描述">
-            <template #default="scope">
-              <p>{{ scope.row.description }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column label="文件" width="200">
-            <template #default="scope">
-              <p v-if="scope.row.file">{{ scope.row.file }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="scope">
               <el-button type="primary" size="small" @click="showEditDialog(scope.row)">修改申报</el-button>
               <el-button type="danger" size="small" @click="confirmDelete(scope.row)">删除申报</el-button>
             </template>
           </el-table-column>
         </el-table>
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="reportItems.length"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
-      <el-empty v-else description="暂无申报记录"></el-empty>
+      <el-empty v-else-if="!loading" description="暂无申报记录"></el-empty>
     </el-card>
 
-    <!-- 编辑对话框 -->
+    <!-- 编辑对话框 TODO: 分类选择框完善 -->
     <el-dialog v-model="editDialogVisible" title="修改申报" width="50%">
       <el-form :model="editingItem" label-width="100px">
         <el-form-item label="类别">
-          <CategoryInfo :categoryCode="editingItem.categorycode" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="editingItem.description" type="textarea" :rows="3"></el-input>
+          <el-cascader
+            v-model="editingItem.categoryPath"
+            :options="categoryOptions"
+            @change="handleCategoryChange"
+            placeholder="请选择类别"
+          />
         </el-form-item>
         <el-form-item label="文件">
           <el-upload
@@ -76,7 +98,7 @@
           >
             <el-button size="small" type="primary">更新文件</el-button>
           </el-upload>
-          <el-progress v-if="uploadProgress > 0 && uploadProgress < 100" 
+          <el-progress v-if="uploadProgress > 0 && uploadProgress < 100"
                        :percentage="uploadProgress"></el-progress>
           <p v-if="editingItem.file">当前文件：{{ editingItem.file }}</p>
         </el-form-item>
@@ -96,15 +118,33 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from '../../http-common'
 import authService from '../../services/authService'
-import CategoryInfo from '../../components/CategoryInfo.vue'
+
+interface ReportItem {
+  fileID: string;
+  caseID: string;
+  status: string;
+  isDone: boolean;
+  finalDone: boolean;
+  score: number;
+  categoryTitle: string;
+  file: string;
+}
 
 const loading = ref(false)
-const reportItems = ref([])
+const tableLoading = ref(false)
+const error = ref('')
+const reportItems = ref<ReportItem[]>([])
 const editDialogVisible = ref(false)
 const editingItem = reactive({
-  FileID: '',
-  categorycode: '',
-  description: '',
+  fileID: '',
+  caseID: '',
+  status: '',
+  isDone: false,
+  finalDone: false,
+  score: 0,
+  categoryPath: [],
+  categoryCode: '',
+  categoryTitle: '',
   file: ''
 })
 const uploadProgress = ref(0)
@@ -114,12 +154,42 @@ const uploadHeaders = computed(() => {
   return { Authorization: `Bearer ${token}` }
 })
 
-onMounted(() => {
-  fetchReportStatus()
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const paginatedReportItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return reportItems.value.slice(start, end)
 })
 
+// 排序相关
+const sortBy = ref('')
+const sortOrder = ref('ascending')
+
+const categoryTree = ref(null)
+
+onMounted(async () => {
+  await fetchCategoryTree()
+  await fetchReportStatus()
+})
+
+const fetchCategoryTree = async () => {
+  try {
+    const response = await axios.get('/case/categorytree')
+    if (response.data.statusID === 0) {
+      categoryTree.value = response.data.data
+    } else {
+      throw new Error(response.data.msg)
+    }
+  } catch (error) {
+    console.error('获取类别树失败:', error)
+    ElMessage.error('获取类别数据失败，请稍后重试')
+  }
+}
 const fetchReportStatus = async () => {
   loading.value = true
+  error.value = ''
   try {
     const user = authService.getCurrentUser()
     if (!user) {
@@ -129,6 +199,7 @@ const fetchReportStatus = async () => {
     const response = await axios.post('/record/userstatus', {
       userID: user.ID
     })
+
     if (response.data.statusID === 1) {
       const allFiles = [
         ...response.data.reviewTodoFiles,
@@ -136,34 +207,61 @@ const fetchReportStatus = async () => {
         ...response.data.finalTodoFiles,
         ...response.data.finalDoneFiles
       ]
-      
+
       reportItems.value = await Promise.all(allFiles.map(async (fileID) => {
-        const fileStatusResponse = await axios.post('/record/filestatus', { FileID: fileID })
-        if (fileStatusResponse.data.statusID === 1) {
-          return {
-            FileID: fileID,
-            status: fileStatusResponse.data.status,
-            isDone: fileStatusResponse.data.isDone,
-            finalDone: fileStatusResponse.data.finalDone,
-            updatedAt: new Date().toISOString(), // 使用当前时间作为更新时间
-            description: '', // 这个字段可能需要从其他接口获取
-            file: '', // 这个字段可能需要从其他接口获取
-            categorycode: '' // 这个字段可能需要从其他接口获取
+        try {
+          const fileStatusResponse = await axios.post('/record/filestatus', { FileID: fileID })
+          if (fileStatusResponse.data.statusID === 1) {
+            const item = fileStatusResponse.data
+            const categoryInfo = findCategoryInfo(categoryTree.value, item.caseID.toString())
+            return {
+              fileID: item.fileID,
+              caseID: String(item.caseID),
+              status: item.status,
+              isDone: item.isDone,
+              finalDone: item.finalDone,
+              score: categoryInfo ? parseFloat(categoryInfo.topPoint) : 0,
+              categoryPath: categoryInfo ? categoryInfo.path : [],
+              categoryTitle: categoryInfo ? categoryInfo.path.join(' > ') : 'Unknown Category',
+              file: item.file || ''
+            }
+          } else {
+            console.error('File status error:', fileStatusResponse.data.msg)
+            return null
           }
-        } else {
-          throw new Error(fileStatusResponse.data.msg)
+        } catch (error) {
+          console.error('Error fetching file status:', error)
+          return null
         }
       }))
+
+      reportItems.value = reportItems.value.filter(item => item !== null)
     } else {
       throw new Error(response.data.msg)
     }
   } catch (error) {
     console.error('获取申报状态失败:', error)
-    ElMessage.error('获取申报状态失败，请稍后重试')
-    reportItems.value = [] 
+    error.value = '获取申报状态失败，请稍后重试'
+    reportItems.value = []
   } finally {
     loading.value = false
   }
+}
+
+const findCategoryInfo = (tree, targetCode, currentPath = []) => {
+  for (const [key, value] of Object.entries(tree)) {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value && value.caseID.toString() === targetCode) {
+        return {
+          path: [...currentPath, key],
+          topPoint: value.topPoint
+        }
+      }
+      const result = findCategoryInfo(value, targetCode, [...currentPath, key])
+      if (result) return result
+    }
+  }
+  return null
 }
 
 const getStatusType = (status: string) => {
@@ -190,6 +288,27 @@ const getProgressStatus = (status: string) => {
     case '初审通过': return 'exception'
     default: return 'warning'
   }
+}
+
+const getProgressLabel = (status: string) => {
+  switch (status) {
+    case '待初审': return '等待初审'
+    case '初审通过': return '初审已通过，等待终审'
+    case '终审通过': return '审核完成'
+    default: return '未知状态'
+  }
+}
+
+const showEditDialog = (item: ReportItem) => {
+  Object.assign(editingItem, item)
+  editingItem.categoryPath = item.categoryPath
+  editDialogVisible.value = true
+}
+
+const handleCategoryChange = (value) => {
+  const categoryInfo = findCategoryInfo(categoryTree.value, value[value.length - 1])
+  editingItem.categoryTitle = categoryInfo ? categoryInfo.path.join(' > ') : 'Unknown Category'
+  editingItem.categoryCode = value[value.length - 1]
 }
 
 const handleUploadSuccess = (res: any, file: any) => {
@@ -219,7 +338,34 @@ const handleUploadProgress = (event: any) => {
   uploadProgress.value = Math.round(event.percent)
 }
 
-const confirmDelete = (item: any) => {
+const updateReport = async () => {
+  try {
+    const user = authService.getCurrentUser()
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
+    const response = await axios.post('/record/updatenewrecord', {
+      fileID: editingItem.fileID,
+      userID: user.ID,
+      caseID: editingItem.categoryCode,
+      file: editingItem.file
+    })
+
+    if (response.data.statusID === 1) {
+      ElMessage.success('申报更新成功')
+      editDialogVisible.value = false
+      await fetchReportStatus()
+    } else {
+      throw new Error(response.data.msg)
+    }
+  } catch (error) {
+    console.error('更新申报失败:', error)
+    ElMessage.error('更新申报失败，请稍后重试')
+  }
+}
+
+const confirmDelete = (item: ReportItem) => {
   ElMessageBox.confirm(
     '确定要删除这条申报记录吗？此操作不可逆。',
     '警告',
@@ -240,7 +386,7 @@ const confirmDelete = (item: any) => {
     })
 }
 
-const deleteReport = async (item: any) => {
+const deleteReport = async (item: ReportItem) => {
   try {
     const user = authService.getCurrentUser()
     if (!user) {
@@ -248,13 +394,13 @@ const deleteReport = async (item: any) => {
     }
 
     const response = await axios.post('/record/deleterecord', {
-      FileID: item.FileID,
+      fileID: item.fileID,
       userID: user.ID
     })
 
     if (response.data.statusID === 1) {
       ElMessage.success('申报记录已成功删除')
-      await fetchReportStatus() 
+      await fetchReportStatus()
     } else {
       throw new Error(response.data.msg)
     }
@@ -264,48 +410,36 @@ const deleteReport = async (item: any) => {
   }
 }
 
-const showEditDialog = (item: any) => {
-  editingItem.FileID = item.FileID
-  editingItem.categorycode = item.categorycode
-  editingItem.description = item.description
-  editingItem.file = item.file
-  editDialogVisible.value = true
+const refreshStatus = () => {
+  fetchReportStatus()
 }
 
-const updateReport = async () => {
-  try {
-    const user = authService.getCurrentUser()
-    if (!user) {
-      throw new Error('用户未登录')
-    }
+const handleSortChange = ({ prop, order }) => {
+  sortBy.value = prop
+  sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
+  sortReportItems()
+}
 
-    const response = await axios.post('/record/updatenewrecord', {
-      FileID: editingItem.FileID,
-      userID: user.ID,
-      caseID: editingItem.categorycode,
-      description: editingItem.description,
-      file: editingItem.file,
+const sortReportItems = () => {
+  if (sortBy.value) {
+    reportItems.value.sort((a, b) => {
+      let comparison = 0
+      if (a[sortBy.value] > b[sortBy.value]) {
+        comparison = 1
+      } else if (a[sortBy.value] < b[sortBy.value]) {
+        comparison = -1
+      }
+      return sortOrder.value === 'asc' ? comparison : -comparison
     })
-
-    if (response.data.statusID === 1) {
-      ElMessage.success('申报更新成功')
-      editDialogVisible.value = false
-      await fetchReportStatus() 
-    } else {
-      throw new Error(response.data.msg)
-    }
-  } catch (error) {
-    console.error('更新申报失败:', error)
-    ElMessage.error('更新申报失败，请稍后重试')
   }
 }
 
-const formatDate = (timestamp: string) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize
 }
 
-const refreshStatus = () => {
-  fetchReportStatus()
+const handleCurrentChange = (newPage) => {
+  currentPage.value = newPage
 }
 </script>
 
@@ -319,7 +453,23 @@ const refreshStatus = () => {
   align-items: center;
 }
 .el-table {
-  width: 100%;
   margin-bottom: 20px;
+}
+.el-table .cell {
+  white-space: nowrap;
+}
+.progress-wrapper {
+  display: flex;
+  align-items: center;
+}
+.progress-label {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #606266;
+}
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
