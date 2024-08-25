@@ -15,6 +15,19 @@ instance.interceptors.request.use(
     if (token) {
       config.headers["Authorization"] = 'Bearer ' + token;
     }
+
+    // 获取当前用户ID
+    const currentUser = authService.getCurrentUser();
+    if (currentUser && currentUser.ID) {
+      // 确保 params 对象存在
+      config.params = config.params || {};
+      
+      // 如果 userID 不存在，则添加它
+      if (!config.params.userID) {
+        config.params.userID = currentUser.ID;
+      }
+    }
+
     return config;
   },
   (error) => {
