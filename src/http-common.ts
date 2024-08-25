@@ -20,40 +20,25 @@ instance.interceptors.request.use(
     // 获取当前用户ID
     const currentUser = authService.getCurrentUser();
     if (currentUser && currentUser.ID) {
-      // 处理不同类型的请求数据
-      if (config.data instanceof FormData) {
-        // 如果是 FormData，直接添加字段
-        if (!config.data.has('userID')) {
-          config.data.append('userID', currentUser.ID);
-        }
-      } else if (typeof config.data === 'string') {
-        // 如果是字符串（可能是 JSON 字符串），先解析它
-        try {
-          let data = JSON.parse(config.data);
-          if (!data.userID) {
-            data.userID = currentUser.ID;
-            config.data = JSON.stringify(data);
-          }
-        } catch (e) {
-          // 如果解析失败，创建一个新的对象
-          config.data = JSON.stringify({ userID: currentUser.ID });
-        }
-      } else if (config.data === undefined || config.data === null) {
-        // 如果没有数据，创建一个新的对象
-        config.data = { userID: currentUser.ID };
-      } else if (typeof config.data === 'object') {
-        // 如果是对象，直接添加字段
-        if (!config.data.userID) {
-          config.data.userID = currentUser.ID;
-        }
+      // 添加 userID 到 URL 参数
+      config.params = config.params || {};
+      if (!config.params.userID) {
+        config.params.userID = currentUser.ID;
       }
 
-      // 对于 GET 和 DELETE 请求，确保 data 被发送
-      if (config.method && ['get', 'delete'].includes(config.method.toLowerCase())) {
-        config.headers = config.headers || {};
-        config.headers['Content-Type'] = 'application/json';
-        if (typeof config.data === 'object') {
-          config.data = JSON.stringify(config.data);
+      // 保留载荷中原有的 userID（如果存在）
+      if (config.data) {
+        if (config.data instanceof FormData) {
+          // FormData 不做改变
+        } else if (typeof config.data === 'string') {
+          try {
+            let data = JSON.parse(config.data);
+            config.data = JSON.stringify(data);
+          } catch (e) {
+            // 如果解析失败，保持原样
+          }
+        } else if (typeof config.data === 'object') {
+          // 对象类型，保持原样
         }
       }
     }
