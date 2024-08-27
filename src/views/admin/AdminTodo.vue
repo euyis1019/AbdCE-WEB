@@ -72,7 +72,7 @@ const fetchTodoItems = async () => {
       throw new Error('用户未登录')
     }
 
-    const response = await axios.post('/admin/getCE', {
+    const response = await axios.get('/admin/getCE', {
       userID: user.ID
     })
 
