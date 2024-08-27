@@ -87,9 +87,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElTree } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
 import Statistic from '../components/Statistic.vue'
 import authService from '../services/authService'
@@ -101,52 +101,71 @@ const userStatus = ref(null)
 const userRoleName = ref('普通用户')
 const userRoleColor = ref('success')
 const permissionLevel = ref(0)
+const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
+const categoryTree = ref([])
+const userPermissions = ref([])
+const assignDialogVisible = ref(false)
+const removeConfirmDialogVisible = ref(false)
+const autoAssigning = ref(false)
+const assignForm = ref({
+  categoryId: '',
+  categoryName: '',
+  reviewerId: ''
+})
+const assignedReviewers = ref({})
 
-interface UserInfo {
-  name: string;
-  studentId: string;
-  class: string;
-  avatar: string;
-  role: string;
+const UserInfo = {
+  name: '',
+  studentId: '',
+  class: '',
+  avatar: '',
+  role: ''
 }
 
-interface ReportStatus {
-  progress: number;
-  status: string;
-  lastUpdate: number;
+const ReportStatus = {
+  progress: 0,
+  status: '',
+  lastUpdate: 0
 }
 
-const userInfo = ref<UserInfo | null>(null);
-const reportStatus = ref<ReportStatus | null>(null);
+const userInfo = ref<typeof UserInfo | null>(null); 
+const reportStatus = ref<typeof ReportStatus | null>(null);
 const isReviewer = ref(false);
 const isAdmin = ref(false);
 
-const loading = reactive({
+const loading = computed(() => ({
   user: false,
   report: false,
   stats: false
-});
+}));
 
-const error = reactive({
+const error = computed(() => ({
   user: '',
   report: '',
   stats: ''
-});
+})); 
 
-const stats = reactive({
+const stats = computed(() => ({
   pendingReports: 0,
   completedReviews: 0,
   myReports: 0,
   announcements: 0
-});
+})); 
+
+const availableReviewers = computed(() => {
+  const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
+  return userPermissions.value.filter(user => 
+    user.level > 0 && user.level < 30 && !currentReviewers.includes(user.id)
+  )
+})
 
 const fetchDashboardData = async () => {
-  loading.user = true;
-  loading.report = true;
-  loading.stats = true;
-  error.user = '';
-  error.report = '';
-  error.stats = '';
+  loading.value.user = true;
+  loading.value.report = true;
+  loading.value.stats = true;
+  error.value.user = '';
+  error.value.report = '';
+  error.value.stats = '';
 
   try {
     const user = authService.getCurrentUser();
@@ -167,9 +186,9 @@ const fetchDashboardData = async () => {
       const statusResponse = await axios.post('/record/userstatus', { userID: user.ID });
       if (statusResponse.data.statusID === 1) {
         userStatus.value = statusResponse.data;
-        stats.pendingReports = statusResponse.data.reviewTodoCount;
-        stats.completedReviews = statusResponse.data.finalDoneCount;
-        stats.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
+        stats.value.pendingReports = statusResponse.data.reviewTodoCount;
+        stats.value.completedReviews = statusResponse.data.finalDoneCount;
+        stats.value.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
                           statusResponse.data.finalTodoCount + statusResponse.data.finalDoneCount;
         
         // 获取第一个 fileID 的状态（如果存在）
@@ -197,19 +216,19 @@ const fetchDashboardData = async () => {
       }
 
       // 系统公告数量（这里假设没有专门的接口，暂时设置为0）
-      stats.announcements = 0;
+      stats.value.announcements = 0;
     } else {
       throw new Error('未找到用户信息');
     }
   } catch (err) {
     console.error('获取仪表盘数据失败:', err);
-    error.user = '加载用户信息失败';
-    error.report = '加载申报状态失败';
-    error.stats = '加载统计数据失败';
+    error.value.user = '加载用户信息失败';
+    error.value.report = '加载申报状态失败';
+    error.value.stats = '加载统计数据失败';
   } finally {
-    loading.user = false;
-    loading.report = false;
-    loading.stats = false;
+    loading.value.user = false;
+    loading.value.report = false;
+    loading.value.stats = false;
   }
 };
 
