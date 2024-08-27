@@ -57,7 +57,7 @@
             <template #default="scope">
               <el-button type="primary" size="small" @click="showEditDialog(scope.row)">修改申报</el-button>
               <el-button type="danger" size="small" @click="confirmDelete(scope.row)">删除申报</el-button>
-              <el-button type="info" size="small" @click="previewFile(scope.row.file)">预览附件</el-button>
+              <el-button type="info" size="small" @click="previewFile(scope.row.fileID)" :disabled="!scope.row.fileID">预览附件</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -76,7 +76,6 @@
       <el-empty v-else-if="!loading" description="暂无申报记录"></el-empty>
     </el-card>
 
-    <!-- 编辑对话框 TODO: 分类选择框完善 -->
     <el-dialog v-model="editDialogVisible" title="修改申报" width="50%">
       <el-form :model="editingItem" label-width="100px">
         <el-form-item label="类别">
@@ -101,7 +100,7 @@
           </el-upload>
           <el-progress v-if="uploadProgress > 0 && uploadProgress < 100"
                        :percentage="uploadProgress"></el-progress>
-          <p v-if="editingItem.file">当前文件：{{ editingItem.file }}</p>
+          <p v-if="editingItem.fileID">当前文件：{{ editingItem.fileID }}</p>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -112,18 +111,19 @@
       </template>
     </el-dialog>
 
-    <!-- 添加文件预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%">
-      <iframe :src="previewUrl" style="width: 100%; height: 600px;"></iframe>
+    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%" @close="closePreview">
+      <iframe v-if="previewUrl" :src="previewUrl" style="width: 100%; height: 600px;"></iframe>
+      <div v-else>加载中...</div>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from '../../http-common'
 import authService from '../../services/authService'
+import Cookies from 'js-cookie'
 
 interface ReportItem {
   fileID: string;
@@ -133,7 +133,6 @@ interface ReportItem {
   finalDone: boolean;
   score: number;
   categoryTitle: string;
-  file: string;
 }
 
 const loading = ref(false)
@@ -154,12 +153,11 @@ const editingItem = reactive({
   categoryPath: [],
   categoryCode: '',
   categoryTitle: '',
-  file: ''
 })
 const uploadProgress = ref(0)
 const uploadUrl = computed(() => `${process.env.VUE_APP_API_URL}admin/upload`)
 const uploadHeaders = computed(() => {
-  const token = localStorage.getItem('jwt_token')
+  const token = Cookies.get('jwt_token')
   return { Authorization: `Bearer ${token}` }
 })
 
@@ -232,7 +230,6 @@ const fetchReportStatus = async () => {
               score: categoryInfo ? parseFloat(categoryInfo.topPoint) : 0,
               categoryPath: categoryInfo ? categoryInfo.path : [],
               categoryTitle: categoryInfo ? categoryInfo.path.join(' > ') : 'Unknown Category',
-              file: item.file || ''
             }
           } else {
             return null
@@ -319,7 +316,7 @@ const handleCategoryChange = (value) => {
 
 const handleUploadSuccess = (res: any, file: any) => {
   if (res.statusID === 1) {
-    editingItem.file = res.fileURL
+    editingItem.fileID = res.fileID
     uploadProgress.value = 100
     ElMessage.success('文件上传成功')
   } else {
@@ -354,7 +351,7 @@ const updateReport = async () => {
       fileID: editingItem.fileID,
       userID: user.ID,
       caseID: editingItem.categoryCode,
-      file: editingItem.file
+      file: editingItem.fileID
     })
 
     if (response.data.statusID === 1) {
@@ -437,21 +434,77 @@ const sortReportItems = () => {
   }
 }
 
-const handleSizeChange = (newSize) => {
+const handleSizeChange = (newSize: number) => {
   pageSize.value = newSize
+  currentPage.value = 1
 }
 
-const handleCurrentChange = (newPage) => {
+const handleCurrentChange = (newPage: number) => {
   currentPage.value = newPage
 }
 
-const previewFile = (fileUrl: string) => {
-  if (fileUrl) {
-    previewUrl.value = `${process.env.VUE_APP_API_URL}record/download?fileID=${fileUrl}`
-    previewDialogVisible.value = true
+const previewFile = async (fileID: string) => {
+  if (fileID) {
+    try {
+      const token = Cookies.get('jwt_token')
+      const response = await axios.get(`record/download`, {
+        params: { fileID },
+        responseType: 'blob',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] })
+      const objectUrl = URL.createObjectURL(blob)
+      
+      previewUrl.value = objectUrl
+      previewDialogVisible.value = true
+    } catch (error) {
+      console.error('文件预览失败:', error)
+      ElMessage.error('文件预览失败，请稍后重试')
+    }
   } else {
     ElMessage.warning('没有可预览的文件')
   }
+}
+
+const closePreview = () => {
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+}
+
+onUnmounted(() => {
+  closePreview()
+})
+
+// 计算属性：类别选项
+const categoryOptions = computed(() => {
+  if (!categoryTree.value) return []
+  return convertTreeToOptions(categoryTree.value)
+})
+
+// 将类别树转换为级联选择器的选项格式
+const convertTreeToOptions = (tree) => {
+  return Object.entries(tree).map(([key, value]) => {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value) {
+        return {
+          value: value.caseID.toString(),
+          label: key,
+          isLeaf: true
+        }
+      } else {
+        return {
+          value: key,
+          label: key,
+          children: convertTreeToOptions(value)
+        }
+      }
+    }
+  }).filter(Boolean)
 }
 </script>
 
