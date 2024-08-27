@@ -22,7 +22,7 @@
           <template #header>
             <h3>申请材料</h3>
           </template>
-          <el-image v-if="currentTask.file" :src="currentTask.file" fit="contain" />
+          <iframe v-if="currentTask.file" :src="getFilePreviewUrl(currentTask.file)" style="width: 100%; height: 100%; border: none;"></iframe>
           <p v-else>无可预览材料</p>
         </el-card>
       </section>
@@ -194,7 +194,6 @@ const confirmSubmit = async () => {
       throw new Error(response.data.msg);
     }
   } catch (error) {
-    console.error('提交审核结果失败:', error);
     ElMessage.error('提交审核结果失败，请重试');
   }
 }
@@ -227,7 +226,6 @@ const getNextTask = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
-    console.error('获取下一个任务失败:', error)
     ElMessage.error('获取下一个任务失败，请重试')
   }
 }
@@ -257,6 +255,13 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
+})
+
+const getFilePreviewUrl = computed(() => (fileUrl: string) => {
+  if (fileUrl) {
+    return `${process.env.VUE_APP_API_URL}record/download?fileID=${fileUrl}`
+  }
+  return ''
 })
 </script>
 

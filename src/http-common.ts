@@ -1,3 +1,4 @@
+
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import Cookies from 'js-cookie';
 import authService from './services/authService';
@@ -18,7 +19,6 @@ instance.interceptors.request.use(
     }
 
     try {
-      // 获取当前用户ID
       const currentUser = await authService.getCurrentUser();
       if (currentUser && currentUser.ID) {
         // 添加 userID 到 URL 参数
@@ -27,24 +27,20 @@ instance.interceptors.request.use(
           config.params.userID = currentUser.ID;
         }
 
-        // 保留载荷中原有的 userID（如果存在）
-        if (config.data) {
-          if (config.data instanceof FormData) {
-            // FormData 不做改变
-          } else if (typeof config.data === 'string') {
-            try {
-              let data = JSON.parse(config.data);
-              config.data = JSON.stringify(data);
-            } catch (e) {
-              // 如果解析失败，保持原样
-            }
-          } else if (typeof config.data === 'object') {
-            // 对象类型，保持原样
+        // 如果是 FormData，追加 userID
+        if (config.data instanceof FormData) {
+          if (!config.data.has('userID')) {
+            config.data.append('userID', currentUser.ID);
+          }
+        } else if (typeof config.data === 'object' && config.data !== null) {
+          // 对于 JSON 数据，添加 userID（如不存在）
+          if (!config.data.userID) {
+            config.data.userID = currentUser.ID;
           }
         }
       }
     } catch (error) {
-      console.error('Error getting current user:', error);
+      console.error('获取当前用户出错:', error);
     }
 
     return config;

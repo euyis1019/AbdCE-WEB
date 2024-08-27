@@ -57,6 +57,7 @@
             <template #default="scope">
               <el-button type="primary" size="small" @click="showEditDialog(scope.row)">修改申报</el-button>
               <el-button type="danger" size="small" @click="confirmDelete(scope.row)">删除申报</el-button>
+              <el-button type="info" size="small" @click="previewFile(scope.row.file)">预览附件</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -110,6 +111,11 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 添加文件预览对话框 -->
+    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%">
+      <iframe :src="previewUrl" style="width: 100%; height: 600px;"></iframe>
+    </el-dialog>
   </div>
 </template>
 
@@ -135,6 +141,9 @@ const tableLoading = ref(false)
 const error = ref('')
 const reportItems = ref<ReportItem[]>([])
 const editDialogVisible = ref(false)
+const previewDialogVisible = ref(false)
+const previewUrl = ref('')
+
 const editingItem = reactive({
   fileID: '',
   caseID: '',
@@ -183,10 +192,10 @@ const fetchCategoryTree = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
-    console.error('获取类别树失败:', error)
     ElMessage.error('获取类别数据失败，请稍后重试')
   }
 }
+
 const fetchReportStatus = async () => {
   loading.value = true
   error.value = ''
@@ -226,11 +235,9 @@ const fetchReportStatus = async () => {
               file: item.file || ''
             }
           } else {
-            console.error('File status error:', fileStatusResponse.data.msg)
             return null
           }
         } catch (error) {
-          console.error('Error fetching file status:', error)
           return null
         }
       }))
@@ -240,7 +247,6 @@ const fetchReportStatus = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
-    console.error('获取申报状态失败:', error)
     error.value = '获取申报状态失败，请稍后重试'
     reportItems.value = []
   } finally {
@@ -322,7 +328,6 @@ const handleUploadSuccess = (res: any, file: any) => {
 }
 
 const handleUploadError = (err: any) => {
-  console.error('文件上传失败:', err)
   ElMessage.error('文件上传失败，请重试')
 }
 
@@ -360,7 +365,6 @@ const updateReport = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
-    console.error('更新申报失败:', error)
     ElMessage.error('更新申报失败，请稍后重试')
   }
 }
@@ -405,7 +409,6 @@ const deleteReport = async (item: ReportItem) => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
-    console.error('删除申报记录失败:', error)
     ElMessage.error('删除申报记录失败，请稍后重试')
   }
 }
@@ -440,6 +443,15 @@ const handleSizeChange = (newSize) => {
 
 const handleCurrentChange = (newPage) => {
   currentPage.value = newPage
+}
+
+const previewFile = (fileUrl: string) => {
+  if (fileUrl) {
+    previewUrl.value = `${process.env.VUE_APP_API_URL}record/download?fileID=${fileUrl}`
+    previewDialogVisible.value = true
+  } else {
+    ElMessage.warning('没有可预览的文件')
+  }
 }
 </script>
 
