@@ -10,37 +10,41 @@ const instance: AxiosInstance = axios.create({
 });
 
 instance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+  async (config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> => {
     const token = Cookies.get('jwt_token');
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = 'Bearer ' + token;
     }
 
-    // 获取当前用户ID
-    const currentUser = authService.getCurrentUser();
-    if (currentUser && currentUser.ID) {
-      // 添加 userID 到 URL 参数
-      config.params = config.params || {};
-      if (!config.params.userID) {
-        config.params.userID = currentUser.ID;
-      }
+    try {
+      // 获取当前用户ID
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser && currentUser.ID) {
+        // 添加 userID 到 URL 参数
+        config.params = config.params || {};
+        if (!config.params.userID) {
+          config.params.userID = currentUser.ID;
+        }
 
-      // 保留载荷中原有的 userID（如果存在）
-      if (config.data) {
-        if (config.data instanceof FormData) {
-          // FormData 不做改变
-        } else if (typeof config.data === 'string') {
-          try {
-            let data = JSON.parse(config.data);
-            config.data = JSON.stringify(data);
-          } catch (e) {
-            // 如果解析失败，保持原样
+        // 保留载荷中原有的 userID（如果存在）
+        if (config.data) {
+          if (config.data instanceof FormData) {
+            // FormData 不做改变
+          } else if (typeof config.data === 'string') {
+            try {
+              let data = JSON.parse(config.data);
+              config.data = JSON.stringify(data);
+            } catch (e) {
+              // 如果解析失败，保持原样
+            }
+          } else if (typeof config.data === 'object') {
+            // 对象类型，保持原样
           }
-        } else if (typeof config.data === 'object') {
-          // 对象类型，保持原样
         }
       }
+    } catch (error) {
+      console.error('Error getting current user:', error);
     }
 
     return config;
