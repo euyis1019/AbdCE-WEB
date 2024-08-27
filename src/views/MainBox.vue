@@ -26,15 +26,15 @@
           <el-icon><InfoFilled /></el-icon>
           <template #title>进度查询</template>
         </el-menu-item>
-        <el-menu-item index="4" v-if="isReviewer || isAdmin">
+        <el-menu-item index="4" v-if="permissionLevel > 0">
           <el-icon><Document /></el-icon>
           <template #title>待办事项</template>
         </el-menu-item>
-        <el-menu-item index="5" v-if="isAdmin">
+        <el-menu-item index="5" v-if="permissionLevel >= 30">
           <el-icon><Setting /></el-icon>
           <template #title>权限管理</template>
         </el-menu-item>
-        <el-menu-item index="7" v-if="isAdmin">
+        <el-menu-item index="7" v-if="permissionLevel >= 30">
           <el-icon><Files /></el-icon>
           <template #title>复审管理</template>
         </el-menu-item>
@@ -96,17 +96,17 @@
         <el-icon><InfoFilled /></el-icon>
         <span>进度查询</span>
       </el-menu-item>
-      <el-menu-item index="4" v-if="isReviewer || isAdmin">
+      <el-menu-item index="4" v-if="permissionLevel > 0">
         <el-icon><Document /></el-icon>
         <span>待办事项</span>
       </el-menu-item>
-      <el-menu-item index="5" v-if="isAdmin">
+      <el-menu-item index="5" v-if="permissionLevel >= 30">
         <el-icon><Setting /></el-icon>
         <span>权限管理</span>
       </el-menu-item>
-      <el-menu-item index="7" v-if="isAdmin">
+      <el-menu-item index="7" v-if="permissionLevel >= 30">
         <el-icon><Files /></el-icon>
-        <span>复审管理</span>
+        <span>���审管理</span>
       </el-menu-item>
     </el-menu>
   </el-drawer>
@@ -116,6 +116,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import authService from '../services/authService';
 import { 
   HomeFilled, 
   EditPen, 
@@ -129,7 +130,6 @@ import {
   User,
   Files
 } from '@element-plus/icons-vue'
-import authService from '../services/authService';
 
 const router = useRouter();
 const route = useRoute();
@@ -139,6 +139,7 @@ const isAdmin = ref(false);
 const isReviewer = ref(false);
 const userName = ref('');
 const mobileMenuVisible = ref(false);
+const permissionLevel = ref(0);
 
 const isMobile = ref(false);
 const checkMobile = () => {
@@ -154,13 +155,12 @@ onMounted(() => {
 const checkAuth = async () => {
   const user = authService.getCurrentUser(); 
   if (!user) { 
-    window.location.href = `${SSO_URL}login.html`; 
+    window.location.href = `${process.env.VUE_APP_SSO_URL}ce/login.html`; 
     return;
   }
 
   userName.value = user.Name || 'User'; 
-  isAdmin.value = user.Permission === '3'; 
-  isReviewer.value = ['1', '2', '3'].includes(user.Permission || ''); 
+  permissionLevel.value = await authService.checkUserPermission();
 };
 
 const activeMenu = computed(() => route.path);
@@ -222,7 +222,7 @@ const logout = () => {
 };
 
 const goToSSOProfile = () => {
-  window.location.href = process.env.VUE_APP_SSO_URL + 'profile'; //TODO 待实现, 不知道 SSO 的 profile 页面路径是什么样子
+  window.location.href = process.env.VUE_APP_SSO_URL ; 
 };
 
 watch(() => route.path, () => {

@@ -84,7 +84,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
 
   if (requiresAuth && !token) {
-    window.location.href = process.env.VUE_APP_SSO_URL + 'login.html';
+    window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html';
     return;
   }
 
@@ -95,17 +95,14 @@ router.beforeEach(async (to, from, next) => {
         throw new Error('Token is invalid or expired');
       }
 
-      const user = authService.getCurrentUser() as User;
-      if (!user || !user.ID) {
-        throw new Error('User information not available');
-      }
+      const permissionLevel = await authService.checkUserPermission();
 
       const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
       const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
 
-      if (requiresAdmin && user.Permission !== '3') {
+      if (requiresAdmin && permissionLevel < 30) {
         next({ name: 'Home' });
-      } else if (requiresReviewer && !['1', '2', '3'].includes(user.Permission)) {
+      } else if (requiresReviewer && permissionLevel === 0) {
         next({ name: 'Home' });
       } else {
         next();
@@ -113,7 +110,7 @@ router.beforeEach(async (to, from, next) => {
     } catch (error) {
       console.error('Authentication failed:', error);
       Cookies.remove('jwt_token');
-      window.location.href = process.env.VUE_APP_SSO_URL + 'login.html';
+      window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html';
     }
   } else {
     next();

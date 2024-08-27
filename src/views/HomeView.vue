@@ -1,6 +1,9 @@
 <template>
   <div class="home">
-    <h1 class="welcome-title">{{ currentUser ? currentUser.Name : '陌生人' }}，欢迎使用综合信息评价填报系统</h1>
+    <h1 class="welcome-title">
+      {{ currentUser ? currentUser.Name : '陌生人' }}，欢迎使用综合信息评价填报系统
+      <el-tag :type="userRoleColor" effect="dark">{{ userRoleName }}</el-tag>
+    </h1>
     <el-row :gutter="20">
       <!-- 个人信息卡片 -->
       <el-col :xs="24" :sm="24" :md="6">
@@ -13,9 +16,8 @@
           <div v-if="userInfo" class="info-content">
             <el-avatar :size="64" :src="userInfo.avatar">{{ userInfo.name?.charAt(0) }}</el-avatar>
             <p><strong>姓名：</strong>{{ userInfo.name }}</p>
-            <p><strong>学号：</strong>{{ userInfo.studentId }}</p>
-            <p><strong>班级：</strong>{{ userInfo.class }}</p>
-            <p><strong>角色：</strong>{{ getRoleName(userInfo.role) }}</p>
+            <p><strong>ID：</strong>{{ userInfo.studentId }}</p>
+            <p><strong>角色：</strong>{{ userRoleName }}</p>
           </div>
           <el-alert v-if="error.user" :title="error.user" type="error" :closable="false" />
         </el-card>
@@ -85,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
@@ -96,6 +98,9 @@ import axios from '../http-common'
 const router = useRouter();
 const currentUser = ref(null)
 const userStatus = ref(null)
+const userRoleName = ref('普通用户')
+const userRoleColor = ref('success')
+const permissionLevel = ref(0)
 
 interface UserInfo {
   name: string;
@@ -146,12 +151,16 @@ const fetchDashboardData = async () => {
   try {
     const user = authService.getCurrentUser();
     if (user) {
+      permissionLevel.value = await authService.checkUserPermission();
+      userRoleName.value = authService.getUserRoleName(permissionLevel.value);
+      userRoleColor.value = authService.getUserRoleColor(permissionLevel.value);
+
       userInfo.value = {
         name: user.Name || '',
         studentId: user.ID || '',
         class: user.Class || '',
         avatar: '',
-        role: user.Permission || '0'
+        role: userRoleName.value
       };
 
       // 使用 /record/userstatus 接口获取用户统计数据
@@ -224,19 +233,6 @@ const formatDate = (timestamp: number) => {
   return new Date(timestamp).toLocaleString('zh-CN');
 };
 
-const getRoleName = (role: string) => {
-  switch (role) {
-    case '3':
-      return '管理员';
-    case '2':
-      return '级委';
-    case '1':
-      return '班委';
-    default:
-      return '普通用户';
-  }
-};
-
 const goToReportForm = () => {
   router.push('/report');
 };
@@ -279,12 +275,12 @@ const getStatusLabel = (status: string) => {
   }
 };
 
-onMounted(() => {
-  fetchDashboardData();
+onMounted(async () => {
+  await fetchDashboardData();
   currentUser.value = authService.getCurrentUser();
   if (currentUser.value && currentUser.value.ID) {
-    isReviewer.value = ['1', '2'].includes(currentUser.value.Permission || '');
-    isAdmin.value = currentUser.value.Permission === '3';
+    isReviewer.value = permissionLevel.value > 0;
+    isAdmin.value = permissionLevel.value >= 30;
   }
 });
 </script>
@@ -338,7 +334,7 @@ onMounted(() => {
   .home {
     padding: 10px;
   }
-  
+
   .welcome-title {
     font-size: 24px;
   }

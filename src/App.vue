@@ -22,7 +22,7 @@ onMounted(async () => {
     } catch (error) {
       console.error('Authentication failed:', error)
       Cookies.remove('jwt_token')
-      window.location.href = process.env.VUE_APP_SSO_URL + 'login.html'
+      window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html'
     }
   }
 })

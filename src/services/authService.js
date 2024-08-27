@@ -1,6 +1,6 @@
-import { jwtDecode } from 'jwt-decode';
+import axios from '../http-common';
 import Cookies from 'js-cookie';
-import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
 
 const SSO_URL = process.env.VUE_APP_SSO_URL || 'http://sso.abdn.kirisame.cc/ce/';
 
@@ -25,7 +25,7 @@ const authService = {
   logout: () => {
     Cookies.remove('jwt_token');
     Cookies.remove('refresh_token');
-    window.location.href = `${SSO_URL}login.html`;
+    window.location.href = `${SSO_URL}ce/login.html`;
   },
 
   getCurrentUser: () => {
@@ -61,6 +61,39 @@ const authService = {
 
   updateLocalAccessToken: (token) => {
     Cookies.set('jwt_token', token);
+  },
+
+  checkUserPermission: async () => {
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser || !currentUser.ID) {
+        throw new Error('User not logged in or ID not available');
+      }
+
+      const response = await axios.get('/admin/checkself', {
+        params: { userID: currentUser.ID }
+      });
+
+      if (response.data && response.data.level !== undefined) {
+        return response.data.level;
+      }
+      return 0; // 默认为普通用户
+    } catch (error) {
+      console.error('Error checking user permission:', error);
+      return 0; // 出错时默认为普通用户
+    }
+  },
+
+  getUserRoleName: (level) => {
+    if (level >= 30) return '管理员';
+    if (level > 0) return '审核员';
+    return '普通用户';
+  },
+
+  getUserRoleColor: (level) => {
+    if (level >= 30) return 'danger';
+    if (level > 0) return 'warning';
+    return 'success';
   }
 };
 
