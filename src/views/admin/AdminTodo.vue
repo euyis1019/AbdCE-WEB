@@ -1,22 +1,26 @@
 <template>
   <div class="admin-todo">
     <h1>待办事项</h1>
-    <el-table :data="todoItems" style="width: 100%" v-loading="loading">
-      <el-table-column prop="FileID" label="ID" width="180"></el-table-column>
-      <el-table-column prop="userID" label="学生学号" width="120"></el-table-column>
+    <el-table :data="paginatedTodoItems" style="width: 100%" v-loading="loading">
+      <el-table-column prop="FileID" label="文件ID" width="280"></el-table-column>
+      <el-table-column label="类别" width="180">
+        <template #default="scope">
+          {{ getCategoryTitle(scope.row.categorycode) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="applicationTime" label="提交时间" width="180">
         <template #default="scope">
           {{ formatDate(scope.row.applicationTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="类别" width="120">
-        <template #default="scope">
-          <CategoryInfo :categoryCode="scope.row.categorycode" />
-        </template>
-      </el-table-column>
       <el-table-column label="状态" width="120">
         <template #default="scope">
           <el-tag :type="getStatusType(scope.row)">{{ getStatusLabel(scope.row) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="point" label="分数" width="80">
+        <template #default="scope">
+          {{ scope.row.point !== null ? scope.row.point : '未评分' }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120">
@@ -45,7 +49,6 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import axios from '../../http-common'
 import authService from '../../services/authService'
-import CategoryInfo from '../../components/CategoryInfo.vue'
 
 const router = useRouter()
 
@@ -54,15 +57,37 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const totalItems = ref(0)
 const loading = ref(false)
+const categoryTree = ref({})
 
 const isAdmin = computed(() => {
   const user = authService.getCurrentUser()
   return user && user.Permission === '3'
 })
 
+const paginatedTodoItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return todoItems.value.slice(start, end)
+})
+
 onMounted(async () => {
+  await fetchCategoryTree()
   await fetchTodoItems()
 })
+
+const fetchCategoryTree = async () => {
+  try {
+    const response = await axios.get('/case/categorytree')
+    if (response.data.statusID === 0) {
+      categoryTree.value = response.data.data
+    } else {
+      throw new Error(response.data.msg)
+    }
+  } catch (error) {
+    console.error('获取分类树失败:', error)
+    ElMessage.error('获取分类树失败，请稍后重试')
+  }
+}
 
 const fetchTodoItems = async () => {
   loading.value = true
@@ -73,7 +98,7 @@ const fetchTodoItems = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      userID: user.ID
+      params: { userID: user.ID }
     })
 
     if (response.data.statusID === 0) {
@@ -98,12 +123,11 @@ const fetchTodoItems = async () => {
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
-  fetchTodoItems()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
-  fetchTodoItems()
 }
 
 const formatDate = (timestamp: string) => {
@@ -124,6 +148,27 @@ const getStatusLabel = (row: any) => {
   } else {
     return row.isDone ? '已初审' : '待初审'
   }
+}
+
+const findCategoryInfo = (tree, targetCode, currentPath = []) => {
+  for (const [key, value] of Object.entries(tree)) {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value && value.caseID.toString() === targetCode.toString()) {
+        return {
+          path: [...currentPath, key],
+          topPoint: value.topPoint
+        }
+      }
+      const result = findCategoryInfo(value, targetCode, [...currentPath, key])
+      if (result) return result
+    }
+  }
+  return null
+}
+
+const getCategoryTitle = (categoryCode: number) => {
+  const categoryInfo = findCategoryInfo(categoryTree.value, categoryCode)
+  return categoryInfo ? categoryInfo.path.join(' > ') : '未知类别'
 }
 
 const startReview = (item: any) => {
