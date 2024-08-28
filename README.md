@@ -125,31 +125,6 @@ AbdCE-WEB/
 
 ## 未完成内容
 
-代码中已经使用TODO关键词注释了未完成的内容。
-
-1. 文件上传功能:
-   - 在`ReportForm.vue`中,文件上传API尚未实现:
-     ```vue
-     // TODO: 后端 API 还没写
-     const uploadUrl = '/case/upload';
-     ```
-
-2. SSO个人信息页面:
-   - 在`MainBox.vue`中,SSO系统的个人信息页面路径未确定:
-     ```javascript
-     // TODO 待实现, 不知道 SSO 的 profile 页面路径是什么样子
-     const goToSSOProfile = () => {
-       window.location.href = process.env.VUE_APP_SSO_URL + 'profile';
-     };
-     ```
-
-3. 类别信息获取:
-   - 在`CategoryInfo.vue`组件中,获取类别信息的API尚未实现:
-     ```javascript
-     // TODO: 后端 API 还没写
-     const response = await axios.get('/api/categories');
-     ```
-
 4. 数据可视化优化
 
 
