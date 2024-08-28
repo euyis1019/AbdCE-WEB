@@ -3,7 +3,7 @@
     <header class="review-header">
       <el-button @click="exitReview" type="text" icon="ArrowLeft">退出审核</el-button>
       <h2>
-        {{ currentTaskTitle }}
+        {{ isReReview ? '复审' : '初审' }} - {{ currentTaskTitle }}
       </h2>
       <span>审核员：{{ reviewerName }}</span>
     </header>
@@ -189,6 +189,8 @@ const loadingPercentage = ref(0)
 const previewContainer = ref(null)
 const fullScreenContainer = ref(null)
 
+const isReReview = computed(() => route.query.mode === 'rereview')
+
 const isAdmin = computed(() => {
   const user = authService.getCurrentUser()
   return user && user.Permission === '3'
@@ -203,8 +205,8 @@ const isPdfFile = computed(() => {
 })
 
 const exitReview = () => {
-  if (route.query.returnTo === 'queue') {
-    router.push('/admin/todo')
+  if (route.query.returnTo === 'review-management') {
+    router.push('/review-management')
   } else {
     router.push('/admin/todo')
   }
@@ -222,7 +224,7 @@ const confirmSubmit = async () => {
       throw new Error('用户未登录');
     }
 
-    const endpoint = isAdmin.value ? '/admin/finalDone' : '/admin/isdone';
+    const endpoint = isReReview.value ? '/admin/finalDone' : '/admin/isdone';
     const payload: { [key: string]: any } = {
       userID: user.ID,
       FileID: currentTask.value.FileID,
@@ -231,7 +233,7 @@ const confirmSubmit = async () => {
       score: reviewForm.value.score
     };
 
-    if (isAdmin.value) {
+    if (isReReview.value) {
       payload.finalDone = reviewForm.value.result === 'pass';
     } else {
       payload.isDone = reviewForm.value.result === 'pass';
@@ -263,7 +265,7 @@ const getNextTask = async () => {
     })
 
     if (response.data.statusID === 0) {
-      const taskList = isAdmin.value ? response.data.data.finalTodoList.files : response.data.data.reviewTodoList.files;
+      const taskList = isReReview.value ? response.data.data.finalTodoList.files : response.data.data.reviewTodoList.files;
       if (taskList.length > 0) {
         currentTask.value = taskList[0]
         reviewForm.value = {

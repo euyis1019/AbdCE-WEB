@@ -1,25 +1,29 @@
 <template>
   <div class="review-management">
     <h1>复审管理</h1>
-    <el-table :data="reviewItems" style="width: 100%" v-loading="loading">
-      <el-table-column prop="FileID" label="ID" width="180"></el-table-column>
-      <el-table-column prop="userID" label="学生学号" width="120"></el-table-column>
+    <el-table :data="paginatedReviewItems" style="width: 100%" v-loading="loading">
+      <el-table-column prop="FileID" label="文件ID" width="280"></el-table-column>
+      <el-table-column label="类别" width="180">
+        <template #default="scope">
+          <CategoryInfo :categoryCode="scope.row.categorycode" />
+        </template>
+      </el-table-column>
       <el-table-column prop="applicationTime" label="提交时间" width="180">
         <template #default="scope">
           {{ formatDate(scope.row.applicationTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="类别" width="120">
-        <template #default="scope">
-          <CategoryInfo :categoryCode="scope.row.categorycode" />
-        </template>
-      </el-table-column>
       <el-table-column label="状态" width="120">
         <template #default="scope">
-          <el-tag :type="getStatusType(scope.row)">{{ getStatusLabel(scope.row) }}</el-tag>
+          <el-tag type="warning">待复审</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200">
+      <el-table-column prop="point" label="分数" width="80">
+        <template #default="scope">
+          {{ scope.row.point !== null ? scope.row.point : '未评分' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="120">
         <template #default="scope">
           <el-button type="primary" size="small" @click="startReReview(scope.row)">复审</el-button>
         </template>
@@ -40,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import axios from '../http-common'
@@ -55,11 +59,16 @@ const pageSize = ref(20)
 const totalItems = ref(0)
 const loading = ref(false)
 
+const paginatedReviewItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return reviewItems.value.slice(start, end)
+})
+
 onMounted(async () => {
   await fetchReviewItems()
 })
 
-// 获取复审列表
 const fetchReviewItems = async () => {
   loading.value = true
   try {
@@ -69,11 +78,10 @@ const fetchReviewItems = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      userID: user.ID
+      params: { userID: user.ID }
     })
 
     if (response.data.statusID === 0) {
-      // 获取 finalTodoList 中的文件列表
       reviewItems.value = response.data.data.finalTodoList.files
       totalItems.value = reviewItems.value.length
     } else {
@@ -89,24 +97,15 @@ const fetchReviewItems = async () => {
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
-  fetchReviewItems()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
-  fetchReviewItems()
 }
 
 const formatDate = (timestamp: string) => {
   return new Date(timestamp).toLocaleString('zh-CN')
-}
-
-const getStatusType = (row: any) => {
-  return 'warning' // 所有待复审的项目都使用 warning 类型
-}
-
-const getStatusLabel = (row: any) => {
-  return '待复审' // 所有项目的状态都是 '待复审'
 }
 
 const startReReview = (item: any) => {
