@@ -3,7 +3,7 @@ module.exports = defineConfig({
   transpileDependencies: true,
   runtimeCompiler: true, 
   devServer: {
-    host: 'cesys.abdn.kirisame.cc',
+    host: '127.0.0.1',
     port: 80,
     https: false,
     proxy: {

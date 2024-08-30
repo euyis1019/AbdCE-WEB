@@ -106,7 +106,7 @@
       </el-menu-item>
       <el-menu-item index="7" v-if="permissionLevel >= 30">
         <el-icon><Files /></el-icon>
-        <span>���审管理</span>
+        <span>复审管理</span>
       </el-menu-item>
     </el-menu>
   </el-drawer>
