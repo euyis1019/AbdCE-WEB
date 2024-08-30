@@ -179,7 +179,7 @@ const editingItem = reactive({
 })
 
 const uploadProgress = ref(0)
-const uploadUrl = computed(() => `${process.env.VUE_APP_API_URL}admin/upload`)
+const uploadUrl = computed(() => `${process.env.VUE_APP_API_URL}record/upload`)
 const uploadHeaders = computed(() => {
   const token = Cookies.get('jwt_token')
   return { Authorization: `Bearer ${token}` }
