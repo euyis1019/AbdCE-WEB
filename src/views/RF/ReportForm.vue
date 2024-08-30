@@ -128,6 +128,9 @@ const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${Cookies.get('jwt_token')}`
 }))
 
+// 新增：用于跟踪正在上传的文件
+const uploadingFiles = ref(new Set())
+
 const fetchCategoryTree = async () => {
   loading.value = true
   error.value = ''
@@ -226,53 +229,16 @@ const createCaseFile = async (item) => {
   }
 }
 
-const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => {
-  const item = currentStep.value.items[index];
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('fileID', item.fileID);
-  formData.append('userID', currentUser.value.ID);
-  formData.append('caseID', item.categoryCode);
-
-  try {
-    const response = await axios.post('/record/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        onProgress({ percent: percentCompleted });
-        item.uploadProgress = percentCompleted;
-      }
-    });
-    onSuccess(response.data); // 传递响应数据，而不只是响应对象
-  } catch (error) {
-    console.error('Upload error:', error); // 添加错误日志
-    onError(error);
-  }
-}
-
-const handleUploadSuccess = (res, file, index) => {
-  console.log('Upload response:', res); // 添加日志以查看响应内容
-
-  if (res && res.statusID === 1) {
-    currentStep.value.items[index].file = { name: file.name, url: res.fileURL }
-    currentStep.value.items[index].uploadProgress = 100
-    ElMessage.success('上传成功')
-  } else {
-    console.error('Upload failed:', res); // 添加错误日志
-    ElMessage.error(res && res.msg || '上传失败，请重试')
-    currentStep.value.items[index].uploadProgress = 0
-  }
-}
-
-const handleUploadError = (error) => {
-  console.error('Upload error:', error); // 添加错误日志
-  ElMessage.error('文件上传失败，请重试')
-}
-
+// 修改：更新 beforeUpload 函数
 const beforeUpload = (file, index) => {
   const item = currentStep.value.items[index]
   if (!item.fileID) {
     ElMessage.error('请先选择完整的类别')
+    return false
+  }
+  // 新增：检查文件是否正在上传
+  if (uploadingFiles.value.has(file.name)) {
+    ElMessage.warning('该文件正在上传中，请勿重复上传')
     return false
   }
   const isLt10M = file.size / 1024 / 1024 < 10
@@ -284,6 +250,70 @@ const beforeUpload = (file, index) => {
     ElMessage.error('只能上传 JPG/PNG/PDF 格式的文件!')
   }
   return isLt10M && isValidType
+}
+
+// 修改：更新 customUpload 函数
+const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => {
+  if (uploadingFiles.value.has(file.name)) {
+    onError(new Error('文件正在上传中'))
+    return
+  }
+
+  uploadingFiles.value.add(file.name)
+
+  const item = currentStep.value.items[index]
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('fileID', item.fileID)
+  formData.append('userID', currentUser.value.ID)
+  formData.append('caseID', item.categoryCode)
+
+  try {
+    const response = await axios.post('/record/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress({ percent: percentCompleted })
+        item.uploadProgress = percentCompleted
+      }
+    })
+    
+    // 修改：确保只在成功时调用 onSuccess
+    if (response.data && response.data.statusID === 1) {
+      onSuccess(response.data)
+    } else {
+      throw new Error(response.data.msg || '上传失败')
+    }
+  } catch (error) {
+    console.error('Upload error:', error)
+    onError(error)
+  } finally {
+    uploadingFiles.value.delete(file.name)
+  }
+}
+
+// 修改：更新 handleUploadSuccess 函数
+const handleUploadSuccess = (res, file, index) => {
+  console.log('Upload response:', res)
+
+  if (res && res.statusID === 1) {
+    currentStep.value.items[index].file = { name: file.name, url: res.fileURL }
+    currentStep.value.items[index].uploadProgress = 100
+    ElMessage.success('上传成功')
+  } else if (res === undefined) {
+    // 新增：忽略未定义的响应
+    console.warn('Received undefined response in handleUploadSuccess')
+    return
+  } else {
+    console.error('Upload failed:', res)
+    ElMessage.error(res && res.msg || '上传失败，请重试')
+    currentStep.value.items[index].uploadProgress = 0
+  }
+}
+
+const handleUploadError = (error) => {
+  console.error('Upload error:', error)
+  ElMessage.error('文件上传失败，请重试')
 }
 
 const previewFile = (url) => {
@@ -496,10 +526,13 @@ watch(currentStepIndex, async (newIndex) => {
   }
 })
 
+// 新增：全局错误处理函数
 const handleError = (error, message) => {
+  console.error('Error:', error)
   ElMessage.error(message)
 }
 
+// 新增：全局错误监听
 window.addEventListener('error', (event) => {
   handleError(event.error, '发生了意外错误，请刷新页面重试')
 })
@@ -565,3 +598,4 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 }
 </style>
+      
