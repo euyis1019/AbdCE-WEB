@@ -13,10 +13,7 @@
 
     <el-card v-loading="loading" element-loading-text="加载中...">
       <el-alert v-if="error" :title="error" type="error" show-icon @close="error = ''" />
-
-      <div v-if="debug">
-      </div>
-
+      <div v-if="debug"></div>
       <template v-if="!loading && topLevelCategories.length > 0">
         <el-form v-if="currentStepIndex < topLevelCategories.length" :model="currentStep" ref="formRef" label-width="120px">
           <h2>{{ currentCategory }}</h2>
@@ -50,7 +47,7 @@
               <el-progress v-if="item.uploadProgress > 0 && item.uploadProgress < 100" :percentage="item.uploadProgress"></el-progress>
               <div v-if="item.file">
                 <p>已上传文件: {{ item.file.name }}</p>
-                <el-button size="small" type="primary" @click="previewFile(item.file.url)">预览文件</el-button>
+                <el-button size="small" type="primary" @click="previewFile(item.fileID)">预览文件</el-button>
               </div>
             </el-form-item>
             <el-button type="danger" @click="removeItem(index)" v-if="currentStep.items.length > 1">删除此项</el-button>
@@ -58,7 +55,7 @@
           <el-button type="primary" @click="addItem">添加新项</el-button>
           <div class="form-actions">
             <el-button @click="prevStep" v-if="currentStepIndex > 0">上一步</el-button>
-            <el-button type="primary" @click="nextStep">{{ currentStepIndex === topLevelCategories.length - 1 ? '预览' : '下一步' }}</el-button>
+            <el-button type="primary" @click="nextStep">{{ currentStepIndex === topLevelCategories.length - 1 ? '跳过' : '下一步' }}</el-button>
             <el-button @click="saveDraft">保存草稿</el-button>
           </div>
         </el-form>
@@ -86,29 +83,45 @@
       <el-empty v-else-if="!loading" description="暂无数据"></el-empty>
     </el-card>
 
-    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%">
-      <iframe :src="previewUrl" style="width: 100%; height: 600px;"></iframe>
+    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%" fullscreen :show-close="false" @close="closePreview">
+      <div class="full-screen-preview">
+        <div class="preview-toolbar">
+          <el-button @click="toggleFullScreen" :icon="isFullScreen ? 'Close' : 'FullScreen'">
+            {{ isFullScreen ? '退出全屏' : '全屏预览' }}
+          </el-button>
+          <el-button @click="zoomIn" icon="ZoomIn">放大</el-button>
+          <el-button @click="zoomOut" icon="ZoomOut">缩小</el-button>
+          <el-button @click="closePreview" icon="Close">关闭预览</el-button>
+        </div>
+        <div class="preview-content-wrapper" ref="fullScreenContainer">
+          <img v-if="isImageFile" :src="previewUrl" alt="File preview" class="preview-content" :style="previewStyle" />
+          <iframe v-else-if="isPdfFile" :src="previewUrl" class="preview-content" :style="previewStyle"></iframe>
+          <div v-else class="unsupported-format">
+            <p>不支持预览该文件格式</p>
+            <el-button @click="openFileInNewTab">在新标签页中打开文件</el-button>
+          </div>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Document } from '@element-plus/icons-vue'
+import { Document, FullScreen, ZoomIn, ZoomOut, Close } from '@element-plus/icons-vue'
 import axios from '@/http-common'
 import authService from '@/services/authService'
 import CategoryInfo from '@/components/CategoryInfo.vue'
 import Cookies from 'js-cookie'
 
+const router = useRouter()
 const formRef = ref(null)
 const isEditMode = ref(false)
 const currentUser = ref(null)
 const loading = ref(false)
 const error = ref('')
-const previewUrl = ref('')
-const previewDialogVisible = ref(false)
 const debug = ref(true)
 
 const topLevelCategories = ref([])
@@ -117,7 +130,14 @@ const currentStepIndex = ref(0)
 const formData = ref({})
 const categoryInfoRefs = ref({})
 
-const router = useRouter()
+const previewDialogVisible = ref(false)
+const previewUrl = ref('')
+const previewFileType = ref('')
+const zoomLevel = ref(1)
+const isFullScreen = ref(false)
+const fullScreenContainer = ref(null)
+
+const uploadingFiles = ref(new Set())
 
 const currentCategory = computed(() => topLevelCategories.value[currentStepIndex.value] || '')
 const currentStep = computed(() => (currentCategory.value && formData.value[currentCategory.value]) ? formData.value[currentCategory.value] : { items: [] })
@@ -128,8 +148,12 @@ const uploadHeaders = computed(() => ({
   Authorization: `Bearer ${Cookies.get('jwt_token')}`
 }))
 
-// 新增：用于跟踪正在上传的文件
-const uploadingFiles = ref(new Set())
+const isImageFile = computed(() => previewFileType.value.startsWith('image/'))
+const isPdfFile = computed(() => previewFileType.value === 'application/pdf')
+const previewStyle = computed(() => ({
+  transform: `scale(${zoomLevel.value})`,
+  transition: 'transform 0.3s ease'
+}))
 
 const fetchCategoryTree = async () => {
   loading.value = true
@@ -229,14 +253,12 @@ const createCaseFile = async (item) => {
   }
 }
 
-// 修改：更新 beforeUpload 函数
 const beforeUpload = (file, index) => {
   const item = currentStep.value.items[index]
   if (!item.fileID) {
     ElMessage.error('请先选择完整的类别')
     return false
   }
-  // 新增：检查文件是否正在上传
   if (uploadingFiles.value.has(file.name)) {
     ElMessage.warning('该文件正在上传中，请勿重复上传')
     return false
@@ -252,7 +274,6 @@ const beforeUpload = (file, index) => {
   return isLt10M && isValidType
 }
 
-// 修改：更新 customUpload 函数
 const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => {
   if (uploadingFiles.value.has(file.name)) {
     onError(new Error('文件正在上传中'))
@@ -276,9 +297,7 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
         onProgress({ percent: percentCompleted })
         item.uploadProgress = percentCompleted
       }
-    })
-    
-    // 修改：确保只在成功时调用 onSuccess
+    })    
     if (response.data && response.data.statusID === 1) {
       onSuccess(response.data)
     } else {
@@ -292,18 +311,13 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
   }
 }
 
-// 修改：更新 handleUploadSuccess 函数
 const handleUploadSuccess = (res, file, index) => {
   console.log('Upload response:', res)
 
   if (res && res.statusID === 1) {
-    currentStep.value.items[index].file = { name: file.name, url: res.fileURL }
+    currentStep.value.items[index].file = { name: file.name, fileID: res.fileID }
     currentStep.value.items[index].uploadProgress = 100
     ElMessage.success('上传成功')
-  } else if (res === undefined) {
-    // 新增：忽略未定义的响应
-    console.warn('Received undefined response in handleUploadSuccess')
-    return
   } else {
     console.error('Upload failed:', res)
     ElMessage.error(res && res.msg || '上传失败，请重试')
@@ -316,9 +330,57 @@ const handleUploadError = (error) => {
   ElMessage.error('文件上传失败，请重试')
 }
 
-const previewFile = (url) => {
-  previewUrl.value = url
-  previewDialogVisible.value = true
+const previewFile = async (fileID) => {
+  if (fileID) {
+    try {
+      const token = Cookies.get('jwt_token')
+      const response = await axios.get(`record/download`, {
+        params: { fileID },
+        responseType: 'blob',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] })
+      previewUrl.value = URL.createObjectURL(blob)
+      previewFileType.value = response.headers['content-type']
+      previewDialogVisible.value = true
+      zoomLevel.value = 1
+    } catch (error) {
+      console.error('文件预览失败:', error)
+      ElMessage.error('文件预览失败，请稍后重试')
+    }
+  } else {
+    ElMessage.warning('没有可预览的文件')
+  }
+}
+
+const toggleFullScreen = () => {
+  if (!document.fullscreenElement) {
+    fullScreenContainer.value.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+const zoomIn = () => {
+  zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3)
+}
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5)
+}
+
+const openFileInNewTab = () => {
+  window.open(previewUrl.value, '_blank')
+}
+
+const closePreview = () => {
+  previewDialogVisible.value = false
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = ''
+  }
+  zoomLevel.value = 1
 }
 
 const addItem = () => {
@@ -423,7 +485,7 @@ const submitForm = async () => {
             userID: currentUser.value.ID,
             caseID: item.categoryCode,
             description: item.description,
-            file: item.file.url,
+            file: item.file.fileID,
             categorycode: item.categoryCode
           })
           if (response.data.statusID !== 1) {
@@ -457,7 +519,7 @@ const loadExistingData = async () => {
         categoryPath: [existingData.cls1, existingData.cls2, existingData.cls3].filter(Boolean),
         categoryCode: existingData.categorycode,
         description: existingData.description,
-        file: { name: existingData.file, url: existingData.file },
+        file: { name: existingData.file, fileID: existingData.FileID },
         fileID: existingData.FileID,
         uploadProgress: 100,
         score: 0
@@ -471,10 +533,6 @@ const loadExistingData = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const getFullCategoryPath = (item) => {
-  return [currentCategory.value, ...item.categoryPath].join(' > ')
 }
 
 const calculateScores = async () => {
@@ -494,7 +552,12 @@ const preparePreviewData = async () => {
   await calculateScores()
 }
 
+const handleFullscreenChange = () => {
+  isFullScreen.value = !!document.fullscreenElement
+}
+
 onMounted(async () => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
   currentUser.value = await authService.getCurrentUser()
   try {
     await fetchCategoryTree()
@@ -512,6 +575,11 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  closePreview()
+})
+
 watch(() => router.currentRoute.value, (newRoute) => {
   if (newRoute.query.edit) {
     isEditMode.value = true
@@ -526,13 +594,12 @@ watch(currentStepIndex, async (newIndex) => {
   }
 })
 
-// 新增：全局错误处理函数
+// 全局错误处理
 const handleError = (error, message) => {
   console.error('Error:', error)
   ElMessage.error(message)
 }
 
-// 新增：全局错误监听
 window.addEventListener('error', (event) => {
   handleError(event.error, '发生了意外错误，请刷新页面重试')
 })
@@ -583,6 +650,39 @@ window.addEventListener('unhandledrejection', (event) => {
   margin-top: 20px;
 }
 
+.full-screen-preview {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-toolbar {
+  padding: 10px;
+  background-color: #f0f2f5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.preview-content-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f2f5;
+}
+
+.preview-content {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.unsupported-format {
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .report-form {
     padding: 10px;
@@ -598,4 +698,3 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 }
 </style>
-      

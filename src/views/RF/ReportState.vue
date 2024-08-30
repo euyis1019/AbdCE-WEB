@@ -111,9 +111,25 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%" @close="closePreview">
-      <iframe v-if="previewUrl" :src="previewUrl" style="width: 100%; height: 600px;"></iframe>
-      <div v-else>加载中...</div>
+    <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%" fullscreen :show-close="false" @close="closePreview">
+      <div class="full-screen-preview">
+        <div class="preview-toolbar">
+          <el-button @click="toggleFullScreen" :icon="isFullScreen ? 'Close' : 'FullScreen'">
+            {{ isFullScreen ? '退出全屏' : '全屏预览' }}
+          </el-button>
+          <el-button @click="zoomIn" icon="ZoomIn">放大</el-button>
+          <el-button @click="zoomOut" icon="ZoomOut">缩小</el-button>
+          <el-button @click="closePreview" icon="Close">关闭预览</el-button>
+        </div>
+        <div class="preview-content-wrapper" ref="fullScreenContainer">
+          <img v-if="isImageFile" :src="previewUrl" alt="File preview" class="preview-content" :style="previewStyle" />
+          <iframe v-else-if="isPdfFile" :src="previewUrl" class="preview-content" :style="previewStyle"></iframe>
+          <div v-else class="unsupported-format">
+            <p>不支持预览该文件格式</p>
+            <el-button @click="openFileInNewTab">在新标签页中打开文件</el-button>
+          </div>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -121,6 +137,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Refresh, FullScreen, ZoomIn, ZoomOut, Close } from '@element-plus/icons-vue'
 import axios from '../../http-common'
 import authService from '../../services/authService'
 import Cookies from 'js-cookie'
@@ -133,6 +150,7 @@ interface ReportItem {
   finalDone: boolean;
   score: number;
   categoryTitle: string;
+  categoryPath: string[];
 }
 
 const loading = ref(false)
@@ -142,6 +160,10 @@ const reportItems = ref<ReportItem[]>([])
 const editDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
 const previewUrl = ref('')
+const previewFileType = ref('')
+const zoomLevel = ref(1)
+const isFullScreen = ref(false)
+const fullScreenContainer = ref(null)
 
 const editingItem = reactive({
   fileID: '',
@@ -150,10 +172,11 @@ const editingItem = reactive({
   isDone: false,
   finalDone: false,
   score: 0,
-  categoryPath: [],
+  categoryPath: [] as string[],
   categoryCode: '',
   categoryTitle: '',
 })
+
 const uploadProgress = ref(0)
 const uploadUrl = computed(() => `${process.env.VUE_APP_API_URL}admin/upload`)
 const uploadHeaders = computed(() => {
@@ -176,9 +199,22 @@ const sortOrder = ref('ascending')
 
 const categoryTree = ref(null)
 
+const isImageFile = computed(() => previewFileType.value.startsWith('image/'))
+const isPdfFile = computed(() => previewFileType.value === 'application/pdf')
+const previewStyle = computed(() => ({
+  transform: `scale(${zoomLevel.value})`,
+  transition: 'transform 0.3s ease'
+}))
+
 onMounted(async () => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
   await fetchCategoryTree()
   await fetchReportStatus()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  closePreview()
 })
 
 const fetchCategoryTree = async () => {
@@ -235,6 +271,7 @@ const fetchReportStatus = async () => {
             return null
           }
         } catch (error) {
+          console.error('Error fetching file status:', error)
           return null
         }
       }))
@@ -244,6 +281,7 @@ const fetchReportStatus = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
+    console.error('Error fetching report status:', error)
     error.value = '获取申报状态失败，请稍后重试'
     reportItems.value = []
   } finally {
@@ -362,6 +400,7 @@ const updateReport = async () => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
+    console.error('Error updating report:', error)
     ElMessage.error('更新申报失败，请稍后重试')
   }
 }
@@ -406,6 +445,7 @@ const deleteReport = async (item: ReportItem) => {
       throw new Error(response.data.msg)
     }
   } catch (error) {
+    console.error('Error deleting report:', error)
     ElMessage.error('删除申报记录失败，请稍后重试')
   }
 }
@@ -456,10 +496,10 @@ const previewFile = async (fileID: string) => {
       })
 
       const blob = new Blob([response.data], { type: response.headers['content-type'] })
-      const objectUrl = URL.createObjectURL(blob)
-      
-      previewUrl.value = objectUrl
+      previewUrl.value = URL.createObjectURL(blob)
+      previewFileType.value = response.headers['content-type']
       previewDialogVisible.value = true
+      zoomLevel.value = 1 // 重置缩放级别
     } catch (error) {
       console.error('文件预览失败:', error)
       ElMessage.error('文件预览失败，请稍后重试')
@@ -469,16 +509,38 @@ const previewFile = async (fileID: string) => {
   }
 }
 
+const toggleFullScreen = () => {
+  if (!document.fullscreenElement) {
+    fullScreenContainer.value.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+const zoomIn = () => {
+  zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3)
+}
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5)
+}
+
+const openFileInNewTab = () => {
+  window.open(previewUrl.value, '_blank')
+}
+
 const closePreview = () => {
+  previewDialogVisible.value = false
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = ''
   }
+  zoomLevel.value = 1 // 重置缩放级别
 }
 
-onUnmounted(() => {
-  closePreview()
-})
+const handleFullscreenChange = () => {
+  isFullScreen.value = !!document.fullscreenElement
+}
 
 // 计算属性：类别选项
 const categoryOptions = computed(() => {
@@ -506,6 +568,20 @@ const convertTreeToOptions = (tree) => {
     }
   }).filter(Boolean)
 }
+
+// 全局错误处理
+const handleError = (error, message) => {
+  console.error('Error:', error)
+  ElMessage.error(message)
+}
+
+window.addEventListener('error', (event) => {
+  handleError(event.error, '发生了意外错误，请刷新页面重试')
+})
+
+window.addEventListener('unhandledrejection', (event) => {
+  handleError(event.reason, '发生了未处理的异步错误，请刷新页面重试')
+})
 </script>
 
 <style scoped>
@@ -536,5 +612,61 @@ const convertTreeToOptions = (tree) => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.full-screen-preview {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-toolbar {
+  padding: 10px;
+  background-color: #f0f2f5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.preview-content-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.preview-content {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.unsupported-format {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .report-state {
+    padding: 10px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .el-button {
+    margin-top: 10px;
+    width: 100%;
+  }
+
+  .el-table {
+    font-size: 12px;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
 }
 </style>
