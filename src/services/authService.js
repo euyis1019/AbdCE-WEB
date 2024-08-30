@@ -73,11 +73,11 @@ const authService = {
       if (!currentUser || !currentUser.ID) {
         throw new Error('User not logged in or ID not available');
       }
-
+  
       const response = await axios.get('/admin/checkself', {
         params: { userID: currentUser.ID }
       });
-
+  
       if (response.data && response.data.level !== undefined) {
         return response.data.level;
       }
@@ -87,7 +87,6 @@ const authService = {
       return 0; // 出错时默认为普通用户
     }
   },
-
   getUserRoleName: (level) => {
     if (level >= 30) return '管理员';
     if (level > 0) return '审核员';

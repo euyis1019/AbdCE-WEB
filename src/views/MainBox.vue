@@ -38,6 +38,10 @@
           <el-icon><Files /></el-icon>
           <template #title>复审管理</template>
         </el-menu-item>
+        <el-menu-item index="8" v-if="permissionLevel >= 30">
+  <el-icon><DataLine /></el-icon>
+  <template #title>数据看板</template>
+</el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -108,6 +112,10 @@
         <el-icon><Files /></el-icon>
         <span>复审管理</span>
       </el-menu-item>
+      <el-menu-item index="8" v-if="permissionLevel >= 30">
+  <el-icon><DataLine /></el-icon>
+  <template #title>数据看板</template>
+</el-menu-item>
     </el-menu>
   </el-drawer>
 </template>
@@ -206,6 +214,9 @@ const handleSelect = (key: string) => {
     case '7':
       router.push('/review-management');
       break;
+      case '8':
+    router.push('/data-dashboard');
+    break;
   }
 };
 

@@ -4,6 +4,7 @@ import HomeView from '../views/HomeView.vue'
 import ReportForm from '../views/RF/ReportForm.vue'
 import ReportState from '../views/RF/ReportState.vue'
 import AdminTodo from '../views/admin/AdminTodo.vue'
+import DataDashboard from '../views/DataDashboard.vue'
 import PermissionManagement from '../views/PermissionManagement.vue'
 import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
@@ -64,6 +65,12 @@ const routes: Array<RouteRecordRaw> = [
         path: 'review-management',
         name: 'ReviewManagement',
         component: ReviewManagement,
+        meta: { requiresAuth: true, requiresAdmin: true }
+      },
+      {
+        path: '/data-dashboard',
+        name: 'DataDashboard',
+        component: DataDashboard,
         meta: { requiresAuth: true, requiresAdmin: true }
       }
     ]
