@@ -1,7 +1,17 @@
-
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import Cookies from 'js-cookie';
+import { jwtDecode } from "jwt-decode";
 import authService from './services/authService';
+
+interface DecodedToken {
+  token_type: string;
+  exp: number;
+  iat: number;
+  jti: string;
+  user_id: number;
+  username: string;
+  name: string;
+}
 
 const instance: AxiosInstance = axios.create({
   baseURL: process.env.VUE_APP_API_URL,
@@ -16,31 +26,44 @@ instance.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {};
       config.headers["Authorization"] = 'Bearer ' + token;
-    }
 
-    try {
-      const currentUser = await authService.getCurrentUser();
-      if (currentUser && currentUser.ID) {
+      try {
+        const decodedToken = jwtDecode(token) as DecodedToken;
+        const userID = decodedToken.username; // 使用 username 作为 userID
+
         // 添加 userID 到 URL 参数
         config.params = config.params || {};
         if (!config.params.userID) {
-          config.params.userID = currentUser.ID;
+          config.params.userID = userID;
         }
 
         // 如果是 FormData，追加 userID
         if (config.data instanceof FormData) {
           if (!config.data.has('userID')) {
-            config.data.append('userID', currentUser.ID);
+            config.data.append('userID', userID);
           }
         } else if (typeof config.data === 'object' && config.data !== null) {
-          // 对于 JSON 数据，添加 userID（如不存在）
+          // 对于 JSON 数据，添加 userID
           if (!config.data.userID) {
-            config.data.userID = currentUser.ID;
+            config.data.userID = userID;
           }
         }
+
+        // 检查 token 是否即将过期
+        const currentTime = Math.floor(Date.now() / 1000);
+        const expirationTime = decodedToken.exp;
+        const refreshThreshold = 5 * 60; // 5 minutes before expiration
+
+        if (expirationTime - currentTime < refreshThreshold) {
+          // Token is about to expire, refresh it
+          const newToken = await authService.refreshToken();
+          if (newToken) {
+            config.headers["Authorization"] = 'Bearer ' + newToken;
+          }
+        }
+      } catch (error) {
+        console.error('解析 JWT 时出错:', error);
       }
-    } catch (error) {
-      console.error('获取当前用户出错:', error);
     }
 
     return config;
@@ -65,6 +88,8 @@ instance.interceptors.response.use(
           return instance(originalRequest);
         }
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        // 可能需要在这里处理登出逻辑
         return Promise.reject(refreshError);
       }
     }

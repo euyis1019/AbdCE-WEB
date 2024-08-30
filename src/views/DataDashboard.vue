@@ -4,42 +4,27 @@
 
     <el-row :gutter="20" class="dashboard-stats">
       <el-col :xs="24" :sm="12" :md="6" v-for="(stat, index) in statistics" :key="stat.title">
-        <el-skeleton style="width: 100%" :loading="loading" animated>
-          <template #template>
-            <el-card shadow="hover" :body-style="{ padding: '20px' }">
-              <el-skeleton-item variant="p" style="width: 50%" />
-              <el-skeleton-item variant="text" style="width: 100%" />
-            </el-card>
-          </template>
-          <template #default>
-            <el-card shadow="hover" :body-style="{ padding: '20px' }">
-              <statistic 
-                :title="stat.title" 
-                :value="stat.value" 
-                :icon="stat.icon"
-                :color="getStatColor(index)" 
-              />
-            </el-card>
-          </template>
-        </el-skeleton>
+        <el-card shadow="hover" :body-style="{ padding: '20px' }">
+          <statistic 
+            :title="stat.title" 
+            :value="stat.value" 
+            :icon="stat.icon"
+            :color="getStatColor(index)" 
+          />
+        </el-card>
       </el-col>
     </el-row>
 
     <el-row :gutter="20" class="dashboard-charts">
-      <el-col :xs="24" :sm="12" v-for="chart in charts" :key="chart.id">
-        <el-skeleton style="width: 100%" :loading="loading" animated>
-          <template #template>
-            <div style="padding: 14px">
-              <el-skeleton-item variant="p" style="width: 50%" />
-              <el-skeleton-item variant="text" style="margin-top: 16px; height: 300px" />
-            </div>
-          </template>
-          <template #default>
-            <el-card :body-style="{ padding: '0px', height: '400px' }">
-              <div :id="chart.id" :style="{ width: '100%', height: '100%' }"></div>
-            </el-card>
-          </template>
-        </el-skeleton>
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card :body-style="{ padding: '20px', height: '400px' }">
+          <div :id="charts[0].id" :style="{ width: '100%', height: '100%' }"></div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card :body-style="{ padding: '20px', height: '400px' }">
+          <div :id="charts[1].id" :style="{ width: '100%', height: '100%' }"></div>
+        </el-card>
       </el-col>
     </el-row>
 
@@ -49,7 +34,7 @@
           <span>填报详情</span>
           <el-input
             v-model="searchQuery"
-            placeholder="搜索姓名、分类或状态"
+            placeholder="搜索任意字段"
             style="width: 300px;"
             @input="handleSearch"
           >
@@ -60,60 +45,32 @@
         </div>
       </template>
       <el-table
-        v-loading="tableLoading"
-        :data="paginatedData"
+        v-loading="loading"
+        :data="filteredData"
         style="width: 100%"
-        height="400"
         @sort-change="handleSortChange"
       >
-        <el-table-column prop="name" label="姓名" sortable="custom">
+        <el-table-column
+          v-for="column in visibleColumns"
+          :key="column.prop"
+          :prop="column.prop"
+          :label="column.label"
+          sortable="custom"
+          :min-width="column.minWidth"
+        >
           <template #default="{ row }">
-            <el-skeleton v-if="tableLoading" style="width: 100%" animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 50%" />
-              </template>
-            </el-skeleton>
-            <span v-else>{{ row.name }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="categoryCode" label="填报分类" sortable="custom">
-          <template #default="{ row }">
-            <el-skeleton v-if="tableLoading" style="width: 100%" animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 80%" />
-              </template>
-            </el-skeleton>
-            <CategoryInfo v-else :categoryCode="row.categoryCode" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="progress" label="进度" sortable="custom">
-          <template #default="{ row }">
-            <el-skeleton v-if="tableLoading" style="width: 100%" animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 100%" />
-              </template>
-            </el-skeleton>
-            <el-progress v-else :percentage="row.progress" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="score" label="得分" sortable="custom">
-          <template #default="{ row }">
-            <el-skeleton v-if="tableLoading" style="width: 100%" animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 30%" />
-              </template>
-            </el-skeleton>
-            <span v-else>{{ row.score }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" sortable="custom">
-          <template #default="{ row }">
-            <el-skeleton v-if="tableLoading" style="width: 100%" animated>
-              <template #template>
-                <el-skeleton-item variant="text" style="width: 40%" />
-              </template>
-            </el-skeleton>
-            <el-tag v-else :type="getStatusType(row.status)">{{ row.status }}</el-tag>
+            <template v-if="column.prop === 'status'">
+              <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
+            </template>
+            <template v-else-if="column.prop === 'createdAt' || column.prop === 'updatedAt'">
+              {{ formatDate(row[column.prop]) }}
+            </template>
+            <template v-else-if="column.prop === 'caseID'">
+              {{ getCategoryPath(row.caseID) }}
+            </template>
+            <template v-else>
+              {{ row[column.prop] }}
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -137,13 +94,11 @@ import { ref, onMounted, computed, nextTick, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { Search, Document, Check, InfoFilled, DataLine } from '@element-plus/icons-vue'
+import { Search, Document, Check, InfoFilled, Close } from '@element-plus/icons-vue'
 import axios from '../http-common'
 import { debounce } from 'lodash'
 import { useAuthStore } from '@/store/auth'
-import CategoryInfo from '@/components/CategoryInfo.vue'
 import Statistic from '@/components/Statistic.vue'
-import { flattenCategoryTree, FlatCategory } from '@/utils/categoryUtils'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -158,50 +113,55 @@ if (authStore.permissionLevel < 30) {
 const loading = ref(true)
 const searchQuery = ref('')
 const currentPage = ref(1)
-const pageSize = ref(20)
-const tableLoading = ref(true)
+const pageSize = ref(50)
 const allData = ref([])
 const totalItems = ref(0)
 const categoryTree = ref({})
-const flatCategories = ref<FlatCategory[]>([])
 
 // 统计数据
 const statistics = ref([
   { title: '总提交数', value: 0, icon: Document },
   { title: '待审核', value: 0, icon: InfoFilled },
-  { title: '已完成审核', value: 0, icon: Check },
-  { title: '平均分数', value: 0, icon: DataLine }
+  { title: '初审通过', value: 0, icon: Check },
+  { title: '终审通过', value: 0, icon: Check }
 ])
 
 // 图表配置
 const charts = ref([
-  { id: 'categoryChart', instance: null },
-  { id: 'statusChart', instance: null }
+  { id: 'statusChart', instance: null },
+  { id: 'timelineChart', instance: null }
 ])
+
+// 动态列配置
+const columns = ref([])
+const visibleColumns = computed(() => {
+  return columns.value.filter(column => column.prop !== 'fileID')
+})
 
 // 获取仪表板数据
 const fetchData = async () => {
   loading.value = true
-  tableLoading.value = true
   try {
-    // 并行请求overview和category tree数据
-    const [overviewResponse, categoryResponse] = await Promise.all([
-      axios.get('/admin/overview', {
+    const [response, categoryResponse] = await Promise.all([
+      axios.get('/record/getallfilestatus', {
         params: {
           page: currentPage.value,
-          pageSize: pageSize.value
+          pagesize: pageSize.value,
+          userID: authStore.currentUser?.ID
         }
       }),
       axios.get('/case/categorytree')
     ])
 
-    allData.value = overviewResponse.data.submissions
-    totalItems.value = overviewResponse.data.totalItems
-    categoryTree.value = categoryResponse.data
-    // 将类别树扁平化，便于后续处理
-    flatCategories.value = flattenCategoryTree(categoryTree.value)
+    if (response.data.statusID !== 1) {
+      throw new Error(response.data.msg || '获取数据失败')
+    }
 
-    updateStatistics(overviewResponse.data.statistics)
+    allData.value = response.data.fileStatuses
+    totalItems.value = response.data.fileStatuses.length // 注意：这里可能需要后端提供总数
+    categoryTree.value = categoryResponse.data.data
+    updateStatistics(response.data)
+    updateColumns()
     await nextTick()
     updateCharts()
   } catch (error) {
@@ -209,45 +169,58 @@ const fetchData = async () => {
     ElMessage.error('获取数据失败，请稍后重试')
   } finally {
     loading.value = false
-    tableLoading.value = false
   }
 }
 
 // 更新统计数据
-const updateStatistics = (stats) => {
-  statistics.value[0].value = stats.totalSubmissions
-  statistics.value[1].value = stats.pendingReviews
-  statistics.value[2].value = stats.completedReviews
-  statistics.value[3].value = stats.averageScore.toFixed(2)
+const updateStatistics = (data) => {
+  statistics.value[0].value = data.fileStatuses.length
+  statistics.value[1].value = data.pendingReviewCount
+  statistics.value[2].value = data.reviewPassedCount
+  statistics.value[3].value = data.finalReviewPassedCount
+}
+
+// 更新列配置
+const updateColumns = () => {
+  if (allData.value.length === 0) return
+  const sampleData = allData.value[0]
+  columns.value = Object.keys(sampleData).map(key => ({
+    prop: key,
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    minWidth: key === 'fileID' || key === 'userID' ? '280' : key === 'caseID' ? '300' : '120'
+  }))
 }
 
 // 根据搜索条件过滤数据
 const filteredData = computed(() => {
   if (!searchQuery.value) return allData.value
   const query = searchQuery.value.toLowerCase()
-  return allData.value.filter(item => {
-    const category = flatCategories.value.find(cat => cat.code === item.categoryCode)
-    return item.name.toLowerCase().includes(query) ||
-           (category && category.path.toLowerCase().includes(query)) ||
-           item.status.toLowerCase().includes(query)
-  })
-})
-
-// 计算当前页的数据
-const paginatedData = computed(() => {
-  return filteredData.value
+  return allData.value.filter(item => 
+    Object.values(item).some(value => 
+      String(value).toLowerCase().includes(query)
+    ) || getCategoryPath(item.caseID).toLowerCase().includes(query)
+  )
 })
 
 // 处理搜索操作（防抖）
 const handleSearch = debounce(() => {
   currentPage.value = 1
-  fetchData()
 }, 300)
 
 // 处理表格排序
 const handleSortChange = ({ prop, order }) => {
-  // 在这里处理排序逻辑，可能需要向后端发送新的请求
-  fetchData()
+  allData.value.sort((a, b) => {
+    if (prop === 'caseID') {
+      const pathA = getCategoryPath(a.caseID)
+      const pathB = getCategoryPath(b.caseID)
+      return order === 'ascending' ? pathA.localeCompare(pathB) : pathB.localeCompare(pathA)
+    }
+    if (order === 'ascending') {
+      return a[prop] > b[prop] ? 1 : -1
+    } else {
+      return a[prop] < b[prop] ? 1 : -1
+    }
+  })
 }
 
 // 处理页面大小变化
@@ -266,9 +239,9 @@ const handleCurrentChange = (val: number) => {
 // 获取状态对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
-    case '待审核': return 'warning'
-    case '已通过': return 'success'
-    case '已拒绝': return 'danger'
+    case '待初审': return 'warning'
+    case '初审通过': return 'success'
+    case '终审通过': return 'success'
     default: return 'info'
   }
 }
@@ -281,80 +254,181 @@ const getStatColor = (index: number) => {
 
 // 更新所有图表
 const updateCharts = () => {
-  createCategoryChart()
   createStatusChart()
-}
-
-// 创建类别分布图表
-const createCategoryChart = () => {
-  // 统计各顶级类别的数量
-  const categoryCount = {}
-  allData.value.forEach(item => {
-    const category = flatCategories.value.find(cat => cat.code === item.categoryCode)
-    if (category) {
-      const topCategory = category.path.split(' > ')[0]
-      categoryCount[topCategory] = (categoryCount[topCategory] || 0) + 1
-    }
-  })
-
-  const chartDom = document.getElementById('categoryChart')
-  // 如果图表实例已存在，则重用；否则创建新实例
-  const myChart = charts.value[0].instance || echarts.init(chartDom)
-  charts.value[0].instance = myChart
-  const option = {
-    title: { text: '填报分类分布' },
-    tooltip: { trigger: 'item' },
-    legend: { orient: 'vertical', left: 'left', type: 'scroll' },
-    series: [
-      {
-        type: 'pie',
-        radius: '50%',
-        data: Object.entries(categoryCount).map(([name, value]) => ({ name, value })),
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
-      }
-    ]
-  }
-  myChart.setOption(option)
+  createTimelineChart()
 }
 
 // 创建状态分布图表
 const createStatusChart = () => {
   const statusCount = {
-    '待审核': 0,
-    '已通过': 0,
-    '已拒绝': 0
+    '待初审': 0,
+    '初审通过': 0,
+    '终审通过': 0
   }
   allData.value.forEach(item => {
     statusCount[item.status] = (statusCount[item.status] || 0) + 1
   })
 
   const chartDom = document.getElementById('statusChart')
-  // 如果图表实例已存在，则重用；否则创建新实例
-  const myChart = charts.value[1].instance || echarts.init(chartDom)
-  charts.value[1].instance = myChart
+  const myChart = charts.value[0].instance || echarts.init(chartDom)
+  charts.value[0].instance = myChart
   const option = {
-    title: { text: '审核状态分布' },
-    tooltip: { trigger: 'item' },
-    legend: { orient: 'vertical', left: 'left' },
+    title: { 
+      text: '审核状态分布',
+      left: 'center',
+      top: 20
+    },
+    tooltip: { 
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    legend: { 
+      orient: 'vertical',
+      left: 'left',
+      top: 'middle'
+    },
     series: [
       {
+        name: '审核状态',
         type: 'pie',
         radius: ['40%', '70%'],
         avoidLabelOverlap: false,
-        label: { show: false, position: 'center' },
-        emphasis: { label: { show: true, fontSize: '20', fontWeight: 'bold' } },
-        labelLine: { show: false },
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: '18',
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
         data: Object.entries(statusCount).map(([name, value]) => ({ name, value }))
       }
     ]
   }
   myChart.setOption(option)
+}
+
+// 创建时间线图表
+const createTimelineChart = () => {
+  const timeData = allData.value.map(item => ({
+    date: new Date(item.createdAt).toLocaleDateString(),
+    status: item.status
+  }))
+
+  const statusCounts = timeData.reduce((acc, curr) => {
+    if (!acc[curr.date]) {
+      acc[curr.date] = { '待初审': 0, '初审通过': 0, '终审通过': 0 }
+    }
+    acc[curr.date][curr.status]++
+    return acc
+  }, {})
+
+  const chartData = Object.entries(statusCounts).map(([date, counts]) => ({
+    date,
+    ...counts
+  }))
+
+  chartData.sort((a, b) => new Date(a.date) - new Date(b.date))
+
+  const chartDom = document.getElementById('timelineChart')
+  const myChart = charts.value[1].instance || echarts.init(chartDom)
+  charts.value[1].instance = myChart
+  const option = {
+    title: {
+      text: '审核状态时间线',
+      left: 'center',
+      top: 20
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        label: {
+          backgroundColor: '#6a7985'
+        }
+      }
+    },
+    legend: {
+      data: ['待初审', '初审通过', '终审通过'],
+      bottom: 10
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: chartData.map(item => item.date)
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: [
+      {
+        name: '待初审',
+        type: 'line',
+        stack: 'Total',
+        areaStyle: {},
+        emphasis: {
+          focus: 'series'
+        },
+        data: chartData.map(item => item['待初审'])
+      },
+      {
+        name: '初审通过',
+        type: 'line',
+        stack: 'Total',
+        areaStyle: {},
+        emphasis: {
+          focus: 'series'
+        },
+        data: chartData.map(item => item['初审通过'])
+      },
+      {
+        name: '终审通过',
+        type: 'line',
+        stack: 'Total',
+        areaStyle: {},
+        emphasis: {
+          focus: 'series'
+        },
+        data: chartData.map(item => item['终审通过'])
+      }
+    ]
+  }
+  myChart.setOption(option)
+}
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleString()
+}
+
+// 获取分类路径
+const getCategoryPath = (caseID: string | number) => {
+  const findPath = (tree, id, path = []) => {
+    for (const [key, value] of Object.entries(tree)) {
+      if (typeof value === 'object' && value !== null) {
+        if ('caseID' in value && value.caseID.toString() === id.toString()) {
+          return [...path, key]
+        }
+        const result = findPath(value, id, [...path, key])
+        if (result) return result
+      }
+    }
+    return null
+  }
+
+  const path = findPath(categoryTree.value, caseID)
+  return path ? path.join(' > ') : '未知类别'
 }
 
 // 定时刷新数据
@@ -400,197 +474,51 @@ watch(() => router.currentRoute.value.path, (newPath) => {
 </script>
 
 <style scoped>
-/* 整体布局 */
 .data-dashboard {
   padding: 20px;
-  background-color: #f0f2f5;
-  min-height: 100vh;
 }
 
-h1 {
-  font-size: 24px;
-  color: #303133;
+.dashboard-stats, .dashboard-charts {
   margin-bottom: 20px;
-}
-
-/* 统计卡片样式 */
-.dashboard-stats {
-  margin-bottom: 20px;
-}
-
-.dashboard-stats .el-card {
-  height: 100%;
-  transition: all 0.3s ease;
-}
-
-.dashboard-stats .el-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
-}
-
-/* 图表样式 */
-.dashboard-charts {
-  margin-bottom: 20px;
-}
-
-.dashboard-charts .el-card {
-  height: 400px;
-  overflow: hidden;
-}
-
-/* 表格样式 */
-.dashboard-table {
-  background-color: #ffffff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,.1);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #e6e6e6;
+}
+
+.dashboard-table {
+  margin-top: 20px;
 }
 
 .el-table {
-  margin-top: 20px;
+  width: 100% !important;
 }
 
-/* 分页器样式 */
 .pagination-container {
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
-  padding: 10px 20px;
 }
 
-/* 响应式设计 */
 @media (max-width: 768px) {
   .data-dashboard {
     padding: 10px;
   }
 
-  .dashboard-stats .el-col,
-  .dashboard-charts .el-col {
-    margin-bottom: 20px;
+  .el-col {
+    margin-bottom: 10px;
   }
 
   .card-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
   .card-header .el-input {
     margin-top: 10px;
     width: 100%;
   }
-
-  .dashboard-table {
-    overflow-x: auto;
-  }
-
-  .el-table {
-    width: 100%;
-    overflow-x: scroll;
-  }
-
-  .pagination-container {
-    justify-content: center;
-  }
-}
-
-/* 自定义滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #909399;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-track {
-  background-color: #f0f2f5;
-}
-
-/* 动画效果 */
-.el-card {
-  transition: all 0.3s ease;
-}
-
-.el-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* 加载动画样式 */
-.el-loading-spinner .circular {
-  animation: loading-rotate 2s linear infinite;
-}
-
-@keyframes loading-rotate {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 骨架屏样式调整 */
-.el-skeleton {
-  width: 100%;
-}
-
-.el-skeleton__paragraph {
-  margin-top: 0 !important;
-}
-
-/* 图表容器样式 */
-.dashboard-charts .el-card__body {
-  padding: 0;
-  height: 100%;
-}
-
-/* 表格内容样式优化 */
-.el-table .cell {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.el-table .el-tag {
-  margin-right: 5px;
-}
-
-/* 搜索框样式 */
-.el-input-group__prepend {
-  background-color: #f5f7fa;
-}
-
-.el-input__inner:focus {
-  border-color: #409EFF;
-}
-
-/* 统计数字卡片样式增强 */
-.dashboard-stats .el-card__body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* 图表标题样式 */
-.echarts .chart-title {
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-/* 添加一些微妙的背景图案 */
-.data-dashboard {
-  background-image: 
-    linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: center center;
 }
 </style>

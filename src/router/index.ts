@@ -99,12 +99,8 @@ router.beforeEach(async (to, from, next) => {
 
   if (token) {
     try {
-      const isValid = await authService.verifyToken(token);
-      if (!isValid) {
-        throw new Error('Token is invalid or expired');
-      }
-
-      const permissionLevel = authStore.permissionLevel;
+      await authStore.verifyPermission()
+      const permissionLevel = authStore.permissionLevel
 
       const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
       const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
