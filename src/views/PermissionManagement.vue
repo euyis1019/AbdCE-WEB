@@ -63,7 +63,7 @@
           </template>
           <el-scrollbar height="calc(100vh - 320px)">
             <el-table :data="paginatedUserPermissions" style="width: 100%">
-              <el-table-column prop="id" label="用户ID" width="120"></el-table-column>
+              <el-table-column prop="id" label="学号" width="120"></el-table-column>
               <el-table-column prop="name" label="用户姓名" width="120"></el-table-column>
               <el-table-column prop="level" label="当前权限等级" width="120">
                 <template #default="scope">
