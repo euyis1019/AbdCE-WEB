@@ -1,87 +1,110 @@
 <template>
   <div class="permission-management">
     <h1 class="page-title">权限与审核员分配管理</h1>
-    
-    <el-card class="category-tree-card">
-      <template #header>
-        <div class="card-header">
-          <h2>类别审核员分配</h2>
-          <div class="header-actions">
-            <el-button type="primary" @click="autoAssignReviewers" :loading="autoAssigning">自动分配审核员</el-button>
-            <el-button @click="refreshCategoryTree">刷新</el-button>
-          </div>
-        </div>
-      </template>
-      <el-scrollbar height="calc(50vh - 120px)">
-        <el-tree
-          ref="categoryTreeRef"
-          :data="categoryTree"
-          node-key="id"
-          :props="defaultProps"
-          :expand-on-click-node="false"
-          default-expand-all
-        >
-          <template #default="{ node, data }">
-            <span class="custom-tree-node">
-              <span>{{ node.label }}</span>
-              <span v-if="data.isLeaf" class="reviewer-tags">
-                <el-tag 
-                  v-for="reviewer in data.reviewers" 
-                  :key="reviewer.id" 
-                  closable 
-                  @close="showRemoveConfirmDialog(data, reviewer)"
-                  :type="getReviewerTagType(reviewer.level)"
-                >
-                  {{ reviewer.id }} ({{ getReviewerLevelLabel(reviewer.level) }})
-                </el-tag>
-                <el-button v-if="data.reviewers.length < 2" size="small" @click.stop="showAssignDialog(data)">
-                  分配审核员
-                </el-button>
-              </span>
-            </span>
-          </template>
-        </el-tree>
-      </el-scrollbar>
-    </el-card>
 
-    <el-card class="user-permissions-card">
-      <template #header>
-        <div class="card-header">
-          <h2>用户权限管理</h2>
-          <el-button @click="refreshUserPermissions">刷新</el-button>
-        </div>
-      </template>
-      <el-scrollbar height="calc(50vh - 120px)">
-        <el-table :data="userPermissions" style="width: 100%">
-          <el-table-column prop="id" label="用户ID" width="120"></el-table-column>
-          <el-table-column prop="level" label="当前权限等级" width="120">
-            <template #default="scope">
-              {{ getReviewerLevelLabel(scope.row.level) }}
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="240">
-            <template #default="scope">
-              <el-select
-                v-model="scope.row.newLevel"
-                placeholder="选择新权限等级"
-                @change="(value) => handlePermissionChange(value, scope.row)"
-              >
-                <el-option label="普通用户" :value="0"></el-option>
-                <el-option label="审核员" :value="10"></el-option>
-                <el-option label="管理员" :value="20"></el-option>
-                <el-option label="超级管理员" :value="30"></el-option>
-              </el-select>
-              <el-button
-                type="primary"
-                size="small"
-                @click="updateUserPermission(scope.row)"
-                :disabled="scope.row.level === scope.row.newLevel"
-              >更新</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-scrollbar>
-    </el-card>
+    <el-row :gutter="20">
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card class="category-tree-card">
+          <template #header>
+            <div class="card-header">
+              <h2>类别审核员分配</h2>
+              <div class="header-actions">
+                <el-button type="primary" @click="autoAssignReviewers" :loading="autoAssigning">自动分配审核员</el-button>
+                <el-button @click="refreshCategoryTree">刷新</el-button>
+              </div>
+            </div>
+          </template>
+          <el-scrollbar height="calc(100vh - 250px)">
+            <el-tree
+              ref="categoryTreeRef"
+              :data="categoryTree"
+              node-key="id"
+              :props="defaultProps"
+              :expand-on-click-node="false"
+              default-expand-all
+            >
+              <template #default="{ node, data }">
+                <span class="custom-tree-node">
+                  <span>{{ node.label }}</span>
+                  <span v-if="data.isLeaf" class="reviewer-tags">
+                    <el-tag 
+                      v-for="reviewer in data.reviewers" 
+                      :key="reviewer.id" 
+                      closable 
+                      @close="showRemoveConfirmDialog(data, reviewer)"
+                      :type="getReviewerTagType(reviewer.level)"
+                    >
+                      {{ reviewer.name }} ({{ reviewer.id }}) - {{ getReviewerLevelLabel(reviewer.level) }}
+                    </el-tag>
+                    <el-button v-if="data.reviewers.length < 2" size="small" @click.stop="showAssignDialog(data)">
+                      分配审核员
+                    </el-button>
+                  </span>
+                </span>
+              </template>
+            </el-tree>
+          </el-scrollbar>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card class="user-permissions-card">
+          <template #header>
+            <div class="card-header">
+              <h2>用户权限管理</h2>
+              <el-input
+                v-model="searchQuery"
+                placeholder="搜索用户 (姓名或ID)"
+                style="width: 200px; margin-right: 10px;"
+                @input="debouncedSearch"
+              />
+              <el-button @click="refreshUserPermissions">刷新</el-button>
+            </div>
+          </template>
+          <el-scrollbar height="calc(100vh - 320px)">
+            <el-table :data="paginatedUserPermissions" style="width: 100%">
+              <el-table-column prop="id" label="用户ID" width="120"></el-table-column>
+              <el-table-column prop="name" label="用户姓名" width="120"></el-table-column>
+              <el-table-column prop="level" label="当前权限等级" width="120">
+                <template #default="scope">
+                  {{ getReviewerLevelLabel(scope.row.level) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="240">
+                <template #default="scope">
+                  <el-select
+                    v-model="scope.row.newLevel"
+                    placeholder="选择新权限等级"
+                    @change="(value) => handlePermissionChange(value, scope.row)"
+                  >
+                    <el-option label="普通用户" :value="0"></el-option>
+                    <el-option label="审核员" :value="10"></el-option>
+                    <el-option label="管理员" :value="20"></el-option>
+                    <el-option label="超级管理员" :value="30"></el-option>
+                  </el-select>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="updateUserPermission(scope.row)"
+                    :disabled="scope.row.level === scope.row.newLevel"
+                  >更新</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-scrollbar>
+          <el-pagination
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="currentPage"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="filteredUserPermissions.length"
+          >
+          </el-pagination>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <el-dialog v-model="assignDialogVisible" title="分配审核员" width="30%">
       <el-form :model="assignForm" label-width="100px">
@@ -91,9 +114,9 @@
         <el-form-item label="审核员">
           <el-select v-model="assignForm.reviewerId" placeholder="请选择审核员">
             <el-option
-              v-for="reviewer in allReviewers"
+              v-for="reviewer in availableReviewers"
               :key="reviewer.id"
-              :label="`${reviewer.id} (${getReviewerLevelLabel(reviewer.level)})`"
+              :label="`${reviewer.name} (${reviewer.id}) - ${getReviewerLevelLabel(reviewer.level)}`"
               :value="reviewer.id"
             ></el-option>
           </el-select>
@@ -124,10 +147,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElTree } from 'element-plus'
 import axios from '../http-common'
 import authService from '../services/authService'
+import { debounce } from 'lodash'
 
 const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
 const categoryTree = ref([])
@@ -145,17 +169,14 @@ const assignedReviewers = ref({})
 const reviewerToRemove = ref(null)
 const nodeToUpdate = ref(null)
 
+const searchQuery = ref('')
+const currentPage = ref(1)
+const pageSize = ref(20)
+
 const defaultProps = {
   children: 'children',
   label: 'label',
 }
-
-const allReviewers = computed(() => {
-  const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
-  return userPermissions.value.filter(user => 
-    user.level > 0 && !currentReviewers.includes(user.id)
-  )
-})
 
 const availableReviewers = computed(() => {
   const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
@@ -163,6 +184,26 @@ const availableReviewers = computed(() => {
     user.level > 0 && user.level < 30 && !currentReviewers.includes(user.id)
   )
 })
+
+const filteredUserPermissions = computed(() => {
+  if (!searchQuery.value) return userPermissions.value
+
+  const lowercaseQuery = searchQuery.value.toLowerCase()
+  return userPermissions.value.filter(user => 
+    user.id.toLowerCase().includes(lowercaseQuery) ||
+    user.name.toLowerCase().includes(lowercaseQuery)
+  )
+})
+
+const paginatedUserPermissions = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return filteredUserPermissions.value.slice(startIndex, endIndex)
+})
+
+const debouncedSearch = debounce(() => {
+  currentPage.value = 1
+}, 300)
 
 onMounted(async () => {
   await fetchAssignedReviewers()
@@ -207,30 +248,41 @@ const convertTreeFormat = (tree, parentId = null) => {
       reviewers: [],
     }
 
-    if (typeof value === 'object' && value !== null && !('caseID' in value)) {
-      node.children = convertTreeFormat(value, node.id)
-    } else if ('caseID' in value) {
-      node.isLeaf = true
-      node.caseID = value.caseID
-      // 修复：正确获取用户权限等级
-      if (assignedReviewers.value[value.caseID]) {
-        node.reviewers = assignedReviewers.value[value.caseID].map(id => ({
-          id,
-          level: userPermissions.value.find(user => user.id === id)?.level || 0
-        }))
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value) {
+        // 这是一个叶子节点
+        node.isLeaf = true;
+        node.caseID = value.caseID;
+        if (assignedReviewers.value[value.caseID]) {
+          node.reviewers = assignedReviewers.value[value.caseID].map(id => {
+            const user = userPermissions.value.find(u => u.id === id);
+            return user ? {
+              id: user.id,
+              name: user.name,
+              level: user.level
+            } : null;
+          }).filter(Boolean);
+        }
+      } else {
+        // 这是一个中间节点，继续递归
+        node.children = convertTreeFormat(value, node.id);
       }
     }
 
-    return node
-  })
+    return node;
+  });
 }
-
 const fetchUserPermissions = async () => {
   try {
     const response = await axios.get('/admin/adminlevel')
     if (response.data.message === "Administrators retrieved successfully") {
-      userPermissions.value = Object.entries(response.data.groupedAdmins).flatMap(([level, userIds]) =>
-        userIds.map(id => ({ id, level: parseInt(level), newLevel: parseInt(level) }))
+      userPermissions.value = Object.entries(response.data.groupedAdmins).flatMap(([level, users]) =>
+        users.map(user => ({
+          id: user.username,
+          name: user.name,
+          level: parseInt(level),
+          newLevel: parseInt(level)
+        }))
       )
     } else {
       throw new Error('Failed to retrieve administrators')
@@ -255,7 +307,6 @@ const assignReviewer = async () => {
       throw new Error('用户未登录')
     }
 
-    // 首先，设置用户的审核员状态
     const statusResponse = await axios.post('/admin/updateReviewerStatus', {
       userID: assignForm.value.reviewerId,
       reviewer: true
@@ -265,7 +316,6 @@ const assignReviewer = async () => {
       throw new Error(statusResponse.data.msg)
     }
 
-    // 然后，分配任务
     const assignResponse = await axios.post('/admin/assignTask', {
       adminID: currentUser.ID,
       reviewerID: assignForm.value.reviewerId,
@@ -275,7 +325,7 @@ const assignReviewer = async () => {
     if (assignResponse.data.statusID === 0) {
       ElMessage.success('审核员分配成功')
       assignDialogVisible.value = false
-      await fetchAssignedReviewers()  // 重新获取已分配的审核员信息
+      await fetchAssignedReviewers()
       await refreshCategoryTree()
     } else {
       throw new Error(assignResponse.data.msg)
@@ -313,11 +363,9 @@ const removeReviewer = async (data, reviewer) => {
 
     if (response.data.statusID === 0) {
       ElMessage.success('审核员移除成功')
-      // 从已分配的审核员列表中移除该审核员
       if (assignedReviewers.value[data.caseID]) {
         assignedReviewers.value[data.caseID] = assignedReviewers.value[data.caseID].filter(id => id !== reviewer.id)
       }
-      // 刷新类别树以更新UI
       await refreshCategoryTree()
     } else {
       throw new Error(response.data.msg)
@@ -446,6 +494,18 @@ const getLeafNodes = (nodes) => {
   }
   return leafNodes
 }
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+}
+
+watch(searchQuery, debouncedSearch)
+
 </script>
 
 <style scoped>
@@ -462,9 +522,20 @@ const getLeafNodes = (nodes) => {
   color: #303133;
 }
 
+.el-row {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.el-col {
+  height: 100%;
+}
+
 .category-tree-card,
 .user-permissions-card {
-  margin-bottom: 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -487,8 +558,7 @@ const getLeafNodes = (nodes) => {
 }
 
 .el-scrollbar {
-  border: 1px solid #EBEEF5;
-  border-radius: 4px;
+  flex-grow: 1;
 }
 
 .custom-tree-node {
@@ -511,31 +581,40 @@ const getLeafNodes = (nodes) => {
   margin-right: 5px;
 }
 
-.el-table {
-  width: 100%;
-}
-
-.el-select {
-  width: 140px;
+.el-pagination {
+  margin-top: 20px;
+  padding: 10px 0;
 }
 
 @media (max-width: 768px) {
   .permission-management {
     padding: 10px;
-    height: calc(100vh - 20px);
+    height: auto;
+  }
+
+  .el-col {
+    height: auto;
+    margin-bottom: 20px;
   }
 
   .category-tree-card,
   .user-permissions-card {
-    margin-bottom: 10px;
+    height: auto;
   }
 
   .el-scrollbar {
-    height: calc(40vh - 100px) !important;
+    height: 50vh !important;
   }
 
-  .el-select {
+  .card-header .el-input {
     width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .el-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 </style>
