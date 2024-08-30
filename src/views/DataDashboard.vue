@@ -122,7 +122,7 @@
           v-model:current-page="currentPage"
           v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="filteredData.length"
+          :total="totalItems"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -161,6 +161,7 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const tableLoading = ref(true)
 const allData = ref([])
+const totalItems = ref(0)
 const categoryTree = ref({})
 const flatCategories = ref<FlatCategory[]>([])
 
@@ -185,15 +186,21 @@ const fetchData = async () => {
   try {
     // 并行请求overview和category tree数据
     const [overviewResponse, categoryResponse] = await Promise.all([
-      axios.get('/admin/overview'),
+      axios.get('/admin/overview', {
+        params: {
+          page: currentPage.value,
+          pageSize: pageSize.value
+        }
+      }),
       axios.get('/case/categorytree')
     ])
-    
+
     allData.value = overviewResponse.data.submissions
+    totalItems.value = overviewResponse.data.totalItems
     categoryTree.value = categoryResponse.data
     // 将类别树扁平化，便于后续处理
     flatCategories.value = flattenCategoryTree(categoryTree.value)
-    
+
     updateStatistics(overviewResponse.data.statistics)
     await nextTick()
     updateCharts()
@@ -228,43 +235,32 @@ const filteredData = computed(() => {
 
 // 计算当前页的数据
 const paginatedData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredData.value.slice(start, end)
+  return filteredData.value
 })
 
 // 处理搜索操作（防抖）
 const handleSearch = debounce(() => {
   currentPage.value = 1
+  fetchData()
 }, 300)
 
 // 处理表格排序
 const handleSortChange = ({ prop, order }) => {
-  allData.value.sort((a, b) => {
-    if (prop === 'categoryCode') {
-      // 对于类别，我们需要比较完整的类别路径
-      const catA = flatCategories.value.find(cat => cat.code === a.categoryCode)
-      const catB = flatCategories.value.find(cat => cat.code === b.categoryCode)
-      return order === 'ascending' 
-        ? catA.path.localeCompare(catB.path)
-        : catB.path.localeCompare(catA.path)
-    }
-    // 对于其他属性，直接比较值
-    if (a[prop] < b[prop]) return order === 'ascending' ? -1 : 1
-    if (a[prop] > b[prop]) return order === 'ascending' ? 1 : -1
-    return 0
-  })
+  // 在这里处理排序逻辑，可能需要向后端发送新的请求
+  fetchData()
 }
 
 // 处理页面大小变化
 const handleSizeChange = (val: number) => {
   pageSize.value = val
   currentPage.value = 1
+  fetchData()
 }
 
 // 处理页码变化
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
+  fetchData()
 }
 
 // 获取状态对应的标签类型
@@ -300,7 +296,7 @@ const createCategoryChart = () => {
       categoryCount[topCategory] = (categoryCount[topCategory] || 0) + 1
     }
   })
-  
+
   const chartDom = document.getElementById('categoryChart')
   // 如果图表实例已存在，则重用；否则创建新实例
   const myChart = charts.value[0].instance || echarts.init(chartDom)
@@ -337,7 +333,7 @@ const createStatusChart = () => {
   allData.value.forEach(item => {
     statusCount[item.status] = (statusCount[item.status] || 0) + 1
   })
-  
+
   const chartDom = document.getElementById('statusChart')
   // 如果图表实例已存在，则重用；否则创建新实例
   const myChart = charts.value[1].instance || echarts.init(chartDom)
