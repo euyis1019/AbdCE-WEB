@@ -135,12 +135,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, FullScreen, ZoomIn, ZoomOut, Close } from '@element-plus/icons-vue'
 import axios from '../../http-common'
 import authService from '../../services/authService'
 import Cookies from 'js-cookie'
+import { debounce } from 'lodash' // 确保已经安装了 lodash
 
 interface ReportItem {
   fileID: string;
@@ -184,6 +185,9 @@ const uploadHeaders = computed(() => {
   return { Authorization: `Bearer ${token}` }
 })
 
+// 下载进度
+const downloadProgress = ref(0) 
+
 // 分页相关
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -206,15 +210,32 @@ const previewStyle = computed(() => ({
   transition: 'transform 0.3s ease'
 }))
 
+const resizeObserver = ref(null)
+
+// 防抖的 resize 处理函数
+const handleResize = debounce(() => {
+  // 在这里处理 resize 逻辑
+  // 例如，重新计算表格的高度或宽度
+}, 200)
+
 onMounted(async () => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   await fetchCategoryTree()
   await fetchReportStatus()
+
+  // 设置 ResizeObserver
+  resizeObserver.value = new ResizeObserver(handleResize)
+  resizeObserver.value.observe(document.body)
 })
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   closePreview()
+
+  // 断开 ResizeObserver 的连接
+  if (resizeObserver.value) {
+    resizeObserver.value.disconnect()
+  }
 })
 
 const fetchCategoryTree = async () => {
@@ -483,23 +504,34 @@ const handleCurrentChange = (newPage: number) => {
   currentPage.value = newPage
 }
 
+
 const previewFile = async (fileID: string) => {
   if (fileID) {
     try {
       const token = Cookies.get('jwt_token')
-      const response = await axios.get(`record/download`, {
+      const config = {
         params: { fileID },
         responseType: 'blob',
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
+        },
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.lengthComputable) {
+            downloadProgress.value = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            )
+          }
         }
-      })
+      }
+      const response = await axios.get(`record/download`, config)
 
       const blob = new Blob([response.data], { type: response.headers['content-type'] })
       previewUrl.value = URL.createObjectURL(blob)
       previewFileType.value = response.headers['content-type']
       previewDialogVisible.value = true
       zoomLevel.value = 1 // 重置缩放级别
+      downloadProgress.value = 0 // 重置下载进度
+      ElMessage.success('文件预览成功')
     } catch (error) {
       console.error('文件预览失败:', error)
       ElMessage.error('文件预览失败，请稍后重试')
@@ -509,12 +541,15 @@ const previewFile = async (fileID: string) => {
   }
 }
 
-const toggleFullScreen = () => {
+const toggleFullScreen = async () => {
   if (!document.fullscreenElement) {
-    fullScreenContainer.value.requestFullscreen()
+    await fullScreenContainer.value.requestFullscreen()
   } else {
-    document.exitFullscreen()
+    await document.exitFullscreen()
   }
+  // 在全屏切换后，给一些时间让浏览器调整，然后触发一次 resize
+  await nextTick()
+  setTimeout(handleResize, 100)
 }
 
 const zoomIn = () => {
@@ -614,11 +649,7 @@ window.addEventListener('unhandledrejection', (event) => {
   justify-content: flex-end;
 }
 
-.full-screen-preview {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+
 
 .preview-toolbar {
   padding: 10px;
@@ -628,19 +659,32 @@ window.addEventListener('unhandledrejection', (event) => {
   gap: 10px;
 }
 
+/* 使用 CSS 来处理一些布局问题，减少对 ResizeObserver 的依赖 */
+.full-screen-preview {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .preview-content-wrapper {
   flex: 1;
   overflow: auto;
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative; 
 }
 
 .preview-content {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  position: absolute;
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
 }
+
 
 .unsupported-format {
   text-align: center;
