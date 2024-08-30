@@ -35,10 +35,11 @@ const authService = {
         const decodedToken = jwtDecode(token);
         return {
           ID: decodedToken.user_id,
-          Name: decodedToken.username,
+          Name: decodedToken.name,  // 使用name字段作为用户姓名
+          StudentId: decodedToken.username,  // 使用username作为学号
           TokenType: decodedToken.token_type,
           ExpirationTime: decodedToken.exp,
-          Permission: decodedToken.Permission || '0'  // 添加这行，确保有 Permission 属性
+          Permission: decodedToken.Permission || '0'
         };
       } catch (error) {
         console.error('Error decoding token:', error);

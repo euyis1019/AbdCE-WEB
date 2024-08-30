@@ -159,7 +159,7 @@ const checkAuth = async () => {
     return;
   }
 
-  userName.value = user.Name || 'User'; 
+  userName.value = user.Name || 'User';  // 使用Name字段作为用户姓名
   permissionLevel.value = await authService.checkUserPermission();
 };
 

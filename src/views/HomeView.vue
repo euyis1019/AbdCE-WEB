@@ -14,11 +14,11 @@
             </div>
           </template>
           <div v-if="userInfo" class="info-content">
-            <el-avatar :size="64" :src="userInfo.avatar">{{ userInfo.name?.charAt(0) }}</el-avatar>
-            <p><strong>姓名：</strong>{{ userInfo.name }}</p>
-            <p><strong>ID：</strong>{{ userInfo.studentId }}</p>
-            <p><strong>角色：</strong>{{ userRoleName }}</p>
-          </div>
+      <el-avatar :size="64" :src="userInfo.avatar">{{ userInfo.name?.charAt(0) }}</el-avatar>
+      <p><strong>姓名：</strong>{{ userInfo.name }}</p>
+      <p><strong>学号：</strong>{{ userInfo.studentId }}</p>
+      <p><strong>角色：</strong>{{ userRoleName }}</p>
+    </div>
           <el-alert v-if="error.user" :title="error.user" type="error" :closable="false" />
         </el-card>
       </el-col>
@@ -175,12 +175,12 @@ const fetchDashboardData = async () => {
       userRoleColor.value = authService.getUserRoleColor(permissionLevel.value);
 
       userInfo.value = {
-        name: user.Name || '',
-        studentId: user.ID || '',
-        class: user.Class || '',
-        avatar: '',
-        role: userRoleName.value
-      };
+  name: user.Name || '',
+  studentId: user.StudentId || '',
+  class: user.Class || '',
+  avatar: '',
+  role: userRoleName.value
+};
 
       // 使用 /record/userstatus 接口获取用户统计数据
       const statusResponse = await axios.post('/record/userstatus', { userID: user.ID });
