@@ -10,6 +10,7 @@ import ImmersiveReview from '../views/ImmersiveReview.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
 import authService from '../services/authService'
 import Cookies from 'js-cookie'
+import { useAuthStore } from '@/store/auth'
 
 interface User {
   ID: any;
@@ -82,6 +83,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const token = Cookies.get('jwt_token');
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const authStore = useAuthStore()
 
   if (requiresAuth && !token) {
     window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html';
@@ -95,7 +97,7 @@ router.beforeEach(async (to, from, next) => {
         throw new Error('Token is invalid or expired');
       }
 
-      const permissionLevel = await authService.checkUserPermission();
+      const permissionLevel = authStore.permissionLevel;
 
       const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
       const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);

@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 const SSO_URL = process.env.VUE_APP_SSO_URL || 'http://sso.abdn.kirisame.cc/ce/';
 
 const authService = {
+
   refreshToken: async () => {
     const refreshToken = Cookies.get('refresh_token');
     if (refreshToken) {
@@ -12,6 +13,8 @@ const authService = {
         const response = await axios.post(`${SSO_URL}api/token_refresh/`, { refresh: refreshToken });
         if (response.data.access) {
           Cookies.set('jwt_token', response.data.access);
+          const authStore = useAuthStore()
+          await authStore.fetchPermissionLevel() // 在这里更新权限
           return response.data.access;
         }
       } catch (error) {
