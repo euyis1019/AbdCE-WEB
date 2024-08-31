@@ -254,8 +254,10 @@ const getStatColor = (index: number) => {
 
 // 更新所有图表
 const updateCharts = () => {
-  createStatusChart()
-  createTimelineChart()
+  nextTick(() => {
+    createStatusChart()
+    createTimelineChart()
+  })
 }
 
 // 创建状态分布图表
@@ -417,7 +419,7 @@ const getCategoryPath = (caseID: string | number) => {
   const findPath = (tree, id, path = []) => {
     for (const [key, value] of Object.entries(tree)) {
       if (typeof value === 'object' && value !== null) {
-        if ('caseID' in value && value.caseID.toString() === id.toString()) {
+        if ('caseID' in value && value.caseID && id && value.caseID.toString() === id.toString()) {
           return [...path, key]
         }
         const result = findPath(value, id, [...path, key])
@@ -427,8 +429,13 @@ const getCategoryPath = (caseID: string | number) => {
     return null
   }
 
-  const path = findPath(categoryTree.value, caseID)
-  return path ? path.join(' > ') : '未知类别'
+  try {
+    const path = findPath(categoryTree.value, caseID)
+    return path ? path.join(' > ') : '未知类别'
+  } catch (error) {
+    console.error('Error in getCategoryPath:', error)
+    return '未知类别'
+  }
 }
 
 // 定时刷新数据

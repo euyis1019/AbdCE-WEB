@@ -13,6 +13,15 @@ const app = createApp(App);
 
 // 全局错误处理
 app.config.errorHandler = (err: any, vm: any, info: any) => {
+  // 检查是否为 ResizeObserver 相关错误
+  if (err.message === 'ResizeObserver loop limit exceeded' || 
+      err.message === 'ResizeObserver loop completed with undelivered notifications.') {
+    // 忽略 ResizeObserver 错误
+    console.warn('ResizeObserver error ignored:', err.message);
+    return;
+  }
+  
+  // 处理其他错误
   console.error('Global error:', err);
   console.error('Vue component:', vm);
   console.error('Error info:', info);
