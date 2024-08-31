@@ -147,7 +147,7 @@ const fetchData = async () => {
         params: {
           page: currentPage.value,
           pagesize: pageSize.value,
-          userID: authStore.currentUser?.ID
+          userID: authStore.currentUser?.StudentId
         }
       }),
       axios.get('/case/categorytree')

@@ -183,7 +183,7 @@ const fetchDashboardData = async () => {
 };
 
       // 使用 /record/userstatus 接口获取用户统计数据
-      const statusResponse = await axios.post('/record/userstatus', { userID: user.ID });
+      const statusResponse = await axios.post('/record/userstatus', { userID: user.StudentId });
       if (statusResponse.data.statusID === 1) {
         userStatus.value = statusResponse.data;
         stats.value.pendingReports = statusResponse.data.reviewTodoCount;

@@ -282,7 +282,7 @@ const fetchReportStatus = async () => {
     }
 
     const response = await axios.post('/record/userstatus', {
-      userID: user.ID
+      userID: user.StudentId
     })
 
     if (response.data.statusID === 1) {
@@ -475,7 +475,7 @@ const updateReport = async () => {
 
     const response = await axios.post('/record/updatenewrecord', {
       fileID: editingItem.fileID,
-      userID: user.ID,
+      userID: user.StudentId,
       caseID: editingItem.categoryCode,
       file: editingItem.fileID
     })
@@ -525,7 +525,7 @@ const deleteReport = async (item: ReportItem) => {
 
     const response = await axios.post('/record/deleterecord', {
       fileID: item.fileID,
-      userID: user.ID
+      userID: user.StudentId
     })
 
     if (response.data.statusID === 1) {
@@ -593,7 +593,7 @@ const previewFile = async (fileID: string) => {
         throw new Error('用户未登录')
       }
       const config = {
-        params: { fileID, userID: user.ID },
+        params: { fileID, userID: user.StudentId },
         responseType: 'blob',
         headers: {
           Authorization: `Bearer ${token}`

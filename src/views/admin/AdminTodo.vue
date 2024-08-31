@@ -98,7 +98,7 @@ const fetchTodoItems = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      params: { userID: user.ID }
+      pparams: { userID: user.StudentId }
     })
 
     if (response.data.statusID === 0) {

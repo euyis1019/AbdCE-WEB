@@ -303,7 +303,7 @@ const createCaseFile = async (item) => {
   error.value = ''
   try {
     const response = await axios.post('/record/newrecord', {
-      userID: currentUser.value.ID,
+      userID: currentUser.value.StudentId,
       caseID: item.categoryCode,
       mainCls: currentCategory.value,
       cls1: item.categoryPath[0],
@@ -419,7 +419,7 @@ const previewFile = async (fileID) => {
 
       const token = Cookies.get('jwt_token')
       const config = {
-        params: { fileID, userID: currentUser.value.ID },
+        params: { fileID, userID: currentUser.value.StudentId },
         responseType: 'blob',
         headers: { Authorization: `Bearer ${token}` },
         onDownloadProgress: (progressEvent) => {
@@ -621,7 +621,7 @@ const submitForm = async () => {
           }
           const response = await axios.post('/record/updatenewrecord', {
             FileID: item.fileID,
-            userID: currentUser.value.ID,
+            userID: currentUser.value.StudentId,
             caseID: item.categoryCode,
             description: item.description,
             file: item.file.fileID,

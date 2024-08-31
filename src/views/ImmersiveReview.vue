@@ -226,7 +226,7 @@ const confirmSubmit = async () => {
 
     const endpoint = isReReview.value ? '/admin/finalDone' : '/admin/isdone';
     const payload: { [key: string]: any } = {
-      userID: user.ID,
+      userID: user.StudentId,
       FileID: currentTask.value.FileID,
       reviewerID: user.ID,
       comment: reviewForm.value.comment,
@@ -261,7 +261,7 @@ const getNextTask = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      params: { userID: user.ID }
+      pparams: { userID: user.StudentId }
     })
 
     if (response.data.statusID === 0) {

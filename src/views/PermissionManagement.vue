@@ -321,7 +321,7 @@ const assignReviewer = async () => {
     }
 
     const assignResponse = await axios.post('/admin/assignTask', {
-      adminID: currentUser.ID,
+      adminID: currentUser.StudentId,
       reviewerID: assignForm.value.reviewerId,
       categoryCodes: [assignForm.value.categoryId]
     })
@@ -391,7 +391,7 @@ const updateUserPermission = async (user) => {
     }
 
     const response = await axios.post('/admin/updateadmin', {
-      userID: currentUser.ID,
+      userID: currentUser.StudentId,
       updateuserID: user.userID,
       level: user.newLevel
     })
