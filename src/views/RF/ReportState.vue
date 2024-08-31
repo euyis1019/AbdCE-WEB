@@ -76,6 +76,7 @@
       <el-empty v-else-if="!loading" description="暂无申报记录"></el-empty>
     </el-card>
 
+    <!-- 编辑对话框 -->
     <el-dialog v-model="editDialogVisible" title="修改申报" width="50%">
       <el-form :model="editingItem" label-width="100px">
         <el-form-item label="类别">
@@ -89,12 +90,11 @@
         <el-form-item label="文件">
           <el-upload
             class="upload-demo"
-            :action="uploadUrl"
+            :http-request="customUpload"
             :on-success="handleUploadSuccess"
             :on-error="handleUploadError"
             :before-upload="beforeUpload"
             :on-progress="handleUploadProgress"
-            :headers="uploadHeaders"
           >
             <el-button size="small" type="primary">更新文件</el-button>
           </el-upload>
@@ -111,6 +111,7 @@
       </template>
     </el-dialog>
 
+    <!-- 文件预览对话框 -->
     <el-dialog v-model="previewDialogVisible" title="文件预览" width="80%" fullscreen :show-close="false" @close="closePreview">
       <div class="full-screen-preview">
         <div class="preview-toolbar">
@@ -122,9 +123,18 @@
           <el-button @click="closePreview" icon="Close">关闭预览</el-button>
         </div>
         <div class="preview-content-wrapper" ref="fullScreenContainer">
-          <img v-if="isImageFile" :src="previewUrl" alt="File preview" class="preview-content" :style="previewStyle" />
-          <iframe v-else-if="isPdfFile" :src="previewUrl" class="preview-content" :style="previewStyle"></iframe>
-          <div v-else class="unsupported-format">
+          <div v-if="isLoading" class="loading-overlay">
+            <el-progress 
+              type="circle" 
+              :percentage="downloadProgress" 
+              :format="formatProgress"
+            ></el-progress>
+            <p>预计剩余时间: {{ remainingTime }}</p>
+            <div class="loading-animation"></div>
+          </div>
+          <img v-if="isImageFile && !isLoading" :src="previewUrl" alt="File preview" class="preview-content" :style="previewStyle" />
+          <iframe v-else-if="isPdfFile && !isLoading" :src="previewUrl" class="preview-content" :style="previewStyle"></iframe>
+          <div v-else-if="!isLoading" class="unsupported-format">
             <p>不支持预览该文件格式</p>
             <el-button @click="openFileInNewTab">在新标签页中打开文件</el-button>
           </div>
@@ -135,14 +145,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, FullScreen, ZoomIn, ZoomOut, Close } from '@element-plus/icons-vue'
 import axios from '../../http-common'
 import authService from '../../services/authService'
 import Cookies from 'js-cookie'
-import { debounce } from 'lodash' // 确保已经安装了 lodash
+import { debounce } from 'lodash'
 
+// 定义 ReportItem 接口
 interface ReportItem {
   fileID: string;
   caseID: string;
@@ -154,6 +165,7 @@ interface ReportItem {
   categoryPath: string[];
 }
 
+// 状态变量
 const loading = ref(false)
 const tableLoading = ref(false)
 const error = ref('')
@@ -166,6 +178,7 @@ const zoomLevel = ref(1)
 const isFullScreen = ref(false)
 const fullScreenContainer = ref(null)
 
+// 编辑项
 const editingItem = reactive({
   fileID: '',
   caseID: '',
@@ -178,6 +191,7 @@ const editingItem = reactive({
   categoryTitle: '',
 })
 
+// 上传进度
 const uploadProgress = ref(0)
 const uploadUrl = computed(() => `${process.env.VUE_APP_API_URL}record/upload`)
 const uploadHeaders = computed(() => {
@@ -187,6 +201,10 @@ const uploadHeaders = computed(() => {
 
 // 下载进度
 const downloadProgress = ref(0) 
+const isLoading = ref(false)
+const remainingTime = ref('计算中...')
+const downloadStartTime = ref(0)
+const totalFileSize = ref(0)
 
 // 分页相关
 const currentPage = ref(1)
@@ -203,6 +221,7 @@ const sortOrder = ref('ascending')
 
 const categoryTree = ref(null)
 
+// 计算属性
 const isImageFile = computed(() => previewFileType.value.startsWith('image/'))
 const isPdfFile = computed(() => previewFileType.value === 'application/pdf')
 const previewStyle = computed(() => ({
@@ -238,6 +257,7 @@ onUnmounted(() => {
   }
 })
 
+// 获取类别树
 const fetchCategoryTree = async () => {
   try {
     const response = await axios.get('/case/categorytree')
@@ -251,6 +271,7 @@ const fetchCategoryTree = async () => {
   }
 }
 
+// 获取报告状态
 const fetchReportStatus = async () => {
   loading.value = true
   error.value = ''
@@ -310,6 +331,7 @@ const fetchReportStatus = async () => {
   }
 }
 
+// 查找类别信息
 const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   for (const [key, value] of Object.entries(tree)) {
     if (typeof value === 'object' && value !== null) {
@@ -326,6 +348,7 @@ const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   return null
 }
 
+// 获取状态类型
 const getStatusType = (status: string) => {
   switch (status) {
     case '待初审': return 'warning'
@@ -335,6 +358,7 @@ const getStatusType = (status: string) => {
   }
 }
 
+// 获取进度百分比
 const getProgressPercentage = (status: string) => {
   switch (status) {
     case '待初审': return 20
@@ -344,6 +368,7 @@ const getProgressPercentage = (status: string) => {
   }
 }
 
+// 获取进度状态
 const getProgressStatus = (status: string) => {
   switch (status) {
     case '终审通过': return 'success'
@@ -352,6 +377,7 @@ const getProgressStatus = (status: string) => {
   }
 }
 
+// 获取进度标签
 const getProgressLabel = (status: string) => {
   switch (status) {
     case '待初审': return '等待初审'
@@ -361,32 +387,71 @@ const getProgressLabel = (status: string) => {
   }
 }
 
+// 显示编辑对话框
 const showEditDialog = (item: ReportItem) => {
   Object.assign(editingItem, item)
   editingItem.categoryPath = item.categoryPath
   editDialogVisible.value = true
 }
 
+// 处理类别变化
 const handleCategoryChange = (value) => {
   const categoryInfo = findCategoryInfo(categoryTree.value, value[value.length - 1])
   editingItem.categoryTitle = categoryInfo ? categoryInfo.path.join(' > ') : 'Unknown Category'
   editingItem.categoryCode = value[value.length - 1]
 }
 
+// 自定义上传方法
+const customUpload = async ({ file, onProgress, onSuccess, onError }) => {
+  const user = authService.getCurrentUser()
+  if (!user) {
+    onError(new Error('用户未登录'))
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('fileID', editingItem.fileID)
+  formData.append('userID', user.ID)
+  formData.append('caseID', editingItem.categoryCode)
+
+  try {
+    const response = await axios.post('/record/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+        onProgress({ percent: percentCompleted })
+        uploadProgress.value = percentCompleted
+      }
+    })    
+    if (response.data && response.data.statusID === 1) {
+      onSuccess(response.data)
+    } else {
+      onError(new Error(response.data?.msg || '上传失败'))
+    }
+  } catch (error) {
+    console.error('Upload error:', error)
+    onError(error)
+  }
+}
+
+// 处理上传成功
 const handleUploadSuccess = (res: any, file: any) => {
-  if (res.statusID === 1) {
+  if (res && res.statusID === 1) {
     editingItem.fileID = res.fileID
     uploadProgress.value = 100
     ElMessage.success('文件上传成功')
   } else {
-    ElMessage.error(res.msg || '文件上传失败')
+    ElMessage.error(res?.msg || '文件上传失败')
   }
 }
 
+// 处理上传错误
 const handleUploadError = (err: any) => {
   ElMessage.error('文件上传失败，请重试')
 }
 
+// 上传前检查
 const beforeUpload = (file: any) => {
   const isLt10M = file.size / 1024 / 1024 < 10
   if (!isLt10M) {
@@ -395,10 +460,12 @@ const beforeUpload = (file: any) => {
   return isLt10M
 }
 
+// 处理上传进度
 const handleUploadProgress = (event: any) => {
   uploadProgress.value = Math.round(event.percent)
 }
 
+// 更新报告
 const updateReport = async () => {
   try {
     const user = authService.getCurrentUser()
@@ -426,6 +493,7 @@ const updateReport = async () => {
   }
 }
 
+// 确认删除
 const confirmDelete = (item: ReportItem) => {
   ElMessageBox.confirm(
     '确定要删除这条申报记录吗？此操作不可逆。',
@@ -447,6 +515,7 @@ const confirmDelete = (item: ReportItem) => {
     })
 }
 
+// 删除报告
 const deleteReport = async (item: ReportItem) => {
   try {
     const user = authService.getCurrentUser()
@@ -471,16 +540,19 @@ const deleteReport = async (item: ReportItem) => {
   }
 }
 
+// 刷新状态
 const refreshStatus = () => {
   fetchReportStatus()
 }
 
+// 处理排序变化
 const handleSortChange = ({ prop, order }) => {
   sortBy.value = prop
   sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   sortReportItems()
 }
 
+// 排序报告项目
 const sortReportItems = () => {
   if (sortBy.value) {
     reportItems.value.sort((a, b) => {
@@ -495,31 +567,49 @@ const sortReportItems = () => {
   }
 }
 
+// 处理页面大小变化
 const handleSizeChange = (newSize: number) => {
   pageSize.value = newSize
   currentPage.value = 1
 }
 
+// 处理当前页变化
 const handleCurrentChange = (newPage: number) => {
   currentPage.value = newPage
 }
 
-
+// 预览文件
 const previewFile = async (fileID: string) => {
   if (fileID) {
     try {
+      isLoading.value = true
+      downloadProgress.value = 0
+      remainingTime.value = '计算中...'
+      downloadStartTime.value = Date.now()
+
       const token = Cookies.get('jwt_token')
+      const user = authService.getCurrentUser()
+      if (!user) {
+        throw new Error('用户未登录')
+      }
       const config = {
-        params: { fileID },
+        params: { fileID, userID: user.ID },
         responseType: 'blob',
         headers: {
           Authorization: `Bearer ${token}`
         },
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.lengthComputable) {
-            downloadProgress.value = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            )
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            downloadProgress.value = percentCompleted
+            totalFileSize.value = progressEvent.total
+
+            // 计算剩余时间
+            const elapsedTime = (Date.now() - downloadStartTime.value) / 1000
+            const downloadSpeed = progressEvent.loaded / elapsedTime
+            const remainingBytes = progressEvent.total - progressEvent.loaded
+            const remainingSeconds = remainingBytes / downloadSpeed
+            remainingTime.value = formatTime(remainingSeconds)
           }
         }
       }
@@ -530,17 +620,37 @@ const previewFile = async (fileID: string) => {
       previewFileType.value = response.headers['content-type']
       previewDialogVisible.value = true
       zoomLevel.value = 1 // 重置缩放级别
-      downloadProgress.value = 0 // 重置下载进度
       ElMessage.success('文件预览成功')
     } catch (error) {
       console.error('文件预览失败:', error)
       ElMessage.error('文件预览失败，请稍后重试')
+    } finally {
+      isLoading.value = false
     }
   } else {
     ElMessage.warning('没有可预览的文件')
   }
 }
 
+// 格式化时间
+const formatTime = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${Math.round(seconds)}秒`
+  } else if (seconds < 3600) {
+    return `${Math.round(seconds / 60)}分钟`
+  } else {
+    return `${Math.round(seconds / 3600)}小时以上`
+  }
+}
+
+// 格式化进度
+const formatProgress = (percentage: number) => {
+  if (percentage === 100) return '完成'
+  const downloadedSize = (totalFileSize.value * percentage) / 100
+  return `${(downloadedSize / (1024 * 1024)).toFixed(2)}MB / ${(totalFileSize.value / (1024 * 1024)).toFixed(2)}MB`
+}
+
+// 切换全屏
 const toggleFullScreen = async () => {
   if (!document.fullscreenElement) {
     await fullScreenContainer.value.requestFullscreen()
@@ -552,18 +662,22 @@ const toggleFullScreen = async () => {
   setTimeout(handleResize, 100)
 }
 
+// 放大
 const zoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3)
 }
 
+// 缩小
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5)
 }
 
+// 在新标签页中打开文件
 const openFileInNewTab = () => {
   window.open(previewUrl.value, '_blank')
 }
 
+// 关闭预览
 const closePreview = () => {
   previewDialogVisible.value = false
   if (previewUrl.value) {
@@ -573,6 +687,7 @@ const closePreview = () => {
   zoomLevel.value = 1 // 重置缩放级别
 }
 
+// 处理全屏变化
 const handleFullscreenChange = () => {
   isFullScreen.value = !!document.fullscreenElement
 }
@@ -649,8 +764,6 @@ window.addEventListener('unhandledrejection', (event) => {
   justify-content: flex-end;
 }
 
-
-
 .preview-toolbar {
   padding: 10px;
   background-color: #f0f2f5;
@@ -685,9 +798,37 @@ window.addEventListener('unhandledrejection', (event) => {
   transform: translate(-50%, -50%); 
 }
 
-
 .unsupported-format {
   text-align: center;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 1000;
+}
+
+.loading-animation {
+  width: 50px;
+  height: 50px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-top: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
@@ -711,6 +852,14 @@ window.addEventListener('unhandledrejection', (event) => {
 
   .pagination-container {
     justify-content: center;
+  }
+
+  .preview-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .preview-toolbar .el-button {
+    margin-bottom: 5px;
   }
 }
 </style>
