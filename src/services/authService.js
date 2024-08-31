@@ -43,10 +43,14 @@ const authService = {
     return null;
   },
 
-  logout: () => {
-    Cookies.remove('jwt_token');
-    Cookies.remove('refresh_token');
-    window.location.href = `${SSO_URL}index/login.html`;
+  logout: async () => {
+
+      Cookies.remove('jwt_token');
+      Cookies.remove('refresh_token');
+      
+      // 重定向到SSO登出页面
+      window.location.href = `${SSO_URL}ce/login.html`;
+    
   },
 
   checkUserPermission: async (retryCount = 0) => {

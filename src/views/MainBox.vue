@@ -228,10 +228,16 @@ const handleCommand = (command: string) => {
   }
 };
 
-const logout = () => {
-  authService.logout();
-};
 
+const logout = async () => {
+  try {
+    await authService.logout();
+    ElMessage.success('登出成功');
+  } catch (error) {
+    console.error('Logout failed:', error);
+    ElMessage.error('登出失败,请重试');
+  }
+};
 const goToSSOProfile = () => {
   window.location.href = process.env.VUE_APP_SSO_URL ; 
 };
