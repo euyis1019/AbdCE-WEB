@@ -4,7 +4,7 @@
 
     <el-steps :active="currentStepIndex" finish-status="success">
       <el-step v-for="(category, index) in topLevelCategories" :key="index" :title="category" />
-      <el-step title="预览">
+      <el-step title="综测得分明细">
         <template #icon>
           <el-icon><Document /></el-icon>
         </template>
@@ -60,7 +60,7 @@
           </div>
         </el-form>
         <div v-else-if="currentStepIndex === topLevelCategories.length">
-          <h2>预览</h2>
+          <h2>综测得分明细</h2>
           <el-table :data="allItemsWithScores" style="width: 100%">
             <el-table-column prop="categoryPath" label="类别">
               <template #default="scope">
