@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <h1 class="welcome-title">
-      {{ currentUser ? currentUser.Name : '陌生人' }}，欢迎使用综合信息评价填报系统
+      {{ currentUser ? currentUser.Name : '陌生人' }}，欢迎使用综合素质信息评价填报系统
       <el-tag :type="userRoleColor" effect="dark">{{ userRoleName }}</el-tag>
     </h1>
     <el-row :gutter="20">

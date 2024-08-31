@@ -3,7 +3,7 @@
     <el-aside :width="isCollapse ? '64px' : '200px'" class="menu-aside" v-if="!isMobile">
       <div class="logo">
         <img src="../assets/logo.svg" alt="Logo" />
-        <span v-if="!isCollapse">综合评价系统</span>
+        <span v-if="!isCollapse">综合素质评价系统</span>
       </div>
       <el-menu
         :default-active="activeMenu"

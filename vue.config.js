@@ -16,6 +16,8 @@ module.exports = defineConfig({
       }
     },
     allowedHosts: [
+      'localhost',
+      'cesys-abdn.ygxz.xyz',
       'cesys.abdn.kirisame.cc',
     ]
   }
