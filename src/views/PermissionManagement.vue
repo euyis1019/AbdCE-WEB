@@ -29,12 +29,12 @@
                   <span v-if="data.isLeaf" class="reviewer-tags">
                     <el-tag 
                       v-for="reviewer in data.reviewers" 
-                      :key="reviewer.id" 
+                      :key="reviewer.userID" 
                       closable 
                       @close="showRemoveConfirmDialog(data, reviewer)"
                       :type="getReviewerTagType(reviewer.level)"
                     >
-                      {{ reviewer.name }} ({{ reviewer.id }}) - {{ getReviewerLevelLabel(reviewer.level) }}
+                      {{ getReviewerDisplayName(reviewer) }} - {{ getReviewerLevelLabel(reviewer.level) }}
                     </el-tag>
                     <el-button v-if="data.reviewers.length < 2" size="small" @click.stop="showAssignDialog(data)">
                       分配审核员
@@ -54,7 +54,7 @@
               <h2>用户权限管理</h2>
               <el-input
                 v-model="searchQuery"
-                placeholder="搜索用户 (姓名或ID)"
+                placeholder="搜索用户 (任意字段)"
                 style="width: 200px; margin-right: 10px;"
                 @input="debouncedSearch"
               />
@@ -63,8 +63,8 @@
           </template>
           <el-scrollbar height="calc(100vh - 320px)">
             <el-table :data="paginatedUserPermissions" style="width: 100%">
-              <el-table-column prop="id" label="学号" width="120"></el-table-column>
-              <el-table-column prop="name" label="用户姓名" width="120"></el-table-column>
+              <el-table-column prop="userID" label="用户ID" width="120"></el-table-column>
+              <el-table-column prop="name" label="用户姓名" width="120" v-if="hasNameField"></el-table-column>
               <el-table-column prop="level" label="当前权限等级" width="120">
                 <template #default="scope">
                   {{ getReviewerLevelLabel(scope.row.level) }}
@@ -115,9 +115,9 @@
           <el-select v-model="assignForm.reviewerId" placeholder="请选择审核员">
             <el-option
               v-for="reviewer in availableReviewers"
-              :key="reviewer.id"
-              :label="`${reviewer.name} (${reviewer.id}) - ${getReviewerLevelLabel(reviewer.level)}`"
-              :value="reviewer.id"
+              :key="reviewer.userID"
+              :label="getReviewerDisplayName(reviewer)"
+              :value="reviewer.userID"
             ></el-option>
           </el-select>
         </el-form-item>
@@ -178,10 +178,14 @@ const defaultProps = {
   label: 'label',
 }
 
+const hasNameField = computed(() => {
+  return userPermissions.value.some(user => 'name' in user)
+})
+
 const availableReviewers = computed(() => {
   const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
   return userPermissions.value.filter(user => 
-    user.level > 0 && user.level < 30 && !currentReviewers.includes(user.id)
+    user.level > 0 && !currentReviewers.includes(user.userID) // 手动分配时允许分配所有非普通用户，包括超管
   )
 })
 
@@ -190,8 +194,9 @@ const filteredUserPermissions = computed(() => {
 
   const lowercaseQuery = searchQuery.value.toLowerCase()
   return userPermissions.value.filter(user => 
-    user.id.toLowerCase().includes(lowercaseQuery) ||
-    user.name.toLowerCase().includes(lowercaseQuery)
+    Object.values(user).some(value => 
+      String(value).toLowerCase().includes(lowercaseQuery)
+    )
   )
 })
 
@@ -250,21 +255,19 @@ const convertTreeFormat = (tree, parentId = null) => {
 
     if (typeof value === 'object' && value !== null) {
       if ('caseID' in value) {
-        // 这是一个叶子节点
         node.isLeaf = true;
         node.caseID = value.caseID;
         if (assignedReviewers.value[value.caseID]) {
           node.reviewers = assignedReviewers.value[value.caseID].map(id => {
-            const user = userPermissions.value.find(u => u.id === id);
+            const user = userPermissions.value.find(u => u.userID === id);
             return user ? {
-              id: user.id,
+              userID: user.userID,
               name: user.name,
               level: user.level
             } : null;
           }).filter(Boolean);
         }
       } else {
-        // 这是一个中间节点，继续递归
         node.children = convertTreeFormat(value, node.id);
       }
     }
@@ -272,14 +275,15 @@ const convertTreeFormat = (tree, parentId = null) => {
     return node;
   });
 }
+
 const fetchUserPermissions = async () => {
   try {
     const response = await axios.get('/admin/adminlevel')
     if (response.data.message === "Administrators retrieved successfully") {
       userPermissions.value = Object.entries(response.data.groupedAdmins).flatMap(([level, users]) =>
         users.map(user => ({
-          id: user.username,
-          name: user.name,
+          userID: user.userID,
+          name: user.name, // 如果后端返回 name 字段，这里会自动包含
           level: parseInt(level),
           newLevel: parseInt(level)
         }))
@@ -357,14 +361,14 @@ const removeReviewer = async (data, reviewer) => {
     }
 
     const response = await axios.post('/admin/updateReviewerStatus', {
-      userID: reviewer.id,
+      userID: reviewer.userID,
       reviewer: false
     })
 
     if (response.data.statusID === 0) {
       ElMessage.success('审核员移除成功')
       if (assignedReviewers.value[data.caseID]) {
-        assignedReviewers.value[data.caseID] = assignedReviewers.value[data.caseID].filter(id => id !== reviewer.id)
+        assignedReviewers.value[data.caseID] = assignedReviewers.value[data.caseID].filter(id => id !== reviewer.userID)
       }
       await refreshCategoryTree()
     } else {
@@ -379,7 +383,6 @@ const removeReviewer = async (data, reviewer) => {
 const handlePermissionChange = (value, user) => {
   user.newLevel = value
 }
-
 const updateUserPermission = async (user) => {
   try {
     const currentUser = authService.getCurrentUser()
@@ -389,7 +392,7 @@ const updateUserPermission = async (user) => {
 
     const response = await axios.post('/admin/updateadmin', {
       userID: currentUser.ID,
-      updateuserID: user.id,
+      updateuserID: user.userID,
       level: user.newLevel
     })
 
@@ -435,6 +438,12 @@ const getReviewerTagType = (level) => {
   }
 }
 
+const getReviewerDisplayName = (reviewer) => {
+  if (reviewer.name) return reviewer.name
+  if (reviewer.userID) return `用户ID: ${reviewer.userID}`
+  return '未知用户'
+}
+
 const autoAssignReviewers = async () => {
   autoAssigning.value = true
   try {
@@ -449,17 +458,17 @@ const autoAssignReviewers = async () => {
 
     for (const node of leafNodes) {
       const currentReviewers = assignedReviewers.value[node.caseID] || []
-      const availableForNode = eligibleReviewers.filter(r => !currentReviewers.includes(r.id))
+      const availableForNode = eligibleReviewers.filter(r => !currentReviewers.includes(r.userID))
 
       while (currentReviewers.length < 2 && availableForNode.length > 0) {
         const randomIndex = Math.floor(Math.random() * availableForNode.length)
         const selectedReviewer = availableForNode.splice(randomIndex, 1)[0]
-        currentReviewers.push(selectedReviewer.id)
+        currentReviewers.push(selectedReviewer.userID)
 
-        if (!assignments[selectedReviewer.id]) {
-          assignments[selectedReviewer.id] = []
+        if (!assignments[selectedReviewer.userID]) {
+          assignments[selectedReviewer.userID] = []
         }
-        assignments[selectedReviewer.id].push(node.caseID)
+        assignments[selectedReviewer.userID].push(node.caseID)
       }
     }
 
