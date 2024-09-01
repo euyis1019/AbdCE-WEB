@@ -182,7 +182,7 @@ const currentPageTitle = computed(() => {
     '/permission-management': '权限管理',
     '/review-management': '复审管理'
   };
-  return routeTitles[route.path] || '综合评价信息申报系统';
+  return routeTitles[route.path] || '综合素质评价信息申报系统';
 });
 
 const toggleCollapse = () => {

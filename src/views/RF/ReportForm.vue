@@ -1,6 +1,6 @@
 <template>
   <div class="report-form">
-    <h1>{{ isEditMode ? '修改申报' : '综合评价信息申报' }}</h1>
+    <h1>{{ isEditMode ? '修改申报' : '综合素质评价信息申报' }}</h1>
 
     <el-steps :active="currentStepIndex" finish-status="success">
       <el-step v-for="(category, index) in topLevelCategories" :key="index" :title="category" />
