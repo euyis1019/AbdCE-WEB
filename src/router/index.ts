@@ -12,6 +12,7 @@ import ReviewManagement from '../views/ReviewManagement.vue'
 import authService from '../services/authService'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/auth'
+import BackendManagement from '../views/BackendManagement.vue' 
 
 interface User {
   ID: any;
@@ -72,7 +73,13 @@ const routes: Array<RouteRecordRaw> = [
         name: 'DataDashboard',
         component: DataDashboard,
         meta: { requiresAuth: true, requiresAdmin: true }
-      }
+      },
+      {
+        path: '/backend-management',
+        name: 'BackendManagement',
+        component: BackendManagement,
+        meta: { requiresAuth: true, requiresAdmin: true, minPermissionLevel: 30 }
+      } 
     ]
   },
   {
@@ -104,8 +111,11 @@ router.beforeEach(async (to, from, next) => {
 
       const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
       const requiresReviewer = to.matched.some(record => record.meta.requiresReviewer);
+      const minPermissionLevel = to.matched.some(record => record.meta.minPermissionLevel);
 
       if (requiresAdmin && permissionLevel < 30) {
+        next({ name: 'Home' });
+      } else if (minPermissionLevel && permissionLevel < minPermissionLevel) {
         next({ name: 'Home' });
       } else if (requiresReviewer && permissionLevel === 0) {
         next({ name: 'Home' });

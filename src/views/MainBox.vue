@@ -116,6 +116,11 @@
   <el-icon><DataLine /></el-icon>
   <template #title>数据看板</template>
 </el-menu-item>
+<el-menu-item index="9" v-if="permissionLevel >= 30">
+    <el-icon><Setting /></el-icon>
+    <template #title>后台管理</template>
+  </el-menu-item>
+
     </el-menu>
   </el-drawer>
 </template>
@@ -216,6 +221,9 @@ const handleSelect = (key: string) => {
       break;
       case '8':
     router.push('/data-dashboard');
+    break;
+    case '9':
+    router.push('/backend-management');
     break;
   }
 };
