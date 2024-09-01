@@ -13,7 +13,6 @@
 
     <el-card v-loading="loading" element-loading-text="加载中...">
       <el-alert v-if="error" :title="error" type="error" show-icon @close="error = ''" />
-      <div v-if="debug"></div>
       <template v-if="!loading && topLevelCategories.length > 0">
         <el-form v-if="currentStepIndex < topLevelCategories.length" :model="currentStep" ref="formRef" label-width="120px">
           <h2>{{ currentCategory }}</h2>
@@ -22,10 +21,17 @@
             <el-form-item label="类别">
               <el-cascader
                 v-model="item.categoryPath"
-                :options="categoryOptions"
+                :options="categoryOptionsWithScore"
                 @change="value => handleCategoryChange(value, index)"
                 placeholder="请选择类别"
-              />
+              >
+                <template #default="{ node, data }">
+                  <span>{{ data.label }}</span>
+                  <span v-if="data.score !== undefined" class="category-score-tag">
+                    {{ data.score }}分
+                  </span>
+                </template>
+              </el-cascader>
             </el-form-item>
             <el-form-item label="描述">
               <el-input v-model="item.description" type="textarea" :rows="3"></el-input>
@@ -90,11 +96,11 @@
             </template>
             <div v-for="(sum, category) in categoryScoreSums" :key="category" class="category-sum">
               <strong>{{ category }}:</strong> 
-              <span :class="{ 'negative-score': sum < 0 }">{{ sum }}</span>
+              <span :class="{ 'negative-score': sum < 0 }">{{ sum.toFixed(2) }}</span>
             </div>
             <div class="total-score">
               <strong>总分:</strong> 
-              <span :class="{ 'negative-score': totalScore < 0 }">{{ totalScore }}</span>
+              <span :class="{ 'negative-score': totalScore < 0 }">{{ totalScore.toFixed(2) }}</span>
             </div>
           </el-card>
 
@@ -105,6 +111,28 @@
         </div>
       </template>
       <el-empty v-else-if="!loading" description="暂无数据"></el-empty>
+    </el-card>
+
+    <!-- 添加悬浮窗显示实时分数 -->
+    <el-card v-if="showScoreCard" class="score-card" :style="scoreCardStyle">
+      <template #header>
+        <div class="card-header">
+          <span>实时得分统计</span>
+          <el-button class="button" text @click="toggleScoreCard">
+            {{ showScoreCard ? '隐藏' : '显示' }}
+          </el-button>
+        </div>
+      </template>
+      <div class="score-content">
+        <div v-for="(sum, category) in categoryScoreSums" :key="category" class="category-sum">
+          <strong>{{ category }}:</strong> 
+          <span>{{ sum.toFixed(2) }}</span>
+        </div>
+        <div class="total-score">
+          <strong>总分:</strong> 
+          <span>{{ totalScore.toFixed(2) }}</span>
+        </div>
+      </div>
     </el-card>
 
     <el-dialog v-model="previewDialogVisible" title="文件预览" :fullscreen="isFullScreen" :show-close="false" @close="closePreview">
@@ -155,7 +183,6 @@ const isEditMode = ref(false)
 const currentUser = ref(null)
 const loading = ref(false)
 const error = ref('')
-const debug = ref(true)
 
 const topLevelCategories = ref([])
 const categoryTree = ref(null)
@@ -220,6 +247,36 @@ const categoryScoreSums = computed(() => {
 
 const totalScore = computed(() => {
   return Object.values(categoryScoreSums.value).reduce((sum, score) => sum + score, 0)
+})
+
+// 新增的悬浮窗相关状态
+const showScoreCard = ref(true)
+const scoreCardStyle = ref({
+  position: 'fixed',
+  top: '70px',
+  right: '20px',
+  zIndex: 1000,
+  width: '250px',
+})
+
+// 计算带有分数的分类选项
+const categoryOptionsWithScore = computed(() => {
+  const addScoreToOptions = (options, parentPath = []) => {
+    return options.map(option => {
+      const currentPath = [...parentPath, option.value]
+      const newOption = { ...option }
+      if (option.children) {
+        newOption.children = addScoreToOptions(option.children, currentPath)
+      } else {
+        const categoryInfo = findCategoryInfo(categoryTree.value, currentPath[currentPath.length - 1])
+        if (categoryInfo) {
+          newOption.score = parseFloat(categoryInfo.topPoint)
+        }
+      }
+      return newOption
+    })
+  }
+  return addScoreToOptions(categoryOptions.value)
 })
 
 // 获取类别树数据
@@ -292,6 +349,7 @@ const convertTreeToOptions = (tree) => {
 const handleCategoryChange = async (value, index) => {
   const item = currentStep.value.items[index]
   item.categoryCode = value[value.length - 1]
+  item.score = getCategoryScore(item.categoryCode)
   await createCaseFile(item)
 }
 
@@ -363,7 +421,6 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
   formData.append('file', file)
   formData.append('fileID', item.fileID)
   
-  // 使用 authService 获取当前用户信息
   const currentUser = authService.getCurrentUser()
   if (!currentUser) {
     onError(new Error('用户未登录'))
@@ -731,6 +788,11 @@ const handleResize = () => {
   // 在这里处理窗口大小变化的逻辑
 }
 
+// 切换分数卡片显示
+const toggleScoreCard = () => {
+  showScoreCard.value = !showScoreCard.value
+}
+
 onMounted(async () => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   window.addEventListener('resize', handleResize)
@@ -906,6 +968,44 @@ window.addEventListener('unhandledrejection', (event) => {
 
 .negative-score {
   color: red;
+}
+
+.score-card {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.score-card:hover {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-content {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.category-score-tag {
+  background-color: #ecf5ff;
+  color: #409eff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.el-cascader {
+  width: 100%;
+}
+
+.el-cascader-node__label {
+  display: flex;
+  align-items: center;
 }
 
 @media (max-width: 768px) {
