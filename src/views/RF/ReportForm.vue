@@ -362,7 +362,16 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
   const formData = new FormData()
   formData.append('file', file)
   formData.append('fileID', item.fileID)
-  formData.append('userID', currentUser.value.ID)
+  
+  // 使用 authService 获取当前用户信息
+  const currentUser = authService.getCurrentUser()
+  if (!currentUser) {
+    onError(new Error('用户未登录'))
+    uploadingFiles.value.delete(file.name)
+    return
+  }
+  
+  formData.append('userID', currentUser.StudentId) // 使用 StudentId 作为 userID
   formData.append('caseID', item.categoryCode)
 
   try {
