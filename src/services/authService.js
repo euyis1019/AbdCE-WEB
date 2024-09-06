@@ -16,7 +16,9 @@ const authService = {
           StudentId: decodedToken.username,
           TokenType: decodedToken.token_type,
           ExpirationTime: decodedToken.exp,
-          Permission: decodedToken.Permission || '0'
+          Permission: decodedToken.Permission || '0',
+          grade: decodedToken.grade,
+          major_class: decodedToken.major_class
         };
       } catch (error) {
         console.error('Error decoding token:', error);

@@ -14,10 +14,12 @@
             </div>
           </template>
           <div v-if="userInfo" class="info-content">
-      <el-avatar :size="64" :src="userInfo.avatar">{{ userInfo.name?.charAt(0) }}</el-avatar>
-      <p><strong>姓名：</strong>{{ userInfo.name }}</p>
-      <p><strong>学号：</strong>{{ userInfo.studentId }}</p>
-      <p><strong>角色：</strong>{{ userRoleName }}</p>
+            <el-avatar :size="64" :src="userInfo.avatar">{{ userInfo.name?.charAt(0) }}</el-avatar>
+            <p><strong>姓名：</strong>{{ userInfo.name }}</p>
+            <p><strong>学号：</strong>{{ userInfo.studentId }}</p>
+            <p><strong>年级：</strong>{{ userInfo.grade }}</p>
+            <p><strong>专业班级：</strong>{{ userInfo.majorClass }}</p>
+            <p><strong>角色：</strong>{{ userRoleName }}</p>
     </div>
           <el-alert v-if="error.user" :title="error.user" type="error" :closable="false" />
         </el-card>
@@ -117,10 +119,12 @@ const assignedReviewers = ref({})
 const UserInfo = {
   name: '',
   studentId: '',
-  class: '',
+  grade: '',
+  majorClass: '',
   avatar: '',
   role: ''
 }
+
 
 const ReportStatus = {
   progress: 0,
@@ -177,7 +181,8 @@ const fetchDashboardData = async () => {
       userInfo.value = {
   name: user.Name || '',
   studentId: user.StudentId || '',
-  class: user.Class || '',
+  grade: user.grade || '',
+  majorClass: user.major_class || '',
   avatar: '',
   role: userRoleName.value
 };
