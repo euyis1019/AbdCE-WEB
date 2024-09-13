@@ -350,12 +350,12 @@ const handleCategoryChange = async (value, index) => {
   const item = currentStep.value.items[index]
   item.categoryCode = value[value.length - 1]
   item.score = getCategoryScore(item.categoryCode)
-  await createCaseFile(item)
+  // 移除立即创建案例文件的逻辑
 }
 
 // 创建案例文件
 const createCaseFile = async (item) => {
-  if (!item.categoryCode) return
+  if (!item.categoryCode || !item.description) return
 
   loading.value = true
   error.value = ''
@@ -363,11 +363,14 @@ const createCaseFile = async (item) => {
     const response = await axios.post('/record/newrecord', {
       userID: currentUser.value.StudentId,
       caseID: item.categoryCode,
-      mainCls: currentCategory.value,
-      cls1: item.categoryPath[0],
-      cls2: item.categoryPath[1],
-      cls3: item.categoryPath[2],
+      mainCLs: currentCategory.value,
+      midcls: item.categoryPath[1] || '',
+      mincls: item.categoryPath[2] || '',
       point: '',
+      page: '',
+      file: '',
+      priority: 0,
+      grade: currentUser.value.grade || '',
       description: item.description,
       categorycode: item.categoryCode
     })
@@ -386,11 +389,14 @@ const createCaseFile = async (item) => {
 }
 
 // 上传前的检查
-const beforeUpload = (file, index) => {
+const beforeUpload = async (file, index) => {
   const item = currentStep.value.items[index]
   if (!item.fileID) {
-    ElMessage.error('请先选择完整的类别')
-    return false
+    await createCaseFile(item)
+    if (!item.fileID) {
+      ElMessage.error('请先填写完整的类别和描述')
+      return false
+    }
   }
   if (uploadingFiles.value.has(file.name)) {
     ElMessage.warning('该文件正在上传中，请勿重复上传')
@@ -428,7 +434,7 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
     return
   }
   
-  formData.append('userID', currentUser.StudentId) // 使用 StudentId 作为 userID
+  formData.append('userID', currentUser.StudentId)
   formData.append('caseID', item.categoryCode)
 
   try {
