@@ -5,7 +5,6 @@
       <el-tag :type="userRoleColor" effect="dark">{{ userRoleName }}</el-tag>
     </h1>
     <el-row :gutter="20">
-      <!-- 个人信息卡片 -->
       <el-col :xs="24" :sm="24" :md="6">
         <el-card class="info-card user-info" shadow="hover" v-loading="loading.user">
           <template #header>
@@ -20,13 +19,12 @@
             <p><strong>年级：</strong>{{ userInfo.grade }}</p>
             <p><strong>专业班级：</strong>{{ userInfo.majorClass }}</p>
             <p><strong>角色：</strong>{{ userRoleName }}</p>
-    </div>
+          </div>
           <el-alert v-if="error.user" :title="error.user" type="error" :closable="false" />
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="24" :md="18">
         <el-row :gutter="20">
-          <!-- 申报状态卡片 -->
           <el-col :xs="24" :sm="12" :md="12">
             <el-card class="info-card report-status" shadow="hover" v-loading="loading.report">
               <template #header>
@@ -39,11 +37,29 @@
                 <el-progress :percentage="reportStatus.progress" :format="formatProgress" :status="getProgressStatus()"></el-progress>
                 <p><strong>当前状态：</strong>{{ reportStatus.status }}</p>
                 <p><strong>最后更新：</strong>{{ formatDate(reportStatus.lastUpdate) }}</p>
+                <!-- 新增：显示需要确认或修改的材料 -->
+                <el-alert
+                  v-if="reportStatus.needsConfirmation"
+                  title="您有材料需要确认"
+                  type="warning"
+                  :closable="false"
+                  show-icon
+                >
+                  <el-button size="small" type="primary" @click="goToReportState">查看详情</el-button>
+                </el-alert>
+                <el-alert
+                  v-if="reportStatus.needsModification"
+                  title="您有材料需要修改"
+                  type="error"
+                  :closable="false"
+                  show-icon
+                >
+                  <el-button size="small" type="primary" @click="goToReportState">查看详情</el-button>
+                </el-alert>
               </div>
               <el-alert v-if="error.report" :title="error.report" type="error" :closable="false" />
             </el-card>
           </el-col>
-          <!-- 快速操作卡片 -->
           <el-col :xs="24" :sm="12" :md="12">
             <el-card class="info-card quick-actions" shadow="hover">
               <template #header>
@@ -60,7 +76,6 @@
             </el-card>
           </el-col>
         </el-row>
-        <!-- 统计数据卡片 -->
         <el-row :gutter="20" class="stats-row">
           <el-col :xs="24" :sm="12" :md="6">
             <el-card class="stats-card" shadow="hover">
@@ -125,11 +140,12 @@ const UserInfo = {
   role: ''
 }
 
-
 const ReportStatus = {
   progress: 0,
   status: '',
-  lastUpdate: 0
+  lastUpdate: 0,
+  needsConfirmation: false,
+  needsModification: false
 }
 
 const userInfo = ref<typeof UserInfo | null>(null); 
@@ -179,15 +195,14 @@ const fetchDashboardData = async () => {
       userRoleColor.value = authService.getUserRoleColor(permissionLevel.value);
 
       userInfo.value = {
-  name: user.Name || '',
-  studentId: user.StudentId || '',
-  grade: user.grade || '',
-  majorClass: user.major_class || '',
-  avatar: '',
-  role: userRoleName.value
-};
+        name: user.Name || '',
+        studentId: user.StudentId || '',
+        grade: user.grade || '',
+        majorClass: user.major_class || '',
+        avatar: '',
+        role: userRoleName.value
+      };
 
-      // 使用 /record/userstatus 接口获取用户统计数据
       const statusResponse = await axios.post('/record/userstatus', { userID: user.StudentId });
       if (statusResponse.data.statusID === 1) {
         userStatus.value = statusResponse.data;
@@ -196,7 +211,6 @@ const fetchDashboardData = async () => {
         stats.value.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
                           statusResponse.data.finalTodoCount + statusResponse.data.finalDoneCount;
         
-        // 获取第一个 fileID 的状态（如果存在）
         const allFiles = [
           ...statusResponse.data.reviewTodoFiles,
           ...statusResponse.data.reviewDoneFiles,
@@ -210,17 +224,18 @@ const fetchDashboardData = async () => {
             reportStatus.value = {
               progress: getProgressPercentage(fileStatusResponse.data.status),
               status: getStatusLabel(fileStatusResponse.data.status),
-              lastUpdate: new Date().getTime() // 使用当前时间作为最后更新时间
+              lastUpdate: new Date().getTime(),
+              needsConfirmation: fileStatusResponse.data.status === '初审通过',
+              needsModification: fileStatusResponse.data.status === '初审未通过'
             };
           }
         } else {
-          reportStatus.value = null; // 没有申报记录
+          reportStatus.value = null;
         }
       } else {
         throw new Error(statusResponse.data.msg);
       }
 
-      // 系统公告数量（这里假设没有专门的接口，暂时设置为0）
       stats.value.announcements = 0;
     } else {
       throw new Error('未找到用户信息');
@@ -352,6 +367,10 @@ onMounted(async () => {
 
 .stats-card {
   text-align: center;
+}
+
+.el-alert {
+  margin-top: 10px;
 }
 
 @media (max-width: 768px) {

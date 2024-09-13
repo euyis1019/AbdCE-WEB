@@ -10,6 +10,7 @@ import NotFound from '../views/Notfound/NotFound.vue'
 import ImmersiveReview from '../views/ImmersiveReview.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
 import authService from '../services/authService'
+import BulkImport from '../views/BulkImport.vue'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/auth'
 
@@ -72,6 +73,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'DataDashboard',
         component: DataDashboard,
         meta: { requiresAuth: true, requiresAdmin: true }
+      },
+            {
+        path: 'bulk-import',
+        name: 'BulkImport',
+        component: BulkImport,
+        meta: { requiresAuth: true, requiresAdmin: true, minPermissionLevel: 30 }
       }
     ]
   },
