@@ -474,10 +474,17 @@ const updateReport = async () => {
     }
 
     const response = await axios.post('/record/updatenewrecord', {
-      fileID: editingItem.fileID,
+      FileID: editingItem.fileID,
       userID: user.StudentId,
       caseID: editingItem.categoryCode,
-      file: editingItem.fileID
+      maxcls: editingItem.categoryPath[0] || '',
+      midcls: editingItem.categoryPath[1] || '',
+      mincls: editingItem.categoryPath[2] || '',
+      point: '',
+      page: '',
+      file: editingItem.fileID,
+      priority: 0,
+      categorycode: editingItem.categoryCode
     })
 
     if (response.data.statusID === 1) {
