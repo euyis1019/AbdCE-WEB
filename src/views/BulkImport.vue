@@ -195,15 +195,15 @@ const submitUpload = async () => {
         'Content-Type': 'multipart/form-data'
       }
     })
-    if (response.data && Array.isArray(response.data)) {
+    if (Array.isArray(response.data)) {
       uploadResult.value = response.data
-      ElMessage.success('文件上传成功')
+      ElMessage.success('文件解析成功')
     } else {
       throw new Error('Invalid response format')
     }
   } catch (error) {
-    console.error('文件上传失败:', error)
-    ElMessage.error('文件上传失败，请重试')
+    console.error('文件解析失败:', error)
+    ElMessage.error('文件解析失败，请重试')
   }
 }
 

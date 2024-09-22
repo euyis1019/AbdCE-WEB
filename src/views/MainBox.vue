@@ -39,9 +39,14 @@
           <template #title>复审管理</template>
         </el-menu-item>
         <el-menu-item index="8" v-if="permissionLevel >= 30">
-  <el-icon><DataLine /></el-icon>
-  <template #title>数据看板</template>
-</el-menu-item>
+          <el-icon><DataLine /></el-icon>
+          <template #title>数据看板</template>
+        </el-menu-item>
+        <!-- 新增批量导入菜单项 -->
+        <el-menu-item index="9" v-if="permissionLevel >= 30">
+          <el-icon><Upload /></el-icon>
+          <template #title>批量导入</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -113,9 +118,14 @@
         <span>复审管理</span>
       </el-menu-item>
       <el-menu-item index="8" v-if="permissionLevel >= 30">
-  <el-icon><DataLine /></el-icon>
-  <template #title>数据看板</template>
-</el-menu-item>
+        <el-icon><DataLine /></el-icon>
+        <span>数据看板</span>
+      </el-menu-item>
+      <!-- 新增批量导入菜单项（移动端） -->
+      <el-menu-item index="9" v-if="permissionLevel >= 30">
+        <el-icon><Upload /></el-icon>
+        <span>批量导入</span>
+      </el-menu-item>
     </el-menu>
   </el-drawer>
 </template>
@@ -136,30 +146,37 @@ import {
   Fold, 
   Menu,
   User,
-  Files
+  Files,
+  DataLine,
+  Upload // 新增 Upload 图标
 } from '@element-plus/icons-vue'
 
 const router = useRouter();
 const route = useRoute();
 
+// 控制侧边栏折叠状态
 const isCollapse = ref(false);
-const isAdmin = ref(false);
-const isReviewer = ref(false);
+// 用户名
 const userName = ref('');
+// 控制移动端菜单可见性
 const mobileMenuVisible = ref(false);
+// 用户权限等级
 const permissionLevel = ref(0);
 
+// 判断是否为移动设备
 const isMobile = ref(false);
 const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768;
 };
 
+// 组件挂载时执行
 onMounted(() => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
   checkAuth();
 });
 
+// 检查用户认证和权限
 const checkAuth = async () => {
   const user = authService.getCurrentUser(); 
   if (!user) { 
@@ -167,12 +184,14 @@ const checkAuth = async () => {
     return;
   }
 
-  userName.value = user.Name || 'User';  // 使用Name字段作为用户姓名
+  userName.value = user.Name || 'User';
   permissionLevel.value = await authService.checkUserPermission();
 };
 
+// 计算当前激活的菜单项
 const activeMenu = computed(() => route.path);
 
+// 计算当前页面标题
 const currentPageTitle = computed(() => {
   const routeTitles = {
     '/': '首页',
@@ -180,19 +199,24 @@ const currentPageTitle = computed(() => {
     '/state': '进度查询',
     '/admin/todo': '待办事项',
     '/permission-management': '权限管理',
-    '/review-management': '复审管理'
+    '/review-management': '复审管理',
+    '/data-dashboard': '数据看板',
+    '/bulk-import': '批量导入' // 新增批量导入页面标题
   };
   return routeTitles[route.path] || '综合素质评价信息申报系统';
 });
 
+// 切换侧边栏折叠状态
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value;
 };
 
+// 切换移动端菜单可见性
 const toggleMobileMenu = () => {
   mobileMenuVisible.value = !mobileMenuVisible.value;
 };
 
+// 处理菜单选择
 const handleSelect = (key: string) => {
   mobileMenuVisible.value = false;
   switch (key) {
@@ -214,12 +238,16 @@ const handleSelect = (key: string) => {
     case '7':
       router.push('/review-management');
       break;
-      case '8':
-    router.push('/data-dashboard');
-    break;
+    case '8':
+      router.push('/data-dashboard');
+      break;
+    case '9':
+      router.push('/bulk-import'); // 新增批量导入路由
+      break;
   }
 };
 
+// 处理用户下拉菜单命令
 const handleCommand = (command: string) => {
   if (command === 'logout') {
     logout();
@@ -228,7 +256,7 @@ const handleCommand = (command: string) => {
   }
 };
 
-
+// 退出登录
 const logout = async () => {
   try {
     await authService.logout();
@@ -238,10 +266,13 @@ const logout = async () => {
     ElMessage.error('登出失败,请重试');
   }
 };
+
+// 跳转到SSO个人资料页面
 const goToSSOProfile = () => {
   window.location.href = process.env.VUE_APP_SSO_URL ; 
 };
 
+// 监听路由变化，关闭移动端菜单
 watch(() => route.path, () => {
   if (isMobile.value) { 
     mobileMenuVisible.value = false; 
