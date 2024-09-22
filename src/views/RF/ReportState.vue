@@ -37,6 +37,24 @@
             </template>
           </el-table-column>
           <el-table-column prop="score" label="分数" width="80" sortable="custom" />
+          <el-table-column label="初审进度" width="120">
+            <template #default="scope">
+              <div class="review-progress">
+                <el-tooltip content="初审员1" placement="top" effect="light">
+                  <el-icon :color="scope.row.reviewer1 ? '#67C23A' : '#909399'">
+                    <Check v-if="scope.row.reviewer1" />
+                    <Close v-else />
+                  </el-icon>
+                </el-tooltip>
+                <el-tooltip content="初审员2" placement="top" effect="light">
+                  <el-icon :color="scope.row.reviewer2 ? '#67C23A' : '#909399'">
+                    <Check v-if="scope.row.reviewer2" />
+                    <Close v-else />
+                  </el-icon>
+                </el-tooltip>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="进度" min-width="300">
             <template #default="scope">
               <div class="progress-wrapper">
@@ -146,10 +164,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, FullScreen, ZoomIn, ZoomOut, Close } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
+import { Refresh, FullScreen, ZoomIn, ZoomOut, Close, Check } from '@element-plus/icons-vue'
 import axios from '../../http-common'
 import authService from '../../services/authService'
+import CategoryInfo from '@/components/CategoryInfo.vue'
 import Cookies from 'js-cookie'
 import { debounce } from 'lodash'
 
@@ -163,6 +182,8 @@ interface ReportItem {
   score: number;
   categoryTitle: string;
   categoryPath: string[];
+  reviewer1: number | null;
+  reviewer2: number | null;
 }
 
 // 状态变量
@@ -209,17 +230,13 @@ const totalFileSize = ref(0)
 // 分页相关
 const currentPage = ref(1)
 const pageSize = ref(10)
-const paginatedReportItems = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return reportItems.value.slice(start, end)
-})
+const totalItems = ref(0)
 
 // 排序相关
 const sortBy = ref('')
 const sortOrder = ref('ascending')
 
-const categoryTree = ref(null)
+const categoryTree = ref({})
 
 // 计算属性
 const isImageFile = computed(() => previewFileType.value.startsWith('image/'))
@@ -228,6 +245,13 @@ const previewStyle = computed(() => ({
   transform: `scale(${zoomLevel.value})`,
   transition: 'transform 0.3s ease'
 }))
+
+// 分页数据计算属性
+const paginatedReportItems = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return reportItems.value.slice(start, end)
+})
 
 const resizeObserver = ref(null)
 
@@ -287,8 +311,8 @@ const fetchReportStatus = async () => {
 
     if (response.data.statusID === 1) {
       const allFiles = [
-        ...response.data.reviewTodoFiles,
-        ...response.data.reviewDoneFiles,
+        ...response.data.reviewTodoFilesList,
+        ...response.data.reviewDownFilesList,
         ...response.data.finalTodoFiles,
         ...response.data.finalDoneFiles
       ]
@@ -308,6 +332,8 @@ const fetchReportStatus = async () => {
               score: categoryInfo ? parseFloat(categoryInfo.topPoint) : 0,
               categoryPath: categoryInfo ? categoryInfo.path : [],
               categoryTitle: categoryInfo ? categoryInfo.path.join(' > ') : 'Unknown Category',
+              reviewer1: item.reviewer1 || null,
+              reviewer2: item.reviewer2 || null,
             }
           } else {
             return null
@@ -319,6 +345,7 @@ const fetchReportStatus = async () => {
       }))
 
       reportItems.value = reportItems.value.filter(item => item !== null)
+      console.log('Report items:', reportItems.value)
     } else {
       throw new Error(response.data.msg)
     }
@@ -348,7 +375,7 @@ const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   return null
 }
 
-// 获取状态类型
+// 获取状态对应的标签类型
 const getStatusType = (status: string) => {
   switch (status) {
     case '待初审': return 'warning'
@@ -412,7 +439,7 @@ const customUpload = async ({ file, onProgress, onSuccess, onError }) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('fileID', editingItem.fileID)
-  formData.append('userID', user.ID)
+  formData.append('userID', user.StudentId)
   formData.append('caseID', editingItem.categoryCode)
 
   try {
@@ -477,13 +504,8 @@ const updateReport = async () => {
       FileID: editingItem.fileID,
       userID: user.StudentId,
       caseID: editingItem.categoryCode,
-      maxcls: editingItem.categoryPath[0] || '',
-      midcls: editingItem.categoryPath[1] || '',
-      mincls: editingItem.categoryPath[2] || '',
-      point: '',
-      page: '',
+      description: editingItem.description,
       file: editingItem.fileID,
-      priority: 0,
       categorycode: editingItem.categoryCode
     })
 
@@ -779,7 +801,6 @@ window.addEventListener('unhandledrejection', (event) => {
   gap: 10px;
 }
 
-/* 使用 CSS 来处理一些布局问题，减少对 ResizeObserver 的依赖 */
 .full-screen-preview {
   height: 100vh;
   display: flex;
@@ -836,6 +857,16 @@ window.addEventListener('unhandledrejection', (event) => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+.review-progress {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.review-progress .el-icon {
+  font-size: 18px;
 }
 
 @media (max-width: 768px) {
