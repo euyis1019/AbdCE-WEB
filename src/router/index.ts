@@ -11,6 +11,7 @@ import ImmersiveReview from '../views/ImmersiveReview.vue'
 import ReviewManagement from '../views/ReviewManagement.vue'
 import authService from '../services/authService'
 import BulkImport from '../views/BulkImport.vue'
+import BackendManagement from '../views/BackendManagement.vue'
 import Cookies from 'js-cookie'
 import { useAuthStore } from '@/store/auth'
 
@@ -79,6 +80,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'BulkImport',
         component: BulkImport,
         meta: { requiresAuth: true, requiresAdmin: true, minPermissionLevel: 30 }
+      },
+      {
+        path: '/backend-management',
+        name: 'BackendManagement',
+        component: BackendManagement,
+        meta: { requiresAuth: true, requiresAdmin: true, minPermissionLevel: 40 }
       }
     ]
   },

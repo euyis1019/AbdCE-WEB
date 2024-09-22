@@ -42,10 +42,14 @@
           <el-icon><DataLine /></el-icon>
           <template #title>数据看板</template>
         </el-menu-item>
-        <!-- 新增批量导入菜单项 -->
         <el-menu-item index="9" v-if="permissionLevel >= 30">
           <el-icon><Upload /></el-icon>
           <template #title>批量导入</template>
+        </el-menu-item>
+        <!-- 新增后台管理菜单项 -->
+        <el-menu-item index="11" v-if="permissionLevel >= 40">
+          <el-icon><Management /></el-icon>
+          <template #title>后台管理</template>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -121,10 +125,14 @@
         <el-icon><DataLine /></el-icon>
         <span>数据看板</span>
       </el-menu-item>
-      <!-- 新增批量导入菜单项（移动端） -->
       <el-menu-item index="9" v-if="permissionLevel >= 30">
         <el-icon><Upload /></el-icon>
         <span>批量导入</span>
+      </el-menu-item>
+      <!-- 新增后台管理菜单项（移动端） -->
+      <el-menu-item index="11" v-if="permissionLevel >= 40">
+        <el-icon><Management /></el-icon>
+        <span>后台管理</span>
       </el-menu-item>
     </el-menu>
   </el-drawer>
@@ -148,7 +156,8 @@ import {
   User,
   Files,
   DataLine,
-  Upload // 新增 Upload 图标
+  Upload, 
+  Management // 新增 Management 图标
 } from '@element-plus/icons-vue'
 
 const router = useRouter();
@@ -201,7 +210,8 @@ const currentPageTitle = computed(() => {
     '/permission-management': '权限管理',
     '/review-management': '复审管理',
     '/data-dashboard': '数据看板',
-    '/bulk-import': '批量导入' // 新增批量导入页面标题
+    '/bulk-import': '批量导入',
+    '/backend-management': '后台管理' // 新增后台管理页面标题
   };
   return routeTitles[route.path] || '综合素质评价信息申报系统';
 });
@@ -242,7 +252,10 @@ const handleSelect = (key: string) => {
       router.push('/data-dashboard');
       break;
     case '9':
-      router.push('/bulk-import'); // 新增批量导入路由
+      router.push('/bulk-import');
+      break;
+    case '11':
+      router.push('/backend-management'); // 新增后台管理路由
       break;
   }
 };
