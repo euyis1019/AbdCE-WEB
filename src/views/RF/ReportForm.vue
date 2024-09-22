@@ -325,7 +325,6 @@ const getCategoryOptions = (topCategory) => {
   const categoryTreeData = categoryTree.value[topCategory]
   return convertTreeToOptions(categoryTreeData)
 }
-
 // 将类别树转换为选项格式
 const convertTreeToOptions = (tree) => {
   return Object.entries(tree).map(([key, value]) => {
@@ -362,14 +361,14 @@ const createCaseFile = async (item) => {
   try {
     const response = await axios.post('/record/newrecord', {
       userID: currentUser.value.StudentId,
-      caseID: item.categoryCode,
+      caseID: item.categoryCode.toString(),
       mainCLs: currentCategory.value,
       midcls: item.categoryPath[1] || '',
       mincls: item.categoryPath[2] || '',
       point: '',
       page: '',
       file: '',
-      priority: 0,
+      // priority 参数移除
       grade: currentUser.value.grade || '',
       description: item.description,
       categorycode: item.categoryCode
