@@ -50,29 +50,23 @@
         style="width: 100%"
         @sort-change="handleSortChange"
       >
-        <el-table-column
-          v-for="column in visibleColumns"
-          :key="column.prop"
-          :prop="column.prop"
-          :label="column.label"
-          sortable="custom"
-          :min-width="column.minWidth"
-        >
-          <template #default="{ row }">
-            <template v-if="column.prop === 'status'">
-              <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
-            </template>
-            <template v-else-if="column.prop === 'createdAt' || column.prop === 'updatedAt'">
-              {{ formatDate(row[column.prop]) }}
-            </template>
-            <template v-else-if="column.prop === 'caseID'">
-              {{ getCategoryPath(row.caseID) }}
-            </template>
-            <template v-else>
-              {{ row[column.prop] }}
-            </template>
+        <el-table-column prop="FileID" label="文件ID" width="280" sortable="custom" />
+        <el-table-column label="类别" width="180">
+          <template #default="scope">
+            <CategoryInfo :categoryCode="scope.row.categorycode" />
           </template>
         </el-table-column>
+        <el-table-column prop="applicationTime" label="提交时间" width="180" sortable="custom">
+          <template #default="scope">
+            {{ formatDate(scope.row.applicationTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="120" sortable="custom">
+          <template #default="scope">
+            <el-tag :type="getStatusType(scope.row)">{{ getStatusLabel(scope.row) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="point" label="分数" width="80" sortable="custom" />
       </el-table>
       <div class="pagination-container">
         <el-pagination
@@ -90,15 +84,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { Search, Document, Check, InfoFilled, Close } from '@element-plus/icons-vue'
+import { Search, Document, Check, InfoFilled, Close, Warning } from '@element-plus/icons-vue'
 import axios from '../http-common'
 import { debounce } from 'lodash'
 import { useAuthStore } from '@/store/auth'
 import Statistic from '@/components/Statistic.vue'
+import CategoryInfo from '@/components/CategoryInfo.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -121,9 +116,10 @@ const categoryTree = ref({})
 // 统计数据
 const statistics = ref([
   { title: '总提交数', value: 0, icon: Document },
-  { title: '待审核', value: 0, icon: InfoFilled },
-  { title: '初审通过', value: 0, icon: Check },
-  { title: '终审通过', value: 0, icon: Check }
+  { title: '待初审', value: 0, icon: InfoFilled },
+  { title: '待终审', value: 0, icon: Check },
+  { title: '已审核', value: 0, icon: Check },
+  { title: '争议数', value: 0, icon: Warning }
 ])
 
 // 图表配置
@@ -132,36 +128,42 @@ const charts = ref([
   { id: 'timelineChart', instance: null }
 ])
 
-// 动态列配置
-const columns = ref([])
-const visibleColumns = computed(() => {
-  return columns.value.filter(column => column.prop !== 'fileID')
-})
-
 // 获取仪表板数据
 const fetchData = async () => {
   loading.value = true
   try {
     const [response, categoryResponse] = await Promise.all([
-      axios.get('/record/getallfilestatus', {
+      axios.get('/admin/getCE', {
         params: {
+          userID: authStore.currentUser?.StudentId,
           page: currentPage.value,
-          pagesize: pageSize.value,
-          userID: authStore.currentUser?.StudentId
+          pageSize: pageSize.value
         }
       }),
       axios.get('/case/categorytree')
     ])
 
-    if (response.data.statusID !== 1) {
+    if (response.data.statusID !== 0) {
       throw new Error(response.data.msg || '获取数据失败')
     }
 
-    allData.value = response.data.fileStatuses
-    totalItems.value = response.data.fileStatuses.length // 注意：这里可能需要后端提供总数
+    const data = response.data.data
+    console.log('API response data:', data) // 用于调试
+
+    // 合并所有文件列表
+    allData.value = [
+      ...(data.reviewTodoList?.files || []),
+      ...(data.finalTodoList?.files || []),
+      ...(data.reviewDownList?.files || []),
+      ...(data.disputeList?.files || []),
+      ...(data.reviewerGradeList?.files || []),
+      ...(data.reviewerAcademyList?.files || []),
+      ...(data.gradeDisagreeList?.files || [])
+    ]
+
+    totalItems.value = allData.value.length
     categoryTree.value = categoryResponse.data.data
-    updateStatistics(response.data)
-    updateColumns()
+    updateStatistics(data)
     await nextTick()
     updateCharts()
   } catch (error) {
@@ -174,21 +176,12 @@ const fetchData = async () => {
 
 // 更新统计数据
 const updateStatistics = (data) => {
-  statistics.value[0].value = data.fileStatuses.length
-  statistics.value[1].value = data.pendingReviewCount
-  statistics.value[2].value = data.reviewPassedCount
-  statistics.value[3].value = data.finalReviewPassedCount
-}
-
-// 更新列配置
-const updateColumns = () => {
-  if (allData.value.length === 0) return
-  const sampleData = allData.value[0]
-  columns.value = Object.keys(sampleData).map(key => ({
-    prop: key,
-    label: key.charAt(0).toUpperCase() + key.slice(1),
-    minWidth: key === 'fileID' || key === 'userID' ? '280' : key === 'caseID' ? '300' : '120'
-  }))
+  statistics.value[0].value = totalItems.value
+  statistics.value[1].value = data.reviewTodoList?.files?.length || 0
+  statistics.value[2].value = data.finalTodoList?.files?.length || 0
+  statistics.value[3].value = data.reviewDownList?.files?.length || 0
+  statistics.value[4].value = (data.disputeList?.files?.length || 0) + 
+                              (data.gradeDisagreeList?.files?.length || 0)
 }
 
 // 根据搜索条件过滤数据
@@ -198,7 +191,7 @@ const filteredData = computed(() => {
   return allData.value.filter(item => 
     Object.values(item).some(value => 
       String(value).toLowerCase().includes(query)
-    ) || getCategoryPath(item.caseID).toLowerCase().includes(query)
+    )
   )
 })
 
@@ -210,11 +203,6 @@ const handleSearch = debounce(() => {
 // 处理表格排序
 const handleSortChange = ({ prop, order }) => {
   allData.value.sort((a, b) => {
-    if (prop === 'caseID') {
-      const pathA = getCategoryPath(a.caseID)
-      const pathB = getCategoryPath(b.caseID)
-      return order === 'ascending' ? pathA.localeCompare(pathB) : pathB.localeCompare(pathA)
-    }
     if (order === 'ascending') {
       return a[prop] > b[prop] ? 1 : -1
     } else {
@@ -223,33 +211,20 @@ const handleSortChange = ({ prop, order }) => {
   })
 }
 
-// 处理页面大小变化
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  currentPage.value = 1
-  fetchData()
-}
-
-// 处理页码变化
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  fetchData()
-}
-
 // 获取状态对应的标签类型
-const getStatusType = (status: string) => {
-  switch (status) {
-    case '待初审': return 'warning'
-    case '初审通过': return 'success'
-    case '终审通过': return 'success'
-    default: return 'info'
-  }
+const getStatusType = (row) => {
+  if (row.isDone === 0 && !row.finalDone) return 'warning' // 待初审
+  if (row.isDone === 1 && !row.finalDone) return 'info' // 待终审
+  if (row.finalDone) return 'success' // 已通过
+  return 'danger' // 争议或其他状态
 }
 
-// 获取统计卡片的颜色
-const getStatColor = (index: number) => {
-  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C']
-  return colors[index % colors.length]
+// 获取状态标签
+const getStatusLabel = (row) => {
+  if (row.isDone === 0 && !row.finalDone) return '待初审'
+  if (row.isDone === 1 && !row.finalDone) return '待终审'
+  if (row.finalDone) return '已通过'
+  return '争议'
 }
 
 // 更新所有图表
@@ -263,13 +238,11 @@ const updateCharts = () => {
 // 创建状态分布图表
 const createStatusChart = () => {
   const statusCount = {
-    '待初审': 0,
-    '初审通过': 0,
-    '终审通过': 0
+    '待初审': statistics.value[1].value,
+    '待终审': statistics.value[2].value,
+    '已审核': statistics.value[3].value,
+    '争议': statistics.value[4].value
   }
-  allData.value.forEach(item => {
-    statusCount[item.status] = (statusCount[item.status] || 0) + 1
-  })
 
   const chartDom = document.getElementById('statusChart')
   const myChart = charts.value[0].instance || echarts.init(chartDom)
@@ -324,13 +297,13 @@ const createStatusChart = () => {
 // 创建时间线图表
 const createTimelineChart = () => {
   const timeData = allData.value.map(item => ({
-    date: new Date(item.createdAt).toLocaleDateString(),
-    status: item.status
+    date: new Date(item.applicationTime).toLocaleDateString(),
+    status: getStatusLabel(item)
   }))
 
   const statusCounts = timeData.reduce((acc, curr) => {
     if (!acc[curr.date]) {
-      acc[curr.date] = { '待初审': 0, '初审通过': 0, '终审通过': 0 }
+      acc[curr.date] = { '待初审': 0, '待终审': 0, '已通过': 0, '争议': 0 }
     }
     acc[curr.date][curr.status]++
     return acc
@@ -362,7 +335,7 @@ const createTimelineChart = () => {
       }
     },
     legend: {
-      data: ['待初审', '初审通过', '终审通过'],
+      data: ['待初审', '待终审', '已通过', '争议'],
       bottom: 10
     },
     xAxis: {
@@ -385,24 +358,34 @@ const createTimelineChart = () => {
         data: chartData.map(item => item['待初审'])
       },
       {
-        name: '初审通过',
+        name: '待终审',
         type: 'line',
         stack: 'Total',
         areaStyle: {},
         emphasis: {
           focus: 'series'
         },
-        data: chartData.map(item => item['初审通过'])
+        data: chartData.map(item => item['待终审'])
       },
       {
-        name: '终审通过',
+        name: '已通过',
         type: 'line',
         stack: 'Total',
         areaStyle: {},
         emphasis: {
           focus: 'series'
         },
-        data: chartData.map(item => item['终审通过'])
+        data: chartData.map(item => item['已通过'])
+      },
+      {
+        name: '争议',
+        type: 'line',
+        stack: 'Total',
+        areaStyle: {},
+        emphasis: {
+          focus: 'series'
+        },
+        data: chartData.map(item => item['争议'])
       }
     ]
   }
@@ -414,28 +397,23 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString()
 }
 
-// 获取分类路径
-const getCategoryPath = (caseID: string | number) => {
-  const findPath = (tree, id, path = []) => {
-    for (const [key, value] of Object.entries(tree)) {
-      if (typeof value === 'object' && value !== null) {
-        if ('caseID' in value && value.caseID && id && value.caseID.toString() === id.toString()) {
-          return [...path, key]
-        }
-        const result = findPath(value, id, [...path, key])
-        if (result) return result
-      }
-    }
-    return null
-  }
+// 获取统计卡片的颜色
+const getStatColor = (index: number) => {
+  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
+  return colors[index % colors.length]
+}
 
-  try {
-    const path = findPath(categoryTree.value, caseID)
-    return path ? path.join(' > ') : '未知类别'
-  } catch (error) {
-    console.error('Error in getCategoryPath:', error)
-    return '未知类别'
-  }
+// 处理页面大小变化
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+  fetchData()
+}
+
+// 处理页码变化
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+  fetchData()
 }
 
 // 定时刷新数据
