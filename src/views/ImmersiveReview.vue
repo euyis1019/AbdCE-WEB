@@ -59,20 +59,26 @@
           <el-button 
             type="danger" 
             size="large" 
-            @click="submitReview('reject')" 
+            @click="showRejectForm" 
             icon="Close"
           >
             拒绝 (Ctrl+R)
           </el-button>
         </div>
 
-        <el-form :model="reviewForm" label-position="top">
-          <el-form-item label="评分">
-            <el-input-number v-model="reviewForm.score" :min="0" :max="100" :step="1" step-strictly controls-position="right"></el-input-number>
+        <el-form :model="reviewForm" label-position="top" v-if="showCommentForm">
+          <el-form-item label="审核意见" prop="comment" :rules="[
+            { required: true, message: '请输入审核意见', trigger: 'blur' }
+          ]">
+            <el-input 
+              type="textarea" 
+              v-model="reviewForm.comment" 
+              :rows="4" 
+              placeholder="请输入审核意见（拒绝时必填）"
+              ref="commentInput"
+            ></el-input>
           </el-form-item>
-          <el-form-item label="审核意见">
-            <el-input type="textarea" v-model="reviewForm.comment" :rows="4" placeholder="请输入审核意见（可选）"></el-input>
-          </el-form-item>
+          <el-button type="primary" @click="submitReview('reject')">提交拒绝</el-button>
         </el-form>
 
         <div class="bottom-actions">
@@ -108,7 +114,7 @@
             <ol>
               <li>查看左侧的审核规则和申请材料</li>
               <li>使用右侧的按钮或键盘快捷键进行审核</li>
-              <li>可选择调整评分和添加审核意见</li>
+              <li>拒绝时需要填写审核意见</li>
               <li>点击"下一个"或按 Ctrl+N 继续下一项审核</li>
             </ol>
           </el-col>
@@ -147,11 +153,13 @@ import Cookies from 'js-cookie'
 const router = useRouter()
 const route = useRoute()
 
+// 对话框和预览相关的响应式变量
 const confirmDialogVisible = ref(false)
 const guideVisible = ref(true)
 const fullScreenPreview = ref(false)
 const zoomLevel = ref(1)
 
+// 当前任务的数据结构
 const currentTask = ref({
   FileID: '',
   caseID: '',
@@ -174,14 +182,15 @@ const currentTask = ref({
 const currentTaskTitle = ref('')
 const reviewerName = ref('')
 
+// 审核表单数据
 const reviewForm = ref({
   result: '',
-  score: 0,
   comment: '',
 })
 
 const categoryTree = ref({})
 
+// 文件预览相关的响应式变量
 const filePreviewUrl = ref('')
 const fileContentType = ref('')
 const fileLoading = ref(false)
@@ -189,21 +198,24 @@ const loadingPercentage = ref(0)
 const previewContainer = ref(null)
 const fullScreenContainer = ref(null)
 
+// 新增：控制审核意见表单的显示
+const showCommentForm = ref(false)
+const commentInput = ref(null)
+
+// 计算属性：判断是否为复审
 const isReReview = computed(() => route.query.mode === 'rereview')
 
-const isAdmin = computed(() => {
-  const user = authService.getCurrentUser()
-  return user && user.Permission === '3'
-})
+// 计算属性：判断文件类型
+const isImageFile = computed(() => fileContentType.value.startsWith('image/'))
+const isPdfFile = computed(() => fileContentType.value === 'application/pdf')
 
-const isImageFile = computed(() => {
-  return fileContentType.value === 'image/png' || fileContentType.value === 'image/jpeg' || fileContentType.value === 'image/gif'
-})
+// 计算属性：预览样式
+const previewStyle = computed(() => ({
+  transform: `scale(${zoomLevel.value})`,
+  transition: 'transform 0.3s ease'
+}))
 
-const isPdfFile = computed(() => {
-  return fileContentType.value === 'application/pdf'
-})
-
+// 退出审核
 const exitReview = () => {
   if (route.query.returnTo === 'review-management') {
     router.push('/review-management')
@@ -212,11 +224,29 @@ const exitReview = () => {
   }
 }
 
-const submitReview = (result: 'pass' | 'reject') => {
+// 显示拒绝表单
+const showRejectForm = () => {
+  showCommentForm.value = true
+  nextTick(() => {
+    commentInput.value.focus()
+  })
+}
+
+// 提交审核
+const submitReview = async (result: 'pass' | 'reject') => {
   reviewForm.value.result = result
+
+  if (result === 'reject') {
+    if (!reviewForm.value.comment.trim()) {
+      ElMessage.warning('请输入审核意见')
+      return
+    }
+  }
+
   confirmDialogVisible.value = true
 }
 
+// 确认提交审核结果
 const confirmSubmit = async () => {
   try {
     const user = authService.getCurrentUser();
@@ -224,19 +254,20 @@ const confirmSubmit = async () => {
       throw new Error('用户未登录');
     }
 
-    const endpoint = isReReview.value ? '/admin/finalDone' : '/admin/isdone';
+    const endpoint = isReReview.value ? '/admin/updatereport' : '/admin/isdone';
     const payload: { [key: string]: any } = {
-      userID: user.StudentId,
       FileID: currentTask.value.FileID,
-      reviewerID: user.ID,
-      comment: reviewForm.value.comment,
-      score: reviewForm.value.score
+      reviewerID: user.StudentId,
     };
 
     if (isReReview.value) {
-      payload.finalDone = reviewForm.value.result === 'pass';
+      payload.finalDone = reviewForm.value.result === 'pass' ? 1 : 0;
     } else {
-      payload.isDone = reviewForm.value.result === 'pass';
+      payload.isDone = reviewForm.value.result === 'pass' ? 1 : 0;
+    }
+
+    if (reviewForm.value.result === 'reject') {
+      payload.comment = reviewForm.value.comment;
     }
 
     const response = await axios.post(endpoint, payload);
@@ -244,15 +275,19 @@ const confirmSubmit = async () => {
     if (response.data.statusID === 1) {
       ElMessage.success('审核结果已提交');
       confirmDialogVisible.value = false;
+      showCommentForm.value = false;
+      reviewForm.value.comment = '';
       await getNextTask();
     } else {
-      throw new Error(response.data.msg);
+      throw new Error(response.data.msg || '提交审核结果失败');
     }
   } catch (error) {
+    console.error('提交审核结果失败:', error);
     ElMessage.error('提交审核结果失败，请重试');
   }
 }
 
+// 获取下一个任务
 const getNextTask = async () => {
   try {
     const user = authService.getCurrentUser()
@@ -270,9 +305,9 @@ const getNextTask = async () => {
         currentTask.value = taskList[0]
         reviewForm.value = {
           result: '',
-          score: 0,
           comment: '',
         }
+        showCommentForm.value = false
         await fetchTaskDetails()
       } else {
         ElMessage.info('所有任务已审核完毕')
@@ -286,6 +321,7 @@ const getNextTask = async () => {
   }
 }
 
+// 获取类别树
 const fetchCategoryTree = async () => {
   try {
     const response = await axios.get('/case/categorytree')
@@ -300,6 +336,7 @@ const fetchCategoryTree = async () => {
   }
 }
 
+// 查找类别信息
 const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   for (const [key, value] of Object.entries(tree)) {
     if (typeof value === 'object' && value !== null) {
@@ -317,14 +354,15 @@ const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   return null
 }
 
+// 获取任务详情
 const fetchTaskDetails = async () => {
   try {
-    // Fetch file status to get caseID
+    // 获取文件状态以获取 caseID
     const fileStatusResponse = await axios.post('/record/filestatus', { FileID: currentTask.value.FileID })
     if (fileStatusResponse.data.statusID === 1) {
       currentTask.value.caseID = fileStatusResponse.data.caseID
 
-      // Find category info in the category tree
+      // 在类别树中查找类别信息
       const categoryInfo = findCategoryInfo(categoryTree.value, currentTask.value.caseID)
       if (categoryInfo) {
         currentTaskTitle.value = categoryInfo.path.join(' > ')
@@ -342,8 +380,9 @@ const fetchTaskDetails = async () => {
   }
 }
 
+// 获取文件预览
 const fetchFilePreview = async (fileID: string) => {
-  fileLoading.value = true
+  fileLoading.value =true
   loadingPercentage.value = 0
   try {
     const token = Cookies.get('jwt_token')
@@ -370,27 +409,33 @@ const fetchFilePreview = async (fileID: string) => {
   }
 }
 
+// 格式化加载百分比
 const formatPercentage = (percentage: number) => {
   return percentage === 100 ? '加载完成' : `${percentage}%`
 }
 
+// 切换全屏预览
 const toggleFullScreen = () => {
   fullScreenPreview.value = !fullScreenPreview.value
   zoomLevel.value = 1 // 重置缩放级别
 }
 
+// 放大预览
 const zoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3)
 }
 
+// 缩小预览
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5)
 }
 
+// 在新标签页中打开文件
 const openFileInNewTab = () => {
   window.open(filePreviewUrl.value, '_blank')
 }
 
+// 调整预览大小
 const adjustPreviewSize = () => {
   if (previewContainer.value) {
     const container = previewContainer.value
@@ -405,17 +450,18 @@ const adjustPreviewSize = () => {
   }
 }
 
+// 关闭指南
 const closeGuide = () => {
   guideVisible.value = false
 }
 
+// 处理键盘快捷键
 const handleKeyDown = (event: KeyboardEvent) => {
-  // 检查是否在输入框中
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-    return; // 如果在输入框中，不处理快捷键
+  if (event.target instanceof HTMLTextAreaElement) {
+    return; // 如果在文本区域中，不处理快捷键
   }
 
-  if (event.ctrlKey || event.metaKey) { // metaKey 用于 Mac 的 Command 键
+  if (event.ctrlKey || event.metaKey) {
     switch (event.key.toLowerCase()) {
       case 'p':
         event.preventDefault();
@@ -423,7 +469,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         break;
       case 'r':
         event.preventDefault();
-        submitReview('reject');
+        showRejectForm();
         break;
       case 'n':
         event.preventDefault();
@@ -435,6 +481,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
   }
 }
 
+// 组件挂载时的操作
 onMounted(async () => {
   document.addEventListener('keydown', handleKeyDown)
   window.addEventListener('resize', adjustPreviewSize)
@@ -444,6 +491,7 @@ onMounted(async () => {
   await getNextTask()
 })
 
+// 组件卸载时的清理操作
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
   window.removeEventListener('resize', adjustPreviewSize)
@@ -452,6 +500,7 @@ onUnmounted(() => {
   }
 })
 
+// 监听文件预览URL的变化
 watch(filePreviewUrl, () => {
   nextTick(adjustPreviewSize)
 })
