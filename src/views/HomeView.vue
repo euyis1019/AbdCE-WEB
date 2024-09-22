@@ -37,25 +37,6 @@
                 <el-progress :percentage="reportStatus.progress" :format="formatProgress" :status="getProgressStatus()"></el-progress>
                 <p><strong>当前状态：</strong>{{ reportStatus.status }}</p>
                 <p><strong>最后更新：</strong>{{ formatDate(reportStatus.lastUpdate) }}</p>
-                <!-- 新增：显示需要确认或修改的材料 -->
-                <el-alert
-                  v-if="reportStatus.needsConfirmation"
-                  title="您有材料需要确认"
-                  type="warning"
-                  :closable="false"
-                  show-icon
-                >
-                  <el-button size="small" type="primary" @click="goToReportState">查看详情</el-button>
-                </el-alert>
-                <el-alert
-                  v-if="reportStatus.needsModification"
-                  title="您有材料需要修改"
-                  type="error"
-                  :closable="false"
-                  show-icon
-                >
-                  <el-button size="small" type="primary" @click="goToReportState">查看详情</el-button>
-                </el-alert>
               </div>
               <el-alert v-if="error.report" :title="error.report" type="error" :closable="false" />
             </el-card>
@@ -79,12 +60,12 @@
         <el-row :gutter="20" class="stats-row">
           <el-col :xs="24" :sm="12" :md="6">
             <el-card class="stats-card" shadow="hover">
-              <statistic title="待审核申报" :value="stats.pendingReports" icon="Tickets" />
+              <statistic title="待审核申报" :value="stats.pendingReviews" icon="Tickets" />
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-card class="stats-card" shadow="hover">
-              <statistic title="已完成审核" :value="stats.completedReviews" icon="Check" />
+              <statistic title="已审核申报" :value="stats.completedReviews" icon="Check" />
             </el-card>
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
@@ -94,7 +75,7 @@
           </el-col>
           <el-col :xs="24" :sm="12" :md="6">
             <el-card class="stats-card" shadow="hover">
-              <statistic title="系统公告" :value="stats.announcements" icon="Bell" />
+              <statistic title="待处理争议" :value="stats.disputes" icon="Warning" />
             </el-card>
           </el-col>
         </el-row>
@@ -105,9 +86,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElTree } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { EditPen, InfoFilled, View, Tickets, Check, Document, Bell, DataLine } from '@element-plus/icons-vue'
+import { EditPen, InfoFilled, View, Tickets, Check, Document, Warning } from '@element-plus/icons-vue'
 import Statistic from '../components/Statistic.vue'
 import authService from '../services/authService'
 import axios from '../http-common'
@@ -118,18 +99,6 @@ const userStatus = ref(null)
 const userRoleName = ref('普通用户')
 const userRoleColor = ref('success')
 const permissionLevel = ref(0)
-const categoryTreeRef = ref<InstanceType<typeof ElTree>>()
-const categoryTree = ref([])
-const userPermissions = ref([])
-const assignDialogVisible = ref(false)
-const removeConfirmDialogVisible = ref(false)
-const autoAssigning = ref(false)
-const assignForm = ref({
-  categoryId: '',
-  categoryName: '',
-  reviewerId: ''
-})
-const assignedReviewers = ref({})
 
 const UserInfo = {
   name: '',
@@ -143,9 +112,7 @@ const UserInfo = {
 const ReportStatus = {
   progress: 0,
   status: '',
-  lastUpdate: 0,
-  needsConfirmation: false,
-  needsModification: false
+  lastUpdate: 0
 }
 
 const userInfo = ref<typeof UserInfo | null>(null); 
@@ -153,31 +120,24 @@ const reportStatus = ref<typeof ReportStatus | null>(null);
 const isReviewer = ref(false);
 const isAdmin = ref(false);
 
-const loading = computed(() => ({
+const loading = ref({
   user: false,
   report: false,
   stats: false
-}));
+});
 
-const error = computed(() => ({
+const error = ref({
   user: '',
   report: '',
   stats: ''
-})); 
+}); 
 
-const stats = computed(() => ({
-  pendingReports: 0,
+const stats = ref({
+  pendingReviews: 0,
   completedReviews: 0,
   myReports: 0,
-  announcements: 0
-})); 
-
-const availableReviewers = computed(() => {
-  const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
-  return userPermissions.value.filter(user => 
-    user.level > 0 && user.level < 30 && !currentReviewers.includes(user.id)
-  )
-})
+  disputes: 0
+}); 
 
 const fetchDashboardData = async () => {
   loading.value.user = true;
@@ -206,16 +166,19 @@ const fetchDashboardData = async () => {
       const statusResponse = await axios.post('/record/userstatus', { userID: user.StudentId });
       if (statusResponse.data.statusID === 1) {
         userStatus.value = statusResponse.data;
-        stats.value.pendingReports = statusResponse.data.reviewTodoCount;
-        stats.value.completedReviews = statusResponse.data.finalDoneCount;
-        stats.value.myReports = statusResponse.data.reviewTodoCount + statusResponse.data.reviewDoneCount + 
-                          statusResponse.data.finalTodoCount + statusResponse.data.finalDoneCount;
         
+        // 更新统计信息
+        stats.value.pendingReviews = statusResponse.data.reviewTodoCount + statusResponse.data.finalTodoCount;
+        stats.value.completedReviews = statusResponse.data.reviewDoneCount + statusResponse.data.finalDoneCount;
+        stats.value.myReports = statusResponse.data.reviewTodoFilesCount + statusResponse.data.reviewDownFilesCount;
+        stats.value.disputes = statusResponse.data.disputeCount + statusResponse.data.userDisputeCount;
+
+        // 获取最新的申报状态
         const allFiles = [
-          ...statusResponse.data.reviewTodoFiles,
-          ...statusResponse.data.reviewDoneFiles,
-          ...statusResponse.data.finalTodoFiles,
-          ...statusResponse.data.finalDoneFiles
+          ...(statusResponse.data.reviewTodoFilesList || []),
+          ...(statusResponse.data.reviewDownFilesList || []),
+          ...(statusResponse.data.finalTodoFiles || []),
+          ...(statusResponse.data.finalDoneFiles || [])
         ];
         
         if (allFiles.length > 0) {
@@ -224,9 +187,7 @@ const fetchDashboardData = async () => {
             reportStatus.value = {
               progress: getProgressPercentage(fileStatusResponse.data.status),
               status: getStatusLabel(fileStatusResponse.data.status),
-              lastUpdate: new Date().getTime(),
-              needsConfirmation: fileStatusResponse.data.status === '初审通过',
-              needsModification: fileStatusResponse.data.status === '初审未通过'
+              lastUpdate: new Date().getTime()
             };
           }
         } else {
@@ -235,8 +196,6 @@ const fetchDashboardData = async () => {
       } else {
         throw new Error(statusResponse.data.msg);
       }
-
-      stats.value.announcements = 0;
     } else {
       throw new Error('未找到用户信息');
     }
