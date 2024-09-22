@@ -143,6 +143,30 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="autoAssignDialogVisible"
+      title="自动分配审核员"
+      width="50%"
+    >
+      <el-progress
+        v-if="autoAssignProgress < 100"
+        :percentage="autoAssignProgress"
+        :format="formatAutoAssignProgress"
+      ></el-progress>
+      <div v-else>
+        <h3>分配结果</h3>
+        <el-table :data="autoAssignResults" style="width: 100%">
+          <el-table-column prop="category" label="大类"></el-table-column>
+          <el-table-column prop="assignedReviewers" label="分配的审核员"></el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="autoAssignDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -159,6 +183,9 @@ const userPermissions = ref([])
 const assignDialogVisible = ref(false)
 const removeConfirmDialogVisible = ref(false)
 const autoAssigning = ref(false)
+const autoAssignDialogVisible = ref(false)
+const autoAssignProgress = ref(0)
+const autoAssignResults = ref([])
 const assignForm = ref({
   categoryId: '',
   categoryName: '',
@@ -185,7 +212,7 @@ const hasNameField = computed(() => {
 const availableReviewers = computed(() => {
   const currentReviewers = assignedReviewers.value[assignForm.value.categoryId] || []
   return userPermissions.value.filter(user => 
-    user.level > 0 && !currentReviewers.includes(user.userID) // 手动分配时允许分配所有非普通用户，包括超管
+    user.level > 0 && !currentReviewers.includes(user.userID)
   )
 })
 
@@ -383,6 +410,7 @@ const removeReviewer = async (data, reviewer) => {
 const handlePermissionChange = (value, user) => {
   user.newLevel = value
 }
+
 const updateUserPermission = async (user) => {
   try {
     const currentUser = authService.getCurrentUser()
@@ -446,6 +474,10 @@ const getReviewerDisplayName = (reviewer) => {
 
 const autoAssignReviewers = async () => {
   autoAssigning.value = true
+  autoAssignDialogVisible.value = true
+  autoAssignProgress.value = 0
+  autoAssignResults.value = []
+
   try {
     const eligibleReviewers = userPermissions.value.filter(reviewer => reviewer.level > 0 && reviewer.level < 30)
     if (eligibleReviewers.length < 2) {
@@ -453,55 +485,103 @@ const autoAssignReviewers = async () => {
       return
     }
 
-    const leafNodes = getLeafNodes(categoryTree.value)
-    const assignments = {}
+    const topCategories = getTopCategories(categoryTree.value)
+    const reviewersByGrade = groupReviewersByGrade(eligibleReviewers)
 
-    for (const node of leafNodes) {
-      const currentReviewers = assignedReviewers.value[node.caseID] || []
-      const availableForNode = eligibleReviewers.filter(r => !currentReviewers.includes(r.userID))
+    for (const [grade, reviewers] of Object.entries(reviewersByGrade)) {
+      const shuffledReviewers = shuffleArray(reviewers)
+      const assignmentsForGrade = assignReviewersToCategories(shuffledReviewers, topCategories)
 
-      while (currentReviewers.length < 2 && availableForNode.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableForNode.length)
-        const selectedReviewer = availableForNode.splice(randomIndex, 1)[0]
-        currentReviewers.push(selectedReviewer.userID)
-
-        if (!assignments[selectedReviewer.userID]) {
-          assignments[selectedReviewer.userID] = []
+      for (const [categoryId, assignedReviewers] of Object.entries(assignmentsForGrade)) {
+        for (const reviewerId of assignedReviewers) {
+          await assignReviewerToCategory(reviewerId, categoryId)
+          autoAssignProgress.value += 100 / (Object.keys(reviewersByGrade).length * topCategories.length * 2)
         }
-        assignments[selectedReviewer.userID].push(node.caseID)
       }
-    }
 
-    // 调用后端 API 进行批量分配
-    for (const [reviewerId, categoryCodes] of Object.entries(assignments)) {
-      await axios.post('/admin/assignTask', {
-        adminID: authService.getCurrentUser().ID,
-        reviewerID: reviewerId,
-        categoryCodes: categoryCodes
+      autoAssignResults.value.push({
+        grade,
+        assignments: assignmentsForGrade
       })
     }
 
     ElMessage.success('自动分配审核员完成')
-    await fetchAssignedReviewers()  // 重新获取已分配的审核员信息
+    await fetchAssignedReviewers()
     await refreshCategoryTree()
   } catch (error) {
     console.error('自动分配审核员失败:', error)
     ElMessage.error('自动分配审核员失败，请稍后重试')
   } finally {
     autoAssigning.value = false
+    autoAssignProgress.value = 100
   }
 }
 
-const getLeafNodes = (nodes) => {
-  let leafNodes = []
-  for (const node of nodes) {
-    if (node.isLeaf) {
-      leafNodes.push(node)
-    } else if (node.children) {
-      leafNodes = leafNodes.concat(getLeafNodes(node.children))
+//  TODO: 下面属于猜测实现，未测试
+const getTopCategories = (tree) => {
+  return tree.map(node => ({
+    id: node.id,
+    label: node.label,
+    caseID: node.caseID
+  }))
+}
+
+const groupReviewersByGrade = (reviewers) => {
+  const groups = {}
+  for (const reviewer of reviewers) {
+    const grade = reviewer.userID.substring(0, 4)
+    if (!groups[grade]) {
+      groups[grade] = []
+    }
+    groups[grade].push(reviewer)
+  }
+  return groups
+}
+
+const shuffleArray = (array) => {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]]
+  }
+  return array
+}
+
+const assignReviewersToCategories = (reviewers, categories) => {
+  const assignments = {}
+  let reviewerIndex = 0
+
+  for (const category of categories) {
+    assignments[category.caseID] = []
+    for (let i = 0; i < 2; i++) {
+      if (reviewerIndex >= reviewers.length) {
+        reviewerIndex = 0
+      }
+      assignments[category.caseID].push(reviewers[reviewerIndex].userID)
+      reviewerIndex++
     }
   }
-  return leafNodes
+
+  return assignments
+}
+
+const assignReviewerToCategory = async (reviewerId, categoryId) => {
+  const currentUser = authService.getCurrentUser()
+  if (!currentUser) {
+    throw new Error('用户未登录')
+  }
+
+  await axios.post('/admin/assignTask', {
+    adminID: currentUser.StudentId,
+    reviewerID: reviewerId,
+    categoryCodes: [categoryId]
+  })
+}
+
+const formatAutoAssignProgress = (percentage) => {
+  if (percentage < 100) {
+    return `${percentage.toFixed(0)}%`
+  }
+  return '完成'
 }
 
 const handleSizeChange = (val: number) => {
