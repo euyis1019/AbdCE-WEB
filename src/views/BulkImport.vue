@@ -109,26 +109,35 @@ import { UploadFilled, Search } from '@element-plus/icons-vue'
 import axios from '@/http-common'
 import { useAuthStore } from '@/store/auth'
 
+// 使用 auth store 来检查权限
 const authStore = useAuthStore()
 const hasPermission = computed(() => authStore.permissionLevel >= 30)
 
+// 引用 category tree
 const categoryTreeRef = ref(null)
+// 分类树数据
 const categoryTree = ref([])
+// 搜索查询
 const searchQuery = ref('')
+// 文件列表
 const fileList = ref([])
+// 上传结果
 const uploadResult = ref([])
 
+// 树的默认属性
 const defaultProps = {
   children: 'children',
   label: 'label',
 }
 
+// 组件挂载时获取分类树
 onMounted(async () => {
   if (hasPermission.value) {
     await fetchCategoryTree()
   }
 })
 
+// 获取分类树数据
 const fetchCategoryTree = async () => {
   try {
     const response = await axios.get('/case/categorytree')
@@ -143,6 +152,7 @@ const fetchCategoryTree = async () => {
   }
 }
 
+// 转换树形格式
 const convertTreeFormat = (tree, parentId = null) => {
   return Object.entries(tree).map(([key, value], index) => {
     const node = {
@@ -163,10 +173,12 @@ const convertTreeFormat = (tree, parentId = null) => {
   })
 }
 
+// 处理搜索
 const handleSearch = (val) => {
   categoryTreeRef.value.filter(val)
 }
 
+// 过滤节点方法
 const filterNode = (value, data) => {
   if (!value) return true
   const searchLower = value.toLowerCase()
@@ -176,10 +188,12 @@ const filterNode = (value, data) => {
   )
 }
 
+// 处理文件变化
 const handleFileChange = (file) => {
   fileList.value = [file]
 }
 
+// 提交上传
 const submitUpload = async () => {
   if (!fileList.value.length) {
     ElMessage.warning('请先选择文件')
@@ -207,10 +221,16 @@ const submitUpload = async () => {
   }
 }
 
+// 下载模板
 const downloadTemplate = () => {
-  // 这里应该实现模板下载逻辑
-  // 可以是一个静态文件的下载，或者通过API获取模板文件
-  ElMessage.info('模板下载功能待实现')
+  const templateUrl = '/example/bulk-upload-example.xlsx'
+  const link = document.createElement('a')
+  link.href = templateUrl
+  link.download = 'bulk-upload-template.xlsx'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  ElMessage.success('模板下载已开始')
 }
 </script>
 
