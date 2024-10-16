@@ -47,6 +47,29 @@
       </section>
 
       <section class="review-right">
+        <el-form :model="reviewForm" label-position="top">
+          <el-form-item label="分数" prop="point">
+            <el-input-number 
+              v-model="reviewForm.point" 
+              :min="0" 
+              :max="100" 
+              :step="0.1"
+              :precision="1"
+            ></el-input-number>
+          </el-form-item>
+          <el-form-item label="审核意见" prop="comment" :rules="[
+            { required: true, message: '请输入审核意见', trigger: 'blur' }
+          ]">
+            <el-input 
+              type="textarea" 
+              v-model="reviewForm.comment" 
+              :rows="4" 
+              placeholder="请输入审核意见（必填）"
+              ref="commentInput"
+            ></el-input>
+          </el-form-item>
+        </el-form>
+
         <div class="review-actions">
           <el-button 
             type="success" 
@@ -59,27 +82,12 @@
           <el-button 
             type="danger" 
             size="large" 
-            @click="showRejectForm" 
+            @click="submitReview('reject')" 
             icon="Close"
           >
             拒绝 (Ctrl+R)
           </el-button>
         </div>
-
-        <el-form :model="reviewForm" label-position="top" v-if="showCommentForm">
-          <el-form-item label="审核意见" prop="comment" :rules="[
-            { required: true, message: '请输入审核意见', trigger: 'blur' }
-          ]">
-            <el-input 
-              type="textarea" 
-              v-model="reviewForm.comment" 
-              :rows="4" 
-              placeholder="请输入审核意见（拒绝时必填）"
-              ref="commentInput"
-            ></el-input>
-          </el-form-item>
-          <el-button type="primary" @click="submitReview('reject')">提交拒绝</el-button>
-        </el-form>
 
         <div class="bottom-actions">
           <el-button @click="getNextTask" type="primary" icon="ArrowRight">下一个 (Ctrl+N)</el-button>
@@ -113,8 +121,8 @@
             <h4>操作说明：</h4>
             <ol>
               <li>查看左侧的审核规则和申请材料</li>
+              <li>填写分数和审核意见</li>
               <li>使用右侧的按钮或键盘快捷键进行审核</li>
-              <li>拒绝时需要填写审核意见</li>
               <li>点击"下一个"或按 Ctrl+N 继续下一项审核</li>
             </ol>
           </el-col>
@@ -186,6 +194,7 @@ const reviewerName = ref('')
 const reviewForm = ref({
   result: '',
   comment: '',
+  point: 0,
 })
 
 const categoryTree = ref({})
@@ -197,10 +206,6 @@ const fileLoading = ref(false)
 const loadingPercentage = ref(0)
 const previewContainer = ref(null)
 const fullScreenContainer = ref(null)
-
-// 新增：控制审核意见表单的显示
-const showCommentForm = ref(false)
-const commentInput = ref(null)
 
 // 计算属性：判断是否为复审
 const isReReview = computed(() => route.query.mode === 'rereview')
@@ -224,23 +229,13 @@ const exitReview = () => {
   }
 }
 
-// 显示拒绝表单
-const showRejectForm = () => {
-  showCommentForm.value = true
-  nextTick(() => {
-    commentInput.value.focus()
-  })
-}
-
 // 提交审核
 const submitReview = async (result: 'pass' | 'reject') => {
   reviewForm.value.result = result
 
-  if (result === 'reject') {
-    if (!reviewForm.value.comment.trim()) {
-      ElMessage.warning('请输入审核意见')
-      return
-    }
+  if (!reviewForm.value.comment.trim()) {
+    ElMessage.warning('请输入审核意见')
+    return
   }
 
   confirmDialogVisible.value = true
@@ -258,6 +253,7 @@ const confirmSubmit = async () => {
     const payload: { [key: string]: any } = {
       FileID: currentTask.value.FileID,
       reviewerID: user.StudentId,
+      point: reviewForm.value.point.toString(), // 添加 point 字段
     };
 
     if (isReReview.value) {
@@ -266,17 +262,13 @@ const confirmSubmit = async () => {
       payload.isDone = reviewForm.value.result === 'pass' ? 1 : 0;
     }
 
-    if (reviewForm.value.result === 'reject') {
-      payload.comment = reviewForm.value.comment;
-    }
+    payload.comment = reviewForm.value.comment;
 
     const response = await axios.post(endpoint, payload);
 
     if (response.data.statusID === 1) {
       ElMessage.success('审核结果已提交');
       confirmDialogVisible.value = false;
-      showCommentForm.value = false;
-      reviewForm.value.comment = '';
       await getNextTask();
     } else {
       throw new Error(response.data.msg || '提交审核结果失败');
@@ -296,7 +288,7 @@ const getNextTask = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      pparams: { userID: user.StudentId }
+      params: { userID: user.StudentId }
     })
 
     if (response.data.statusID === 0) {
@@ -306,8 +298,8 @@ const getNextTask = async () => {
         reviewForm.value = {
           result: '',
           comment: '',
+          point: 0,
         }
-        showCommentForm.value = false
         await fetchTaskDetails()
       } else {
         ElMessage.info('所有任务已审核完毕')
@@ -367,12 +359,18 @@ const fetchTaskDetails = async () => {
       if (categoryInfo) {
         currentTaskTitle.value = categoryInfo.path.join(' > ')
         currentTask.value.rules = categoryInfo.judgement || ''
+        // 设置默认分数
+        reviewForm.value.point = parseFloat(categoryInfo.topPoint) || 0
       } else {
         currentTaskTitle.value = '未知类别'
         currentTask.value.rules = ''
+        reviewForm.value.point = 0
       }
 
-      await fetchFilePreview(currentTask.value.FileID)
+      // 如果文件状态中包含 point，则使用该值
+      if (fileStatusResponse.data.point) {
+        reviewForm.value.point = parseFloat(fileStatusResponse.data.point)
+      }await fetchFilePreview(currentTask.value.FileID)
     }
   } catch (error) {
     console.error('Error fetching task details:', error)
@@ -382,7 +380,7 @@ const fetchTaskDetails = async () => {
 
 // 获取文件预览
 const fetchFilePreview = async (fileID: string) => {
-  fileLoading.value =true
+  fileLoading.value = true
   loadingPercentage.value = 0
   try {
     const token = Cookies.get('jwt_token')
@@ -469,7 +467,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
         break;
       case 'r':
         event.preventDefault();
-        showRejectForm();
+        submitReview('reject');
         break;
       case 'n':
         event.preventDefault();

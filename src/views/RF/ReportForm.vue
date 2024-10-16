@@ -36,6 +36,15 @@
             <el-form-item label="描述">
               <el-input v-model="item.description" type="textarea" :rows="3"></el-input>
             </el-form-item>
+            <el-form-item label="分数">
+              <el-input-number 
+                v-model="item.point" 
+                :min="0" 
+                :max="100" 
+                :step="0.1"
+                :precision="1"
+              ></el-input-number>
+            </el-form-item>
             <el-form-item label="上传文件">
               <el-upload
                 class="upload-demo"
@@ -79,10 +88,10 @@
                 {{ scope.row.file ? scope.row.file.name : '未上传' }}
               </template>
             </el-table-column>
-            <el-table-column prop="score" label="分数" width="80">
+            <el-table-column prop="point" label="分数" width="80">
               <template #default="scope">
-                <span :class="{ 'negative-score': scope.row.score < 0 }">
-                  {{ scope.row.score }}
+                <span :class="{ 'negative-score': scope.row.point < 0 }">
+                  {{ scope.row.point }}
                 </span>
               </template>
             </el-table-column>
@@ -229,7 +238,7 @@ const previewStyle = computed(() => ({
 const allItemsWithScores = computed(() => {
   return allItems.value.map(item => ({
     ...item,
-    score: getCategoryScore(item.categoryCode)
+    score: item.point || getCategoryScore(item.categoryCode)
   }))
 })
 
@@ -240,7 +249,7 @@ const categoryScoreSums = computed(() => {
     if (!sums[topCategory]) {
       sums[topCategory] = 0
     }
-    sums[topCategory] += item.score
+    sums[topCategory] += parseFloat(item.point || 0)
   })
   return sums
 })
@@ -316,7 +325,7 @@ const createEmptyItem = () => ({
   file: null,
   fileID: '',
   uploadProgress: 0,
-  score: 0
+  point: 0 // 默认分数为0
 })
 
 // 获取类别选项
@@ -325,6 +334,7 @@ const getCategoryOptions = (topCategory) => {
   const categoryTreeData = categoryTree.value[topCategory]
   return convertTreeToOptions(categoryTreeData)
 }
+
 // 将类别树转换为选项格式
 const convertTreeToOptions = (tree) => {
   return Object.entries(tree).map(([key, value]) => {
@@ -348,8 +358,30 @@ const convertTreeToOptions = (tree) => {
 const handleCategoryChange = async (value, index) => {
   const item = currentStep.value.items[index]
   item.categoryCode = value[value.length - 1]
-  item.score = getCategoryScore(item.categoryCode)
-  // 移除立即创建案例文件的逻辑
+  const categoryInfo = findCategoryInfo(categoryTree.value, item.categoryCode)
+  if (categoryInfo && categoryInfo.topPoint) {
+    item.point = parseFloat(categoryInfo.topPoint) // 设置预定义的分数作为默认值
+  } else {
+    item.point = 0 // 如果没有预定义分数，则默认为0
+  }
+}
+
+// 查找类别信息
+const findCategoryInfo = (tree, targetCode, currentPath = []) => {
+  for (const [key, value] of Object.entries(tree)) {
+    if (typeof value === 'object' && value !== null) {
+      if ('caseID' in value && value.caseID.toString() === targetCode.toString()) {
+        return {
+          path: [...currentPath, key],
+          topPoint: value.topPoint,
+          judgement: value.judgement
+        }
+      }
+      const result = findCategoryInfo(value, targetCode, [...currentPath, key])
+      if (result) return result
+    }
+  }
+  return null
 }
 
 // 创建案例文件
@@ -365,10 +397,9 @@ const createCaseFile = async (item) => {
       mainCLs: currentCategory.value,
       midcls: item.categoryPath[1] || '',
       mincls: item.categoryPath[2] || '',
-      point: '',
+      point: item.point.toString(), // 使用表单中的分数
       page: '',
       file: '',
-      // priority 参数移除
       grade: currentUser.value.grade || '',
       description: item.description,
       categorycode: item.categoryCode
@@ -696,7 +727,8 @@ const submitForm = async () => {
             caseID: item.categoryCode,
             description: item.description,
             file: item.file.fileID,
-            categorycode: item.categoryCode
+            categorycode: item.categoryCode,
+            point: item.point.toString() // 使用表单中的分数
           })
           if (response.data.statusID !== 1) {
             throw new Error(response.data.msg)
@@ -733,7 +765,7 @@ const loadExistingData = async () => {
         file: { name: existingData.file, fileID: existingData.FileID },
         fileID: existingData.FileID,
         uploadProgress: 100,
-        score: 0
+        point: parseFloat(existingData.point) || 0 // 添加 point 字段
       })
       currentStepIndex.value = topLevelCategories.value.indexOf(category)
     } else {
@@ -752,9 +784,9 @@ const calculateScores = async () => {
     const categoryInfo = categoryInfoRefs.value[item.categoryCode]
     if (categoryInfo) {
       await nextTick()
-      item.score = await categoryInfo.getScore()
+      item.score = item.point || await categoryInfo.getScore()
     } else {
-      item.score = 0
+      item.score = item.point || 0
     }
   }
 }
@@ -769,23 +801,6 @@ const preparePreviewData = async () => {
 const getCategoryScore = (categoryCode) => {
   const categoryInfo = findCategoryInfo(categoryTree.value, categoryCode)
   return categoryInfo ? parseFloat(categoryInfo.topPoint) : 0
-}
-
-// 查找类别信息
-const findCategoryInfo = (tree, targetCode, currentPath = []) => {
-  for (const [key, value] of Object.entries(tree)) {
-    if (typeof value === 'object' && value !== null) {
-      if ('caseID' in value && value.caseID.toString() === targetCode.toString()) {
-        return {
-          path: [...currentPath, key],
-          topPoint: value.topPoint
-        }
-      }
-      const result = findCategoryInfo(value, targetCode, [...currentPath, key])
-      if (result) return result
-    }
-  }
-  return null
 }
 
 // 处理窗口大小变化

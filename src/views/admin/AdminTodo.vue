@@ -98,7 +98,7 @@ const fetchTodoItems = async () => {
     }
 
     const response = await axios.get('/admin/getCE', {
-      pparams: { userID: user.StudentId }
+      params: { userID: user.StudentId }
     })
 
     if (response.data.statusID === 0) {
@@ -175,7 +175,10 @@ const startReview = (item: any) => {
   router.push({
     name: 'ImmersiveReview',
     params: { taskId: item.FileID },
-    query: { returnTo: 'todo' }
+    query: { 
+      returnTo: 'todo',
+      point: item.point // 传递当前的分数
+    }
   })
 }
 </script>
