@@ -52,14 +52,16 @@
                 :on-success="(res, file) => handleUploadSuccess(res, file, index)"
                 :on-error="handleUploadError"
                 :before-upload="file => beforeUpload(file, index)"
-                :disabled="!item.fileID"
+                :show-file-list="false" 
               >
-                <el-button size="small" type="primary" :disabled="!item.fileID">点击上传</el-button>
+                <el-button size="small" type="primary">点击上传</el-button>
                 <template #tip>
                   <div class="el-upload__tip">只能上传jpg/png/pdf文件，且不超过10MB</div>
                 </template>
               </el-upload>
-              <el-progress v-if="item.uploadProgress > 0 && item.uploadProgress < 100" :percentage="item.uploadProgress"></el-progress>
+              <!-- 移除重复的 el-progress -->
+              <!-- 保留自定义进度条 -->
+              <el-progress v-if="item.uploadProgress > 0 && item.uploadProgress < 100" :percentage="item.uploadProgress" :status="item.uploadProgress === 100 ? 'success' : 'active'"></el-progress>
               <div v-if="item.file">
                 <p>已上传文件: {{ item.file.name }}</p>
                 <el-button size="small" type="primary" @click="previewFile(item.fileID)">预览文件</el-button>
@@ -143,6 +145,11 @@
         </div>
       </div>
     </el-card>
+
+    <!-- 固定位置的按钮，用于重新显示悬浮分数卡片 -->
+    <el-button v-if="!showScoreCard" class="toggle-score-card-button" type="primary" @click="toggleScoreCard">
+      显示实时得分统计
+    </el-button>
 
     <el-dialog v-model="previewDialogVisible" title="文件预览" :fullscreen="isFullScreen" :show-close="false" @close="closePreview">
       <div class="preview-container" :class="{ 'fullscreen': isFullScreen }">
@@ -293,15 +300,18 @@ const fetchCategoryTree = async () => {
   loading.value = true
   error.value = ''
   try {
+    console.log('Fetching category tree...')
     const response = await axios.get('/case/categorytree')
     if (response.data.statusID === 0) {
       categoryTree.value = response.data.data
       topLevelCategories.value = Object.keys(categoryTree.value).filter(key => key !== 'Main Category')
+      console.log('Category tree fetched successfully:', categoryTree.value)
       initFormData()
     } else {
       throw new Error(response.data.msg)
     }
   } catch (err) {
+    console.error('Error fetching category tree:', err)
     error.value = '获取类别数据失败，请稍后重试'
   } finally {
     loading.value = false
@@ -313,6 +323,7 @@ const initFormData = () => {
   topLevelCategories.value.forEach(category => {
     if (!formData.value[category]) {
       formData.value[category] = { items: [createEmptyItem()] }
+      console.log(`Initialized form data for category: ${category}`)
     }
   })
 }
@@ -358,11 +369,14 @@ const convertTreeToOptions = (tree) => {
 const handleCategoryChange = async (value, index) => {
   const item = currentStep.value.items[index]
   item.categoryCode = value[value.length - 1]
+  console.log(`Category changed for item ${index}:`, item.categoryCode)
   const categoryInfo = findCategoryInfo(categoryTree.value, item.categoryCode)
   if (categoryInfo && categoryInfo.topPoint) {
     item.point = parseFloat(categoryInfo.topPoint) // 设置预定义的分数作为默认值
+    console.log(`Set point for item ${index} to ${item.point} based on category info.`)
   } else {
     item.point = 0 // 如果没有预定义分数，则默认为0
+    console.log(`No predefined point for item ${index}. Set to 0.`)
   }
 }
 
@@ -384,20 +398,27 @@ const findCategoryInfo = (tree, targetCode, currentPath = []) => {
   return null
 }
 
-// 创建案例文件
+// 更新 createCaseFile 函数，添加详细日志
 const createCaseFile = async (item) => {
-  if (!item.categoryCode || !item.description) return
+  console.log('Creating case file for item:', item)
+
+  if (!item.categoryCode || !item.description) {
+    console.warn('Missing categoryCode or description for item:', item)
+    return false
+  }
 
   loading.value = true
   error.value = ''
+
   try {
+    console.log('Sending request to create case file...')
     const response = await axios.post('/record/newrecord', {
       userID: currentUser.value.StudentId,
       caseID: item.categoryCode.toString(),
       mainCLs: currentCategory.value,
       midcls: item.categoryPath[1] || '',
       mincls: item.categoryPath[2] || '',
-      point: item.point.toString(), // 使用表单中的分数
+      point: item.point.toString(),
       page: '',
       file: '',
       grade: currentUser.value.grade || '',
@@ -407,76 +428,102 @@ const createCaseFile = async (item) => {
 
     if (response.data.statusID === 1) {
       item.fileID = response.data.fileID
+      console.log('Case file created successfully. fileID:', item.fileID)
       ElMessage.success('案例文件创建成功，可以上传文件了')
+      return true
     } else {
       throw new Error(response.data.msg)
     }
   } catch (err) {
+    console.error('Error creating case file:', err)
     error.value = '创建案例文件失败，请重试'
+    return false
   } finally {
     loading.value = false
   }
 }
 
-// 上传前的检查
+// 上传前的检查，添加详细日志
 const beforeUpload = async (file, index) => {
   const item = currentStep.value.items[index]
-  if (!item.fileID) {
-    await createCaseFile(item)
-    if (!item.fileID) {
-      ElMessage.error('请先填写完整的类别和描述')
-      return false
-    }
-  }
+  console.log(`Before upload for file: ${file.name}, item index: ${index}`, item)
+
+  // 移除 createCaseFile 调用
+  // 在 customUpload 中处理
+
   if (uploadingFiles.value.has(file.name)) {
     ElMessage.warning('该文件正在上传中，请勿重复上传')
+    console.warn(`File ${file.name} is already uploading.`)
     return false
   }
   const isLt10M = file.size / 1024 / 1024 < 10
   const isValidType = ['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)
   if (!isLt10M) {
     ElMessage.error('上传文件大小不能超过 10MB!')
+    console.warn(`File ${file.name} is larger than 10MB.`)
   }
   if (!isValidType) {
     ElMessage.error('只能上传 JPG/PNG/PDF 格式的文件!')
+    console.warn(`File ${file.name} has invalid type: ${file.type}`)
   }
   return isLt10M && isValidType
 }
 
-// 自定义上传方法
+// 更新 customUpload 函数，添加详细日志
 const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => {
+  console.log(`Attempting to upload file: ${file.name}, for item index: ${index}`)
+
+  const item = currentStep.value.items[index]
+  
+  // 检查 fileID 是否存在
+  if (!item.fileID) {
+    console.log('fileID not found. Attempting to create case file...')
+    const success = await createCaseFile(item)
+    if (!success) {
+      onError(new Error('创建案例文件失败'))
+      return
+    }
+  }
+
   if (uploadingFiles.value.has(file.name)) {
+    ElMessage.warning('该文件正在上传中，请勿重复上传')
+    console.warn('File is already uploading:', file.name)
     onError(new Error('文件正在上传中'))
     return
   }
 
   uploadingFiles.value.add(file.name)
+  console.log(`Added file ${file.name} to uploadingFiles set.`)
 
-  const item = currentStep.value.items[index]
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('fileID', item.fileID)
-  
-  const currentUser = authService.getCurrentUser()
-  if (!currentUser) {
+  const formDataToSend = new FormData()
+  formDataToSend.append('file', file)
+  formDataToSend.append('fileID', item.fileID)
+
+  const currentUserData = authService.getCurrentUser()
+  if (!currentUserData) {
+    console.error('User not logged in.')
     onError(new Error('用户未登录'))
     uploadingFiles.value.delete(file.name)
     return
   }
-  
-  formData.append('userID', currentUser.StudentId)
-  formData.append('caseID', item.categoryCode)
+
+  formDataToSend.append('userID', currentUserData.StudentId)
+  formDataToSend.append('caseID', item.categoryCode)
 
   try {
-    const response = await axios.post('/record/upload', formData, {
+    console.log(`Sending upload request for file: ${file.name}`)
+    const response = await axios.post('/record/upload', formDataToSend, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
         onProgress({ percent: percentCompleted })
         item.uploadProgress = percentCompleted
+        console.log(`Upload progress for ${file.name}: ${percentCompleted}%`)
       }
-    })    
+    })
+
     if (response.data && response.data.statusID === 1) {
+      console.log('Upload successful:', response.data)
       onSuccess(response.data)
     } else {
       throw new Error(response.data?.msg || '上传失败')
@@ -486,10 +533,11 @@ const customUpload = async ({ file, onProgress, onSuccess, onError, index }) => 
     onError(error)
   } finally {
     uploadingFiles.value.delete(file.name)
+    console.log(`Removed file ${file.name} from uploadingFiles set.`)
   }
 }
 
-// 处理上传成功
+// 处理上传成功，添加详细日志
 const handleUploadSuccess = (res, file, index) => {
   console.log('Upload response:', res)
 
@@ -497,6 +545,7 @@ const handleUploadSuccess = (res, file, index) => {
     currentStep.value.items[index].file = { name: file.name, fileID: res.fileID }
     currentStep.value.items[index].uploadProgress = 100
     ElMessage.success('上传成功')
+    console.log(`File ${file.name} uploaded successfully. fileID: ${res.fileID}`)
   } else {
     console.error('Upload failed:', res)
     ElMessage.error(res && res.msg || '上传失败，请重试')
@@ -504,7 +553,7 @@ const handleUploadSuccess = (res, file, index) => {
   }
 }
 
-// 处理上传错误
+// 处理上传错误，添加详细日志
 const handleUploadError = (error) => {
   console.error('Upload error:', error)
   ElMessage.error('文件上传失败，请重试')
@@ -514,6 +563,7 @@ const handleUploadError = (error) => {
 const previewFile = async (fileID) => {
   if (fileID) {
     try {
+      console.log(`Attempting to preview file with fileID: ${fileID}`)
       isLoading.value = true
       downloadProgress.value = 0
       remainingTime.value = '计算中...'
@@ -533,8 +583,9 @@ const previewFile = async (fileID) => {
           const elapsedTime = (Date.now() - downloadStartTime.value) / 1000
           const downloadSpeed = progressEvent.loaded / elapsedTime
           const remainingBytes = progressEvent.total - progressEvent.loaded
-          const remainingSeconds = remainingBytes / downloadSpeed
+          const remainingSeconds = downloadSpeed > 0 ? remainingBytes / downloadSpeed : 0
           remainingTime.value = formatTime(remainingSeconds)
+          console.log(`Download progress for fileID ${fileID}: ${percentCompleted}%, remaining time: ${remainingTime.value}`)
         }
       }
       const response = await axios.get(`record/download`, config)
@@ -545,6 +596,7 @@ const previewFile = async (fileID) => {
       previewDialogVisible.value = true
       zoomLevel.value = 1 // 重置缩放级别
       ElMessage.success('文件预览成功')
+      console.log(`File preview successful for fileID: ${fileID}`)
     } catch (error) {
       console.error('文件预览失败:', error)
       ElMessage.error('文件预览失败，请稍后重试')
@@ -553,6 +605,7 @@ const previewFile = async (fileID) => {
     }
   } else {
     ElMessage.warning('没有可预览的文件')
+    console.warn('No fileID provided for preview.')
   }
 }
 
@@ -582,6 +635,7 @@ const toggleFullScreen = async () => {
     await document.exitFullscreen()
   }
   isFullScreen.value = !isFullScreen.value
+  console.log(`Full screen mode: ${isFullScreen.value ? 'Enabled' : 'Disabled'}`)
   // 在全屏切换后，给一些时间让浏览器调整，然后触发一次 resize
   await nextTick()
   setTimeout(handleResize, 100)
@@ -590,16 +644,19 @@ const toggleFullScreen = async () => {
 // 放大预览
 const zoomIn = () => {
   zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3)
+  console.log(`Zoomed in. Current zoom level: ${zoomLevel.value}`)
 }
 
 // 缩小预览
 const zoomOut = () => {
   zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.5)
+  console.log(`Zoomed out. Current zoom level: ${zoomLevel.value}`)
 }
 
 // 在新标签页中打开文件
 const openFileInNewTab = () => {
   window.open(previewUrl.value, '_blank')
+  console.log('Opened file in new tab.')
 }
 
 // 关闭预览
@@ -608,6 +665,7 @@ const closePreview = () => {
   if (previewUrl.value) {
     URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = ''
+    console.log('Closed file preview and revoked object URL.')
   }
   zoomLevel.value = 1 // 重置缩放级别
 }
@@ -615,16 +673,19 @@ const closePreview = () => {
 // 处理全屏变化
 const handleFullscreenChange = () => {
   isFullScreen.value = !!document.fullscreenElement
+  console.log(`Fullscreen changed. isFullScreen: ${isFullScreen.value}`)
 }
 
 // 添加新项
 const addItem = () => {
   currentStep.value.items.push(createEmptyItem())
+  console.log('Added new item to current step.')
 }
 
 // 移除项
 const removeItem = (index) => {
   currentStep.value.items.splice(index, 1)
+  console.log(`Removed item at index: ${index}`)
   if (currentStep.value.items.length === 0) {
     addItem()
   }
@@ -648,18 +709,23 @@ const nextStep = async () => {
     ).catch(() => false)
 
     if (!result) {
+      console.log('User canceled moving to the next step.')
       return
     }
+    console.log('User confirmed skipping the current step.')
   }
 
   if (currentStepIndex.value < topLevelCategories.value.length - 1) {
     currentStepIndex.value++
+    console.log(`Moved to next step. Current step index: ${currentStepIndex.value}`)
     saveDraft()
     if (!formData.value[currentCategory.value] || formData.value[currentCategory.value].items.length === 0) {
       formData.value[currentCategory.value] = { items: [createEmptyItem()] }
+      console.log(`Initialized form data for new step: ${currentCategory.value}`)
     }
   } else {
     currentStepIndex.value = topLevelCategories.value.length
+    console.log('Moved to summary step.')
     await preparePreviewData()
   }
 }
@@ -668,8 +734,10 @@ const nextStep = async () => {
 const prevStep = () => {
   if (currentStepIndex.value > 0) {
     currentStepIndex.value--
+    console.log(`Moved to previous step. Current step index: ${currentStepIndex.value}`)
     if (!formData.value[currentCategory.value] || formData.value[currentCategory.value].items.length === 0) {
       formData.value[currentCategory.value] = { items: [createEmptyItem()] }
+      console.log(`Initialized form data for previous step: ${currentCategory.value}`)
     }
   }
 }
@@ -682,7 +750,9 @@ const saveDraft = () => {
       formData: formData.value
     }))
     ElMessage.success('草稿已保存')
+    console.log('Draft saved to localStorage.')
   } catch (err) {
+    console.error('Error saving draft:', err)
     ElMessage.error('保存草稿失败，请重试')
   }
 }
@@ -697,22 +767,27 @@ const loadDraft = () => {
         currentStepIndex.value = parsedDraft.currentStepIndex
         formData.value = parsedDraft.formData
         ElMessage.success('草稿已加载')
+        console.log('Draft loaded from localStorage.')
       } else {
         initFormData()
+        console.warn('Invalid draft data. Initialized new form data.')
       }
     } else {
       initFormData()
+      console.log('No draft found. Initialized new form data.')
     }
   } catch (err) {
+    console.error('Error loading draft:', err)
     ElMessage.error('加载草稿失败，初始化新表单')
     initFormData()
   }
 }
 
-// 提交表单
+// 提交表单，添加详细日志
 const submitForm = async () => {
   loading.value = true
   error.value = ''
+  console.log('Submitting form...')
   try {
     for (const category of topLevelCategories.value) {
       const items = formData.value[category]?.items || []
@@ -721,6 +796,7 @@ const submitForm = async () => {
           if (!item.file) {
             throw new Error(`请为 ${category} 类别上传文件`)
           }
+          console.log(`Updating record for fileID: ${item.fileID}`)
           const response = await axios.post('/record/updatenewrecord', {
             FileID: item.fileID,
             userID: currentUser.value.StudentId,
@@ -733,14 +809,18 @@ const submitForm = async () => {
           if (response.data.statusID !== 1) {
             throw new Error(response.data.msg)
           }
+          console.log(`Record updated successfully for fileID: ${item.fileID}`)
         }
       }
     }
     ElMessage.success('申报提交成功')
     localStorage.removeItem('reportDraft')
+    console.log('Form submitted successfully. Draft removed from localStorage.')
     router.push('/state')
   } catch (err) {
+    console.error('Error submitting form:', err)
     error.value = err.message || '提交失败，请重试'
+    ElMessage.error(error.value)
   } finally {
     loading.value = false
   }
@@ -751,6 +831,7 @@ const loadExistingData = async () => {
   loading.value = true
   error.value = ''
   try {
+    console.log('Loading existing data for edit mode...')
     const response = await axios.post('/record/findrecord', { FileID: router.currentRoute.value.query.FileID })
     if (response.data.statusID === 0) {
       const existingData = response.data.data[0]
@@ -768,10 +849,12 @@ const loadExistingData = async () => {
         point: parseFloat(existingData.point) || 0 // 添加 point 字段
       })
       currentStepIndex.value = topLevelCategories.value.indexOf(category)
+      console.log('Existing data loaded successfully:', existingData)
     } else {
       throw new Error(response.data.msg)
     }
   } catch (err) {
+    console.error('Error loading existing data:', err)
     error.value = '加载现有数据失败，请重试'
   } finally {
     loading.value = false
@@ -780,13 +863,16 @@ const loadExistingData = async () => {
 
 // 计算分数
 const calculateScores = async () => {
+  console.log('Calculating scores for all items...')
   for (const item of allItems.value) {
     const categoryInfo = categoryInfoRefs.value[item.categoryCode]
     if (categoryInfo) {
       await nextTick()
       item.score = item.point || await categoryInfo.getScore()
+      console.log(`Calculated score for item with categoryCode ${item.categoryCode}: ${item.score}`)
     } else {
       item.score = item.point || 0
+      console.log(`No categoryInfo found for categoryCode ${item.categoryCode}. Set score to ${item.score}`)
     }
   }
 }
@@ -795,6 +881,7 @@ const calculateScores = async () => {
 const preparePreviewData = async () => {
   await nextTick()
   await calculateScores()
+  console.log('Prepared preview data.')
 }
 
 // 获取类别分数
@@ -806,17 +893,21 @@ const getCategoryScore = (categoryCode) => {
 // 处理窗口大小变化
 const handleResize = () => {
   // 在这里处理窗口大小变化的逻辑
+  console.log('Window resized.')
 }
 
 // 切换分数卡片显示
 const toggleScoreCard = () => {
   showScoreCard.value = !showScoreCard.value
+  console.log(`Score card visibility toggled. Now visible: ${showScoreCard.value}`)
 }
 
 onMounted(async () => {
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   window.addEventListener('resize', handleResize)
+  console.log('Component mounted. Fetching current user...')
   currentUser.value = await authService.getCurrentUser()
+  console.log('Current user fetched:', currentUser.value)
   try {
     await fetchCategoryTree()
     if (isEditMode.value) {
@@ -829,6 +920,7 @@ onMounted(async () => {
       await preparePreviewData()
     }
   } catch (err) {
+    console.error('Initialization error:', err)
     error.value = '初始化失败，请刷新页面重试'
   }
 })
@@ -837,11 +929,13 @@ onUnmounted(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   window.removeEventListener('resize', handleResize)
   closePreview()
+  console.log('Component unmounted. Cleaned up event listeners and closed preview.')
 })
 
 watch(() => router.currentRoute.value, (newRoute) => {
   if (newRoute.query.edit) {
     isEditMode.value = true
+    console.log('Edit mode activated.')
     loadExistingData()
   }
 }, { immediate: true })
@@ -850,10 +944,11 @@ watch(currentStepIndex, async (newIndex) => {
   if (newIndex === topLevelCategories.value.length) {
     await nextTick()
     await preparePreviewData()
+    console.log('Moved to summary step. Prepared preview data.')
   }
 })
 
-// 全局错误处理
+// 全局错误处理，添加详细日志
 const handleError = (error, message) => {
   console.error('Error:', error)
   ElMessage.error(message)
@@ -861,10 +956,12 @@ const handleError = (error, message) => {
 
 window.addEventListener('error', (event) => {
   handleError(event.error, '发生了意外错误，请刷新页面重试')
+  console.error('Global error captured:', event.error)
 })
 
 window.addEventListener('unhandledrejection', (event) => {
   handleError(event.reason, '发生了未处理的异步错误，请刷新页面重试')
+  console.error('Global unhandled rejection captured:', event.reason)
 })
 </script>
 
@@ -993,6 +1090,7 @@ window.addEventListener('unhandledrejection', (event) => {
 .score-card {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  background-color: #ffffff;
 }
 
 .score-card:hover {
@@ -1028,6 +1126,13 @@ window.addEventListener('unhandledrejection', (event) => {
   align-items: center;
 }
 
+.toggle-score-card-button {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 999;
+}
+
 @media (max-width: 768px) {
   .report-form {
     padding: 10px;
@@ -1040,6 +1145,11 @@ window.addEventListener('unhandledrejection', (event) => {
   .form-actions .el-button {
     margin-bottom: 10px;
     width: 100%;
+  }
+
+  .toggle-score-card-button {
+    top: auto;
+    bottom: 20px;
   }
 }
 </style>
