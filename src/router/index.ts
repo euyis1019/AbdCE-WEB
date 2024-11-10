@@ -107,7 +107,7 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
   if (requiresAuth && !token) {
-    window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html';
+    window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login';
     return;
   }
 
@@ -129,7 +129,7 @@ router.beforeEach(async (to, from, next) => {
     } catch (error) {
       console.error('Authentication failed:', error);
       Cookies.remove('jwt_token');
-      window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login.html';
+      window.location.href = process.env.VUE_APP_SSO_URL + 'ce/login';
     }
   } else {
     next();

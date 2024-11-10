@@ -51,7 +51,7 @@ const authService = {
       Cookies.remove('refresh_token');
       
       // 重定向到SSO登出页面
-      window.location.href = `${SSO_URL}ce/login.html`;
+      window.location.href = `${SSO_URL}ce/login`;
     
   },
 

@@ -189,7 +189,7 @@ onMounted(() => {
 const checkAuth = async () => {
   const user = authService.getCurrentUser(); 
   if (!user) { 
-    window.location.href = `${process.env.VUE_APP_SSO_URL}ce/login.html`; 
+    window.location.href = `${process.env.VUE_APP_SSO_URL}ce/login`; 
     return;
   }
 
